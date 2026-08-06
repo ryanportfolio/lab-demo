@@ -67,6 +67,25 @@ function fmtTick(v: number, span: number): string {
   return v.toFixed(2);
 }
 
+/** One axis, one precision: 1 / 1.5 / 2, never 1 / 1.50 / 2 */
+function fmtAxis(ticks: number[]): string[] {
+  const dec = ticks.every((t) => Number.isInteger(t))
+    ? 0
+    : Math.min(
+        3,
+        Math.max(
+          ...ticks.map((t) => {
+            const s = t.toString();
+            const i = s.indexOf('.');
+            return i < 0 ? 0 : s.length - i - 1;
+          }),
+        ),
+      );
+  return ticks.map((t) =>
+    dec === 0 && Math.abs(t) >= 1000 ? `${Math.round(t / 1000)}k` : t.toFixed(dec),
+  );
+}
+
 /** The readout shows the stored value, trimmed only of noise digits */
 export function fmtVal(y: number): string {
   if (Number.isInteger(y)) return String(y);
@@ -122,21 +141,25 @@ function Plot({
     secondaryAll && !hidden.has(secondaryAll.label) ? secondaryAll : undefined;
   const rel = RELATIVITY.has(chart.kind);
 
-  const allX = primary.flatMap((s) => s.points.map((p) => p.x));
-  const xMin = Math.min(...allX);
-  const xMax = Math.max(...allX);
   // Categorical when a series carries tick labels over a short index run,
   // which is how the server sends zones, cells, counts, and folds. A dense
   // numeric axis like single years of age stays numeric even though a few of
   // its points (the knots) are labelled. Detection reads the full series
   // list, so hiding a series never flips the axis style.
+  const allXAll = primaryAll.flatMap((s) => s.points.map((p) => p.x));
   const labelled = primaryAll.find(
     (s) => s.points.length > 0 && s.points.every((p) => p.label != null),
   );
   const categorical =
     !!labelled &&
     primaryAll.every((s) => s.points.length <= 32) &&
-    primaryAll.flatMap((s) => s.points.map((p) => p.x)).every((x) => Number.isInteger(x));
+    allXAll.every((x) => Number.isInteger(x));
+
+  // A categorical axis keeps the full band layout whatever is toggled off,
+  // so bars never slide under another series' captions
+  const allX = primary.flatMap((s) => s.points.map((p) => p.x));
+  const xMin = categorical ? Math.min(...allXAll) : Math.min(...allX);
+  const xMax = categorical ? Math.max(...allXAll) : Math.max(...allX);
 
   const values = primary.flatMap((s) => s.points.map((p) => p.y));
   if (rel) values.push(1);
@@ -151,15 +174,16 @@ function Plot({
   // Long category names lean rather than crush, and leaning costs height, so
   // the frame grows instead of the labels running off the bottom
   const longLabels =
-    categorical && xTicksNeedRotation(labelled?.points.map((p) => p.label ?? ''));
+    categorical &&
+    xTicksNeedRotation(
+      primaryAll.flatMap((s) => s.points.map((p) => p.label ?? '')),
+    );
   const padB = longLabels ? G.padBL : PAD.b;
   const H = longLabels ? G.HL : G.H;
 
   const plotW = W - PAD.l - PAD.r;
   const plotH = H - PAD.t - padB;
-  const bandCount = categorical
-    ? Math.max(...primaryAll.map((s) => s.points.length), 1)
-    : 0;
+  const bandCount = categorical ? xMax - xMin + 1 : 0;
   const band = categorical ? plotW / bandCount : 0;
 
   const sx = (x: number) =>
@@ -169,19 +193,41 @@ function Plot({
   const sy = (y: number) => PAD.t + plotH * (1 - (y - yLo) / (yHi - yLo || 1));
 
   const barSeries = primary.filter((s) => s.style === 'bar');
-  const barIndex = (s: EvidenceSeries) => barSeries.indexOf(s);
+  // bars share a band only where their series actually meet, so two series
+  // on disjoint bands each sit centered instead of half shifted
+  const barsAt = (x: number) =>
+    barSeries.filter((b) => b.points.some((pt) => Math.abs(pt.x - x) < 1e-9));
+  const concurrent = categorical
+    ? Math.max(1, ...Array.from(new Set(allXAll)).map((x) => barsAt(x).length))
+    : Math.max(barSeries.length, 1);
   const barW = categorical
-    ? (band * 0.72) / Math.max(barSeries.length, 1)
+    ? (band * 0.72) / concurrent
     : Math.max(plotW / (xMax - xMin + 1) - 1, 1);
 
   const yTicks = niceTicks(yLo, yHi);
-  const catTicks = labelled?.points.map((p) => ({ x: p.x, label: p.label ?? '' })) ?? [];
+  const yTickLabels = fmtAxis(yTicks);
+  // Band captions come from every series, first label per x winning, so a
+  // chart whose series own different bands captions each band with its own
+  // name rather than borrowing the first series' labels
+  const labelByX = new Map<number, string>();
+  primaryAll.forEach((s) =>
+    s.points.forEach((p) => {
+      if (p.label != null && !labelByX.has(p.x)) labelByX.set(p.x, p.label);
+    }),
+  );
+  const catTicks = categorical
+    ? [...labelByX.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([x, label]) => ({ x, label }))
+    : [];
   // thin the labels when a categorical axis carries more than fits, as the
   // zone axis does at thirty
   const every = Math.ceil(catTicks.length / 12);
+  const numTicks = niceTicks(xMin, xMax, 5);
+  const numTickLabels = fmtAxis(numTicks);
   const xTicks = categorical
     ? catTicks.filter((_, i) => i % every === 0)
-    : niceTicks(xMin, xMax, 5).map((v) => ({ x: v, label: fmtTick(v, xMax - xMin) }));
+    : numTicks.map((v, i) => ({ x: v, label: numTickLabels[i] }));
 
   // Second axis for the weight behind a curve, kept short so it reads as
   // background rather than as another result
@@ -235,6 +281,7 @@ function Plot({
               label: s.label,
               v: sec ? p.y.toFixed(1) : fmtVal(p.y),
               col: color(s),
+              style: s.style,
             },
           ];
         });
@@ -256,9 +303,11 @@ function Plot({
   );
   const tipH = 24 + rows.length * 17;
   const cx = hx == null ? 0 : sx(hx);
+  // the readout sits in the corner away from the crosshair, so the data
+  // being read stays visible under the cursor
   const tipX = Math.max(
     PAD.l + 2,
-    cx + 14 + tipW > W - PAD.r ? cx - tipW - 14 : cx + 14,
+    cx < PAD.l + plotW / 2 ? W - PAD.r - tipW - 6 : PAD.l + 6,
   );
   const tipY = PAD.t + 6;
 
@@ -288,8 +337,9 @@ function Plot({
         } else if (e.key === 'Enter' && onExpand) {
           onExpand();
         } else if (e.key === 'Escape' && hover != null) {
-          // first Escape clears the readout; the next one reaches the layer
-          // above, so a reader inside the palette is never dumped out of it
+          // card view only: Escape clears the readout before it can reach
+          // the palette underneath. In the full view the modal's capture
+          // listener takes Escape first, so this branch never runs there
           e.stopPropagation();
           setHover(null);
         }
@@ -300,7 +350,7 @@ function Plot({
         <g key={`y${t}`}>
           <line className="grid" x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} />
           <text className="tick" x={PAD.l - 8} y={sy(t) + 4} textAnchor="end">
-            {fmtTick(t, yHi - yLo)}
+            {yTickLabels[yTicks.indexOf(t)]}
           </text>
         </g>
       ))}
@@ -341,23 +391,28 @@ function Plot({
       {primary.map((s) => {
         const c = color(s);
         if (s.style === 'bar') {
-          const off = categorical
-            ? -((barSeries.length * barW) / 2) + barIndex(s) * barW
-            : -barW / 2;
           return (
             <g key={s.label} className="bars">
               {s.points.map((p, i) => {
+                const group = categorical ? barsAt(p.x) : barSeries;
+                const off = categorical
+                  ? -((group.length * barW) / 2) + group.indexOf(s) * barW
+                  : -barW / 2;
                 const base = sy(rel ? 1 : 0);
                 const top = sy(p.y);
                 const last =
                   chart.kind === 'segment_effects' && i === s.points.length - 1;
+                // a factor that moves nothing still gets a nub on the
+                // baseline: measured and near zero, not missing
+                const nub =
+                  chart.kind === 'segment_effects' && Math.abs(base - top) < 2.5;
                 return (
                   <g key={i}>
                     <rect
                       x={sx(p.x) + off}
-                      y={Math.min(top, base)}
+                      y={nub ? base - 1.25 : Math.min(top, base)}
                       width={barW}
-                      height={Math.max(Math.abs(base - top), 1)}
+                      height={nub ? 2.5 : Math.max(Math.abs(base - top), 1)}
                       fill={last ? 'var(--chart-line)' : c}
                     />
                     {/* a decomposition is unreadable without its numbers,
@@ -441,24 +496,41 @@ function Plot({
             <text className="tiphead" x={tipX + 9} y={tipY + 15}>
               {headLabel}
             </text>
-            {rows.map((r, i) => (
-              <g key={r.label}>
-                <rect
-                  x={tipX + 9}
-                  y={tipY + 24 + i * 17}
-                  width={7}
-                  height={7}
-                  rx={1.5}
-                  style={{ fill: r.col }}
-                />
-                <text x={tipX + 21} y={tipY + 31 + i * 17}>
-                  {r.label}
-                </text>
-                <text x={tipX + tipW - 9} y={tipY + 31 + i * 17} textAnchor="end">
-                  {r.v}
-                </text>
-              </g>
-            ))}
+            {rows.map((r, i) => {
+              // the swatch takes the shape the series draws with, so two
+              // series sharing an ink still read apart
+              const cy = tipY + 27.5 + i * 17;
+              return (
+                <g key={r.label}>
+                  {r.style === 'dot' ? (
+                    <circle cx={tipX + 12.5} cy={cy} r={3.2} style={{ fill: r.col }} />
+                  ) : r.style === 'bar' ? (
+                    <rect
+                      x={tipX + 9}
+                      y={cy - 3.5}
+                      width={7}
+                      height={7}
+                      rx={1.5}
+                      style={{ fill: r.col }}
+                    />
+                  ) : (
+                    <rect
+                      x={tipX + 7}
+                      y={cy - 1.25}
+                      width={11}
+                      height={2.5}
+                      style={{ fill: r.col }}
+                    />
+                  )}
+                  <text x={tipX + 23} y={cy + 3.5}>
+                    {r.label}
+                  </text>
+                  <text x={tipX + tipW - 9} y={cy + 3.5} textAnchor="end">
+                    {r.v}
+                  </text>
+                </g>
+              );
+            })}
           </g>
         </g>
       )}
@@ -506,7 +578,18 @@ export default function Chart({
 }) {
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [expanded, setExpanded] = useState(false);
+  // the wide frame follows the viewport while the full view is open, so a
+  // window dragged narrow reflows instead of keeping unreadable text
+  const [wide, setWide] = useState(true);
   const primaryAll = chart.series.filter((s) => !isSecondary(s.label));
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onR = () => setWide(window.innerWidth >= 700);
+    onR();
+    window.addEventListener('resize', onR);
+    return () => window.removeEventListener('resize', onR);
+  }, [expanded]);
 
   const toggle = (label: string) =>
     setHidden((prev) => {
@@ -533,9 +616,13 @@ export default function Chart({
     const padRight = body.style.paddingRight;
     body.style.overflow = 'hidden';
     if (gap > 0) body.style.paddingRight = `${gap}px`;
+    // one live Esc affordance at a time: the palette's chip stands down
+    // while the chart holds the key
+    body.classList.add('chartfull');
     return () => {
       body.style.overflow = overflow;
       body.style.paddingRight = padRight;
+      body.classList.remove('chartfull');
     };
   }, [expanded]);
 
@@ -552,6 +639,7 @@ export default function Chart({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [expanded]);
 
+  const visPrim = primaryAll.filter((s) => !hidden.has(s.label)).length;
   const legend = (
     <div className="legend">
       {chart.series.map((s) => (
@@ -560,7 +648,14 @@ export default function Chart({
           type="button"
           className={hidden.has(s.label) ? 'off' : undefined}
           aria-pressed={!hidden.has(s.label)}
-          disabled={chart.series.length < 2}
+          disabled={
+            chart.series.length < 2 ||
+            // the last visible result series cannot be turned off, and the
+            // button says so instead of silently ignoring the click
+            (visPrim <= 1 &&
+              !hidden.has(s.label) &&
+              primaryAll.some((p) => p.label === s.label))
+          }
           onClick={() => toggle(s.label)}
         >
           <i
@@ -620,12 +715,7 @@ export default function Chart({
               </button>
               {/* a phone squeezes the wide frame into unreadable text, so the
                   full view keeps the card geometry there */}
-              <Plot
-                chart={chart}
-                hidden={hidden}
-                big={window.innerWidth >= 700}
-                autoFocus
-              />
+              <Plot chart={chart} hidden={hidden} big={wide} autoFocus />
               {legend}
               {notes}
               {plain && <div className="gloss">{chart.gloss}</div>}

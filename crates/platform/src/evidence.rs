@@ -571,9 +571,13 @@ pub fn missingness_chart(rows: &[&PolicyRow]) -> Chart {
         .collect();
     let f_obs = c_obs / e_obs.max(1e-9);
     let f_mis = c_mis / e_mis.max(1e-9);
+    // the frequency bars take their own bands after the regions, matching the
+    // axis label "Region, then mileage status": sharing x with the region
+    // bars would caption a frequency with a region name
+    let n = regions.len() as f64;
     let freq: Vec<Pt> = vec![
-        Pt::labelled(0.0, f_obs, "Mileage present"),
-        Pt::labelled(1.0, f_mis, "Mileage missing"),
+        Pt::labelled(n, f_obs, "Mileage present"),
+        Pt::labelled(n + 1.0, f_mis, "Mileage missing"),
     ];
     let lo = by_region
         .iter()
@@ -887,6 +891,13 @@ mod tests {
         let c = missingness_chart(&refs);
         assert_eq!(c.series[0].points.len(), 5);
         assert_eq!(c.series[1].points.len(), 2);
+        // disjoint bands: no frequency ever renders under a region caption
+        let region_max = c.series[0]
+            .points
+            .iter()
+            .map(|p| p.x)
+            .fold(f64::MIN, f64::max);
+        assert!(c.series[1].points.iter().all(|p| p.x > region_max));
     }
 
     #[test]

@@ -2,11 +2,13 @@
 // the full run ledger, and the human-only approve gate.
 
 import type { Review, Run } from './api';
+import EvidencePanel from './EvidencePanel';
 import { boldSpans } from './format';
 
 interface Props {
   run: Run;
   review: Review;
+  plain: boolean;
   onBack: () => void;
   onApprove: () => void;
   approving: boolean;
@@ -26,6 +28,7 @@ function How({ text }: { text: string }) {
 export default function ReviewView({
   run,
   review,
+  plain,
   onBack,
   onApprove,
   approving,
@@ -99,11 +102,12 @@ export default function ReviewView({
         ))}
       </div>
 
-      <div className="rv-product">
-        The full model diff renders below this strip: fit deltas, effect
-        curves with exposure, coefficient shifts, the double lift chart. This
-        strip carries the part a traditional review does not, the search that
-        produced the change.
+      <div className="rv-sect">
+        <h3>
+          The model diff: {review.winnerCode} against v{review.baseVersion},
+          drawn from the run's artifacts
+        </h3>
+        <EvidencePanel runId={run.id} code={review.winnerCode} plain={plain} />
       </div>
 
       <div className="rv-approve">

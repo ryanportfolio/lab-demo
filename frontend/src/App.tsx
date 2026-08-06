@@ -296,6 +296,10 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        // while a chart holds the full screen the palette stays out of the
+        // stack: opening it under the modal would cross the two scroll
+        // locks and leave the page frozen after both close
+        if (document.body.classList.contains('chartfull')) return;
         e.preventDefault();
         setAskOpen((v) => !v);
       }
@@ -527,6 +531,7 @@ export default function App() {
                 <ReviewView
                   run={run}
                   review={review}
+                  plain={plain}
                   onBack={() => setView('console')}
                   onApprove={onApprove}
                   approving={approving}

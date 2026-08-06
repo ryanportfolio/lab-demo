@@ -13,7 +13,8 @@ async function ready(page: Page) {
   await page.evaluate(() => (window as any).__capture.freeze());
 }
 
-/** Same trimming the renderer uses, kept in sync by the assertion below */
+/** Same trimming the renderer uses; the head and row assertions below hold
+ *  the two implementations together */
 function fmtVal(y: number): string {
   if (Number.isInteger(y)) return String(y);
   const a = Math.abs(y);
@@ -24,9 +25,10 @@ function fmtVal(y: number): string {
 
 interface ExpectedChart {
   kind: string;
-  head: string[];
+  headText: string;
   values: number[];
   secondaryValues: number[];
+  series: { label: string; style: string; secondary: boolean }[];
 }
 
 /** Read the winner's first multi-series chart straight from the API, and the
@@ -46,7 +48,7 @@ async function expectedFromApi(page: Page): Promise<ExpectedChart> {
       await gq(
         `query($runId: ID!, $code: String!) {
           evidence(runId: $runId, code: $code) {
-            charts { kind series { label style points { x y label } } }
+            charts { kind xLabel series { label style points { x y label } } }
           }
         }`,
         { runId: run.id, code: run.winnerCode },
@@ -73,9 +75,22 @@ async function expectedFromApi(page: Page): Promise<ExpectedChart> {
     const x0 = xs[0];
     const at = (s: { points: { x: number; y: number; label: string | null }[] }) =>
       s.points.find((p) => Math.abs(p.x - x0) < 1e-9);
+    // mirror the renderer's axis-style detection to predict the head text
+    const categorical =
+      primary.some(
+        (s: any) =>
+          s.points.length > 0 && s.points.every((p: any) => p.label != null),
+      ) &&
+      primary.every((s: any) => s.points.length <= 32) &&
+      primary
+        .flatMap((s: any) => s.points.map((p: any) => p.x))
+        .every((x: number) => Number.isInteger(x));
+    const bandLabel = primary
+      .flatMap((s: any) => s.points)
+      .find((p: any) => Math.abs(p.x - x0) < 1e-9 && p.label != null)?.label;
     return {
       kind: chart.kind,
-      head: [at(primary[0])?.label ?? '', String(x0)],
+      headText: categorical && bandLabel ? bandLabel : `${chart.xLabel} ${x0}`,
       values: primary.flatMap((s: any) => {
         const p = at(s);
         return p ? [p.y] : [];
@@ -84,6 +99,11 @@ async function expectedFromApi(page: Page): Promise<ExpectedChart> {
         const p = at(s);
         return p ? [p.y] : [];
       }),
+      series: chart.series.map((s: any) => ({
+        label: s.label,
+        style: s.style,
+        secondary: isSecondary(s.label),
+      })),
     };
   });
 }
@@ -99,6 +119,8 @@ test('the hover readout shows the stored artifact values exactly', async ({
   });
 
   const want = await expectedFromApi(page);
+  // a chart with nothing to read at the first x would gate nothing
+  expect(want.values.length).toBeGreaterThan(0);
   const chart = page.locator(`.exp.win .chart[data-kind="${want.kind}"]`);
   const svg = page.locator(`.exp.win .chart[data-kind="${want.kind}"] > svg`);
   await svg.focus();
@@ -108,12 +130,17 @@ test('the hover readout shows the stored artifact values exactly', async ({
   const tip = chart.locator('.tip');
   await expect(tip).toBeVisible();
   const txt = (await tip.textContent()) ?? '';
+  expect(txt, 'head captions the hovered position').toContain(want.headText);
   for (const y of want.values) {
     expect(txt, `readout should carry ${y}`).toContain(fmtVal(y));
   }
   for (const y of want.secondaryValues) {
     expect(txt, `readout should carry exposure ${y}`).toContain(y.toFixed(1));
   }
+  // one row per series that holds a point at this x, no more, no fewer
+  expect(await tip.locator('> g').count()).toBe(
+    want.values.length + want.secondaryValues.length,
+  );
   expect(txt).not.toContain('—');
   await chart.screenshot({ path: `${OUT}/interactive-hover-light.png` });
 
@@ -145,24 +172,53 @@ test('a chart opens full screen, locks the page, and its legend toggles series',
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => window.scrollY)).toBe(before);
 
+  // the palette shortcut stands down while a chart holds the full screen,
+  // so the two scroll locks can never cross
+  await page.keyboard.press('Control+k');
+  await expect(page.locator('.ask')).toBeHidden();
+
   // arrow keys walk the axis in the full view too
   await page.keyboard.press('ArrowRight');
   await expect(full.locator('.tip')).toBeVisible();
   await page.screenshot({ path: `${OUT}/interactive-full-light.png` });
 
-  // a legend entry turns its series off and back on
-  const buttons = full.locator('.legend button');
-  expect(await buttons.count()).toBeGreaterThan(1);
-  await buttons.nth(1).click();
-  await expect(buttons.nth(1)).toHaveClass(/off/);
+  // a legend entry removes its series from the drawing, not just its button
+  const drawn = want.series.find(
+    (s) => !s.secondary && (s.style === 'line' || s.style === 'step'),
+  );
+  expect(drawn).toBeTruthy();
+  const btn = full.locator('.legend button', { hasText: drawn!.label });
+  const pathsBefore = await full.locator('svg path').count();
+  await btn.click();
+  await expect(btn).toHaveClass(/off/);
+  expect(await full.locator('svg path').count()).toBeLessThan(pathsBefore);
   await page.screenshot({ path: `${OUT}/interactive-toggled-light.png` });
-  await buttons.nth(1).click();
-  await expect(buttons.nth(1)).not.toHaveClass(/off/);
+  await btn.click();
+  await expect(btn).not.toHaveClass(/off/);
+  expect(await full.locator('svg path').count()).toBe(pathsBefore);
 
-  // Escape closes the full view and only the full view
+  // the last visible result series cannot be turned off: its button says so
+  const primaries = want.series.filter((s) => !s.secondary);
+  for (const s of primaries.slice(0, -1)) {
+    await full.locator('.legend button', { hasText: s.label }).click();
+  }
+  const lastBtn = full.locator('.legend button', {
+    hasText: primaries[primaries.length - 1].label,
+  });
+  await expect(lastBtn).toBeDisabled();
+  for (const s of primaries.slice(0, -1)) {
+    await full.locator('.legend button', { hasText: s.label }).click();
+  }
+  await expect(lastBtn).toBeEnabled();
+
+  // Escape closes the full view, only the full view, and hands scroll back
   await page.keyboard.press('Escape');
   await expect(page.locator('.chart-scrim')).toBeHidden();
   await expect(page.locator('.exp.win .evidence')).toBeVisible();
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
+  await page.mouse.wheel(0, 400);
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
 });
 
 test('a chart inside the palette expands above it and Escape unwinds in order', async ({
@@ -191,4 +247,25 @@ test('a chart inside the palette expands above it and Escape unwinds in order', 
   // the next Escape closes the palette as before
   await page.keyboard.press('Escape');
   await expect(page.locator('.ask')).toBeHidden();
+});
+
+test('the review draws the model diff from the winner artifacts', async ({
+  page,
+}) => {
+  await page.goto('/?theme=light');
+  await ready(page);
+  // the in-app route change keeps the frozen capture state
+  await page.evaluate(() => {
+    location.hash = 'review';
+  });
+  await expect(page.locator('.rv-head')).toBeVisible({ timeout: 30_000 });
+
+  const diff = page.locator('.rv-sect .evidence');
+  await expect(diff).toBeVisible({ timeout: 20_000 });
+  await expect(diff.locator('.facts')).toContainText('training rows');
+  await expect(
+    diff.locator('.chart', { hasText: 'Actual frequency by risk decile' }),
+  ).toBeVisible();
+  expect(await diff.locator('.chart').count()).toBeGreaterThanOrEqual(3);
+  await page.screenshot({ path: `${OUT}/review-diff-light.png`, fullPage: true });
 });
