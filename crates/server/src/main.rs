@@ -33,9 +33,11 @@ async fn main() {
         .await
         .expect("run migrations");
 
+    // Seeding is idempotent: dataset COPY and the v12 filing fit run once,
+    // later boots skip in milliseconds
+    seed::seed(&pool).await.expect("seed");
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--seed") {
-        seed::seed(&pool).await.expect("seed");
         return;
     }
 
@@ -48,17 +50,51 @@ async fn main() {
             "/graphql",
             get(graphiql).post(graphql_handler).options(preflight),
         )
+        .fallback(static_handler)
         .with_state(schema);
 
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8080);
-    let listener = tokio::net::TcpListener::bind(("127.0.0.1", port))
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
         .await
         .expect("bind");
-    println!("server listening on http://127.0.0.1:{port}/graphql");
+    println!("server listening on http://0.0.0.0:{port}/graphql");
     axum::serve(listener, app).await.expect("serve");
+}
+
+/// Serve the built frontend (SPA fallback to index.html). No static-file
+/// crate needed for a handful of asset types.
+async fn static_handler(uri: axum::http::Uri) -> Response {
+    let dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "frontend/dist".into());
+    let path = uri.path().trim_start_matches('/');
+    if path.contains("..") {
+        return StatusCode::BAD_REQUEST.into_response();
+    }
+    let candidate = if path.is_empty() {
+        format!("{dir}/index.html")
+    } else {
+        format!("{dir}/{path}")
+    };
+    let (bytes, name) = match tokio::fs::read(&candidate).await {
+        Ok(b) => (b, candidate),
+        Err(_) => match tokio::fs::read(format!("{dir}/index.html")).await {
+            Ok(b) => (b, format!("{dir}/index.html")),
+            Err(_) => return StatusCode::NOT_FOUND.into_response(),
+        },
+    };
+    let mime = match name.rsplit('.').next() {
+        Some("html") => "text/html; charset=utf-8",
+        Some("js") => "text/javascript",
+        Some("css") => "text/css",
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("woff2") => "font/woff2",
+        Some("json") => "application/json",
+        _ => "application/octet-stream",
+    };
+    ([(header::CONTENT_TYPE, mime)], bytes).into_response()
 }
 
 async fn graphql_handler(
