@@ -1,0 +1,8 @@
+[package]
+name = "plab-core"
+version = "0.1.0"
+edition.workspace = true
+
+[lib]
+name = "plab_core"
+path = "src/lib.rs"

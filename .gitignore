@@ -17,6 +17,8 @@
 node_modules/
 dist/
 build/
+/target
+/data
 
 # OS noise
 Thumbs.db

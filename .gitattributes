@@ -1,3 +1,7 @@
+* text=auto eol=lf
+*.png binary
+*.woff2 binary
+
 # Shell scripts must stay LF. CRLF breaks bash on Windows (git-bash) checkouts.
 *.sh text eol=lf
 

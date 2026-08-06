@@ -1,0 +1,19 @@
+[package]
+name = "plab-fit"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+plab-core = { path = "../core" }
+nalgebra = "0.33"
+
+[dev-dependencies]
+plab-datagen = { path = "../datagen" }
+
+[lib]
+name = "plab_fit"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fit-demo"
+path = "src/main.rs"
