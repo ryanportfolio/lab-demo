@@ -41,13 +41,16 @@ impl ActorRole {
 /// Insert the run row and launch the executor in the background. Returns the
 /// new run id immediately; the frontend polls for progress.
 pub async fn start_run(pool: &PgPool, goal: Option<String>) -> Result<i64, String> {
+    // Every run anchors on the v12 scenario row: the experiments and their
+    // fits are defined against v12, so replays must not silently rebase onto
+    // whatever version the last approval created
     let base: (i64,) = sqlx::query_as(
-        "SELECT id FROM model_versions WHERE name = $1 AND status = 'active' ORDER BY version DESC LIMIT 1",
+        "SELECT id FROM model_versions WHERE name = $1 AND version = 12",
     )
     .bind(MODEL_NAME)
     .fetch_one(pool)
     .await
-    .map_err(|e| format!("no active model, seed first: {e}"))?;
+    .map_err(|e| format!("no v12 model, seed first: {e}"))?;
 
     let config = RunConfig::default();
     let goal = goal.unwrap_or_else(|| DEFAULT_GOAL.to_string());
@@ -338,12 +341,12 @@ fn guardrail_rows(
     let is_combo = winner_code == "EXP-07";
     let budget_how = if is_combo {
         format!(
-            "**{budget_used} of {budget_limit}** used. The spline replaces the banded age factor but still counts against the budget; prior accidents is the second. Net new factors in the plan: one, so v13 carries **{}**.",
+            "**{budget_used} of {budget_limit}** used. The spline replaces the banded age factor but still counts against the budget; prior accidents is the second. Net new factors in the plan: one, so the merged model carries **{}**.",
             base_factors + 1
         )
     } else {
         format!(
-            "**{budget_used} of {budget_limit}** used by the winning experiment, so v13 carries **{}**.",
+            "**{budget_used} of {budget_limit}** used by the winning experiment, so the merged model carries **{}**.",
             base_factors + budget_used
         )
     };
@@ -496,7 +499,15 @@ pub async fn approve_review(
     }
 
     let base_gini = base_metrics["gini"].as_f64().unwrap_or(0.0);
-    let new_version = base_version + 1;
+    // Replays can approve again: the merge always creates the next unused
+    // version number, parented on the run's base
+    let (new_version,): (i32,) = sqlx::query_as(
+        "SELECT COALESCE(max(version), 0) + 1 FROM model_versions WHERE name = $1",
+    )
+    .bind(MODEL_NAME)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
     let (v13_id,): (i64,) = sqlx::query_as(
         "INSERT INTO model_versions (name, version, status, factors, metrics, parent_version, created_by_run) VALUES ($1, $2, 'active', $3, $4, $5, $6) RETURNING id",
     )

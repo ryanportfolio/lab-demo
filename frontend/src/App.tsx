@@ -530,7 +530,7 @@ export default function App() {
               <h3>Baseline</h3>
               <div className="kv">
                 <span>Model</span>
-                <b>BI Frequency v{review?.baseVersion ?? 12}</b>
+                <b>BI Frequency v{run?.baseModelVersion ?? 12}</b>
               </div>
               <div className="kv">
                 <span>Gini</span>

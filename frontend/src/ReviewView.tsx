@@ -32,7 +32,7 @@ export default function ReviewView({
   error,
 }: Props) {
   const approved = review.status === 'approved';
-  const nextVersion = review.resultVersion ?? review.baseVersion + 1;
+  const nextVersion = review.nextVersion;
   const elapsed =
     run.elapsedMs != null ? `${(run.elapsedMs / 1000).toFixed(1)}s` : '';
   const openerLine =

@@ -49,6 +49,7 @@ export interface Run {
   counts: { spawned: number; landed: number; candidates: number; scrapped: number };
   reviewId: string | null;
   reviewStatus: string | null;
+  baseModelVersion: number;
 }
 
 export interface GuardrailRow {
@@ -76,6 +77,7 @@ export interface Review {
   approvedBy: string | null;
   resultVersion: number | null;
   baseVersion: number;
+  nextVersion: number;
 }
 
 export interface ActiveModel {
@@ -107,7 +109,7 @@ async function gql<T>(
 const RUN_FIELDS = `
   id goal branchName status startedAtMs elapsedMs
   baselineGini baselineFactors trainRows winnerCode trainDelta holdoutDelta
-  reviewId reviewStatus
+  reviewId reviewStatus baseModelVersion
   counts { spawned landed candidates scrapped }
   rails { key label mark note }
   experiments {
@@ -120,7 +122,7 @@ const REVIEW_FIELDS = `
   id runId status openedBy winnerCode paragraphs gloss
   guardrailRows { what how }
   ledgerRows { code disp why }
-  trainDelta holdoutDelta approvedBy resultVersion baseVersion
+  trainDelta holdoutDelta approvedBy resultVersion baseVersion nextVersion
 `;
 
 export async function fetchLatestRun(): Promise<Run | null> {

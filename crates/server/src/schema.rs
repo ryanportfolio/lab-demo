@@ -99,6 +99,7 @@ pub struct Run {
     pub counts: RunCounts,
     pub review_id: Option<ID>,
     pub review_status: Option<String>,
+    pub base_model_version: i32,
 }
 
 #[derive(SimpleObject)]
@@ -130,6 +131,8 @@ pub struct Review {
     pub approved_by: Option<String>,
     pub result_version: Option<i32>,
     pub base_version: i32,
+    /// The version approving this review will create (or did create)
+    pub next_version: i32,
 }
 
 pub struct QueryRoot;
@@ -288,13 +291,15 @@ async fn fetch_run(pool: &PgPool, id: i64) -> Result<Option<Run>> {
         Option<serde_json::Value>,
         f64,
         Option<i64>,
+        i32,
     )> = sqlx::query_as(
-        "SELECT id, goal, branch_name, status, guardrails, outcome, (EXTRACT(EPOCH FROM started_at) * 1000)::float8, elapsed_ms FROM runs WHERE id = $1",
+        "SELECT r.id, r.goal, r.branch_name, r.status, r.guardrails, r.outcome, (EXTRACT(EPOCH FROM r.started_at) * 1000)::float8, r.elapsed_ms, mv.version FROM runs r JOIN model_versions mv ON mv.id = r.base_model_id WHERE r.id = $1",
     )
     .bind(id)
     .fetch_optional(pool)
     .await?;
-    let Some((id, goal, branch_name, status, rails_cfg, outcome, started_at_ms, elapsed_ms)) = run
+    let Some((id, goal, branch_name, status, rails_cfg, outcome, started_at_ms, elapsed_ms, base_model_version)) =
+        run
     else {
         return Ok(None);
     };
@@ -390,6 +395,7 @@ async fn fetch_run(pool: &PgPool, id: i64) -> Result<Option<Run>> {
         counts,
         review_id: review.as_ref().map(|(rid, _)| ID(rid.to_string())),
         review_status: review.map(|(_, s)| s),
+        base_model_version,
     }))
 }
 
@@ -508,6 +514,18 @@ async fn fetch_review_by_run(pool: &PgPool, run_id: i64) -> Result<Option<Review
     .bind(run_id)
     .fetch_one(pool)
     .await?;
+    let next_version = match result_version {
+        Some(v) => v,
+        None => {
+            let (max,): (Option<i32>,) = sqlx::query_as(
+                "SELECT max(version) FROM model_versions WHERE name = $1",
+            )
+            .bind(runsvc::MODEL_NAME)
+            .fetch_one(pool)
+            .await?;
+            max.unwrap_or(12) + 1
+        }
+    };
 
     Ok(Some(Review {
         id: ID(r.0.to_string()),
@@ -552,5 +570,6 @@ async fn fetch_review_by_run(pool: &PgPool, run_id: i64) -> Result<Option<Review
         approved_by: r.9,
         result_version,
         base_version: base_version.0,
+        next_version,
     }))
 }
