@@ -208,8 +208,10 @@ export default function Chart({
                         <title>{`${s.label} ${p.label ?? p.x}: ${p.y.toFixed(3)}`}</title>
                       </rect>
                       {/* a decomposition is unreadable without its numbers,
-                          and the small bars are the ones worth reading */}
-                      {chart.kind === 'segment_effects' && (
+                          but a factor that moves nothing does not need a
+                          label saying so */}
+                      {chart.kind === 'segment_effects' &&
+                        (Math.abs(p.y - 1) >= 0.005 || last) && (
                         <text
                           className="val"
                           x={sx(p.x) + off + barW / 2}
