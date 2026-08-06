@@ -115,6 +115,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "plab-agent"
+version = "0.1.0"
+dependencies = [
+ "plab-core",
+]
+
+[[package]]
 name = "plab-core"
 version = "0.1.0"
 
@@ -132,6 +139,16 @@ dependencies = [
  "nalgebra",
  "plab-core",
  "plab-datagen",
+]
+
+[[package]]
+name = "plab-platform"
+version = "0.1.0"
+dependencies = [
+ "plab-agent",
+ "plab-core",
+ "plab-datagen",
+ "plab-fit",
 ]
 
 [[package]]

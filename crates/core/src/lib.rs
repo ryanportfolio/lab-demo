@@ -2,6 +2,8 @@
 //! Zero external dependencies so `datagen` and `fit` stay lean; the server
 //! layer adds serde on its own structs.
 
+pub mod protocol;
+
 /// One synthetic auto policy record. Column order here is the CSV column order.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PolicyRow {

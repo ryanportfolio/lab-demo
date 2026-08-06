@@ -181,8 +181,11 @@ pub fn build_design(rows: &[&PolicyRow], spec: &ModelSpec, log_rel: &[f64]) -> D
             put(&mut x, r.prior_accidents.min(3) as f64);
         }
         if spec.age_vehicle_interaction {
-            let young = r.driver_age <= 29;
-            let old_vehicle = r.vehicle_age >= 10;
+            // Aligned with the band edges (18-24 age band, 13+ vehicle band)
+            // so the product column cannot proxy within-band curvature of
+            // either main effect; in truth this interaction is exactly zero
+            let young = r.driver_age <= 24;
+            let old_vehicle = r.vehicle_age >= 13;
             put(&mut x, (young && old_vehicle) as u8 as f64);
         }
         if spec.territory == TerritoryForm::Free {

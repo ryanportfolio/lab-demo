@@ -1,0 +1,20 @@
+[package]
+name = "plab-platform"
+version = "0.1.0"
+edition.workspace = true
+
+# The platform computes every guardrail number from fit artifacts. It calls
+# the agent for prose and proposals only.
+[dependencies]
+plab-core = { path = "../core" }
+plab-fit = { path = "../fit" }
+plab-agent = { path = "../agent" }
+plab-datagen = { path = "../datagen" }
+
+[lib]
+name = "plab_platform"
+path = "src/lib.rs"
+
+[[bin]]
+name = "run-cli"
+path = "src/main.rs"

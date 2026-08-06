@@ -1,0 +1,13 @@
+[package]
+name = "plab-agent"
+version = "0.1.0"
+edition.workspace = true
+
+# The dependency list IS the trust boundary: the agent sees shared protocol
+# types only. No fit crate, no platform crate, no dataset access.
+[dependencies]
+plab-core = { path = "../core" }
+
+[lib]
+name = "plab_agent"
+path = "src/lib.rs"
