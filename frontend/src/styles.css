@@ -332,6 +332,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart .tip .tipbg { fill: var(--bg); stroke: var(--border); opacity: .97 }
 .chart .tip text { font-family: var(--mono); font-size: 11.5px; fill: var(--fg-muted) }
 .chart .tip .tiphead { fill: var(--fg) }
+.chart figcaption { padding-right: 34px }
 .chart .expand { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; display: grid; place-items: center; background: none; border: 1px solid transparent; border-radius: var(--r-sm); color: var(--fg-subtle); cursor: pointer; padding: 0 }
 .chart .expand svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.4 }
 .chart .expand:hover { color: var(--fg); border-color: var(--border-muted) }
