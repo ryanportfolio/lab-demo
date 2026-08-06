@@ -12,12 +12,15 @@ import { ask, fetchSuggestedQuestions, type Answer } from './api';
 
 export default function AskPanel({
   runId,
+  ready,
   plain,
   open,
   onClose,
   onCite,
 }: {
   runId: string | null;
+  /** the run has finished, so its verdicts and ledger are settled */
+  ready: boolean;
   plain: boolean;
   open: boolean;
   onClose: () => void;
@@ -65,7 +68,7 @@ export default function AskPanel({
   }, [open]);
 
   async function send(question: string) {
-    if (!runId || !question.trim() || busy) return;
+    if (!runId || !ready || !question.trim() || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -97,20 +100,7 @@ export default function AskPanel({
           <span className="ask-mark" aria-hidden="true">
             AI
           </span>
-          <input
-            ref={input}
-            value={q}
-            placeholder="Ask about this run"
-            aria-label="Ask about this run"
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter') return;
-              // Enter on an empty box goes back to the question list, so a
-              // reader is never stuck on one answer
-              if (q.trim()) send(q);
-              else setAnswers([]);
-            }}
-          />
+          <h2>Ask about this run</h2>
           <button className="ask-esc" onClick={onClose}>
             Esc
           </button>
@@ -124,9 +114,19 @@ export default function AskPanel({
                 below comes from a fit, a guardrail reading, or the data
                 profile this run produced, and each answer shows what it read
               </p>
+              {!ready && (
+                <p className="ask-wait">
+                  The run is still working. Verdicts and the ledger are written
+                  when the last fit finishes, so the questions open then
+                </p>
+              )}
               <div className="ask-sugg">
                 {suggested.map((s) => (
-                  <button key={s} onClick={() => send(s)} disabled={busy}>
+                  <button
+                    key={s}
+                    onClick={() => send(s)}
+                    disabled={busy || !ready}
+                  >
                     {s}
                   </button>
                 ))}
@@ -191,14 +191,37 @@ export default function AskPanel({
         </div>
 
         <div className="ask-foot">
-          <span>
+          <div className="ask-compose">
+            <input
+              ref={input}
+              value={q}
+              disabled={!ready}
+              placeholder={
+                ready
+                  ? 'Type a question about this run'
+                  : 'The run is still working'
+              }
+              aria-label="Type a question about this run"
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                // Enter on an empty box goes back to the question list, so a
+                // reader is never stuck on one answer
+                if (q.trim()) send(q);
+                else setAnswers([]);
+              }}
+            />
+            <button
+              className="ask-send"
+              onClick={() => send(q)}
+              disabled={!ready || busy || !q.trim()}
+            >
+              Ask
+            </button>
+          </div>
+          <span className="ask-note">
             The context expert reads artifacts and draws them. It cannot fit,
             merge, or approve anything
-          </span>
-          <span className="kbd">
-            {answers.length > 0
-              ? 'Enter on an empty box for the question list'
-              : 'Enter to ask'}
           </span>
         </div>
       </div>

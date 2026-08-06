@@ -99,13 +99,40 @@ pub async fn ask(
         })
         .collect();
 
-    let outcome: Option<(Option<Value>,)> =
-        sqlx::query_as("SELECT outcome FROM runs WHERE id = $1")
+    let run: Option<(String, Option<Value>)> =
+        sqlx::query_as("SELECT status, outcome FROM runs WHERE id = $1")
             .bind(run_id)
             .fetch_optional(pool)
             .await
             .map_err(|e| e.to_string())?;
-    let outcome = outcome.and_then(|(v,)| v).unwrap_or(Value::Null);
+    let (status, outcome) = run.ok_or("that run does not exist")?;
+    let outcome = outcome.unwrap_or(Value::Null);
+
+    // Dispositions and the run outcome are written when the run finishes, so
+    // answering before then would quote verdicts that are about to change
+    if status != "complete" {
+        let landed = exps.iter().filter(|e| e.status != "running").count();
+        return Ok(Answer {
+            question: question.to_string(),
+            intent: "run still working".into(),
+            paragraphs: vec![
+                format!(
+                    "This run is still working: {landed} of {} experiments have landed. Verdicts and the run ledger are written when the last fit finishes.",
+                    exps.len()
+                ),
+                "Answers here are built from finished artifacts, so this one waits rather than quoting a number that is about to change."
+                    .into(),
+            ],
+            gloss: "The experiments are still running, so there is nothing settled to explain yet. Ask again when the board says the run is complete.".into(),
+            citations: Vec::new(),
+            steps: vec![AnswerStep {
+                tool: "readRunLedger".into(),
+                target: format!("run {run_id}, still working"),
+                status: "Waiting".into(),
+            }],
+            charts: Vec::new(),
+        });
+    }
 
     let q = question.to_lowercase();
     let intent = classify(&q);

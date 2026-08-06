@@ -401,6 +401,11 @@ export default function App() {
             className="askbtn"
             onClick={() => setAskOpen(true)}
             disabled={!run}
+            title={
+              complete
+                ? 'Ask about this run'
+                : 'The run is still working, questions open when it finishes'
+            }
           >
             Ask AI
             <span className="kbd" aria-hidden="true">
@@ -649,6 +654,7 @@ export default function App() {
 
       <AskPanel
         runId={run?.id ?? null}
+        ready={!!complete}
         plain={plain}
         open={askOpen}
         onClose={() => setAskOpen(false)}

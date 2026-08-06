@@ -107,8 +107,8 @@ test('the context expert misses honestly', async ({ page }) => {
   await ready(page);
   await page.keyboard.press('Control+k');
   await expect(page.locator('.ask')).toBeVisible();
-  await page.locator('.ask-bar input').fill('what is the weather in texas');
-  await page.keyboard.press('Enter');
+  await page.locator('.ask-compose input').fill('what is the weather in texas');
+  await page.locator('.ask-send').click();
   await expect(page.locator('.ask-row.ai .bubble')).toContainText(
     'No artifact in this run matches that question',
     { timeout: 30_000 },
