@@ -3,6 +3,7 @@
 //! prose about. Emits progress events so a caller (CLI or server) can render
 //! the run as it happens. All timings are real.
 
+use crate::evidence::{self, Evidence, FitFacts};
 use crate::filing;
 use crate::guardrails::{self, GuardrailConfig};
 use crate::profile;
@@ -42,6 +43,9 @@ pub struct ExperimentRecord {
     pub verdict: Verdict,
     /// final disposition after winner and absorbed adjustments
     pub disposition: Disposition,
+    /// the artifacts behind the verdict, kept by the platform for the console.
+    /// The agent never receives this.
+    pub evidence: Option<Evidence>,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +87,10 @@ pub struct RunOutcome {
     pub profile: DataProfileFacts,
     pub filed_rel: Vec<f64>,
     pub config: RunConfig,
+    /// Why one segment sits above the book on the model in force. Computed
+    /// from the v12 fit, so it describes the model a reader is asking about
+    /// rather than any experiment.
+    pub segment_effects: Option<crate::evidence::Chart>,
 }
 
 struct FoldCache {
@@ -121,6 +129,18 @@ pub fn execute(
         train_rows: train.len(),
     };
     let mu12: Vec<f64> = f12.mu.clone();
+
+    // Why young drivers sit where they do on the model in force. Read from
+    // v12's own coefficients, before any experiment touches anything.
+    let segment_effects = Some(evidence::segment_effects_chart(
+        &train,
+        &d12.names,
+        &d12.x,
+        f12.beta.as_slice(),
+        &filed_log,
+        |r| r.driver_age <= 24,
+        "drivers aged 18 to 24",
+    ));
 
     // Per-fold baseline fits, shared across every variant's CV
     let mut fold_cache = FoldCache {
@@ -288,6 +308,7 @@ pub fn execute(
         profile,
         filed_rel,
         config,
+        segment_effects,
     })
 }
 
@@ -339,7 +360,7 @@ fn run_one(
     filed_rel: &[f64],
     filed_log: &[f64],
     baseline: &BaselineReport,
-    _f12: &Fit,
+    f12: &Fit,
     mu12: &[f64],
     fold_cache: &FoldCache,
     fold_fit_rows: &[Vec<&PolicyRow>],
@@ -367,12 +388,20 @@ fn run_one(
             code: code.clone(),
             stage: fitting_stage(plan.archetype).to_string(),
         });
+        // A refusal still owes the reader its artifact: the profile that
+        // caused it
         let record = ExperimentRecord {
             plan: plan.clone(),
             fit: None,
             rails: None,
             verdict: agent::verdict_skipped(profile),
             disposition: Disposition::Scrapped,
+            evidence: Some(Evidence {
+                facts: None,
+                lift: Vec::new(),
+                fold_deltas: Vec::new(),
+                charts: vec![evidence::missingness_chart(train)],
+            }),
         };
         records.push(record.clone());
         sink(RunEvent::Landed { record });
@@ -485,6 +514,78 @@ fn run_one(
         budget_used: plan.new_factors,
     };
 
+    // Evidence: the same artifacts the numbers above came from, shaped for
+    // the console. Built here in the platform, never handed to the agent.
+    let col = |name: &str| d.names.iter().position(|n| n == name);
+    let base_rates: Vec<f64> = mu12
+        .iter()
+        .zip(&d.exposure)
+        .map(|(m, e)| m / e.max(1e-12))
+        .collect();
+    let mut charts = Vec::new();
+    match plan.archetype {
+        Archetype::SplineAge | Archetype::ComboSplineAccidents => {
+            let spline: Vec<f64> = d
+                .names
+                .iter()
+                .enumerate()
+                .filter(|(_, n)| n.starts_with("age_spline_"))
+                .map(|(i, _)| fit.beta[i])
+                .collect();
+            // v12's column order is fixed: intercept, then the four age bands
+            let bands: Vec<f64> = (1..5).map(|i| f12.beta[i]).collect();
+            charts.push(evidence::age_curve_chart_with_exposure(
+                &spline, &bands, train,
+            ));
+            if let Some(i) = col("prior_acc_capped3") {
+                charts.push(evidence::accidents_chart(train, fit.beta[i]));
+            }
+        }
+        Archetype::CappedAccidents => {
+            if let Some(i) = col("prior_acc_capped3") {
+                charts.push(evidence::accidents_chart(train, fit.beta[i]));
+            }
+        }
+        Archetype::CredibilityTerritory => {
+            if let Some(b) = &blend_rel {
+                charts.push(evidence::territory_chart(filed_rel, b));
+            }
+        }
+        Archetype::NegBinomialFamily => {
+            if let Some(a) = alpha {
+                charts.push(evidence::count_dist_chart(
+                    &d.y,
+                    mu12,
+                    &fit.mu,
+                    a,
+                    fit.aic - baseline.aic,
+                ));
+            }
+        }
+        Archetype::InteractionAgeVehicle => {
+            if let Some(i) = col("young_x_old_vehicle") {
+                charts.push(evidence::interaction_chart(train, mu12, fit.beta[i]));
+            }
+        }
+        Archetype::MileageBands => {}
+    }
+    let evidence = Evidence {
+        facts: Some(FitFacts {
+            rows: train.len(),
+            params: fit.n_params,
+            iterations: fit.iterations,
+            converged: fit.converged,
+            gini: g,
+            baseline_gini: baseline.gini,
+            deviance: fit.deviance,
+            aic: fit.aic,
+            alpha,
+        }),
+        lift: evidence::lift_buckets(&rates, &base_rates, &d.y, &d.exposure, 10),
+        fold_deltas: fold_deltas.clone(),
+        charts,
+    };
+
     let verdict = agent::verdict_fitted(plan, &summary, &rails);
     let disposition = verdict.disposition;
     let record = ExperimentRecord {
@@ -493,6 +594,7 @@ fn run_one(
         rails: Some(rails),
         verdict,
         disposition,
+        evidence: Some(evidence),
     };
     records.push(record.clone());
     sink(RunEvent::Landed { record });

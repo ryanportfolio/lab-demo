@@ -162,6 +162,53 @@ fn fit_summary_json(r: &ExperimentRecord) -> Option<serde_json::Value> {
     })
 }
 
+/// Evidence travels to the console as JSON. The shape mirrors
+/// `plab_platform::evidence`, which is where it is computed.
+pub fn chart_json(c: &plab_platform::evidence::Chart) -> serde_json::Value {
+    json!({
+        "kind": c.kind,
+        "title": c.title,
+        "x_label": c.x_label,
+        "y_label": c.y_label,
+        "notes": c.notes,
+        "gloss": c.gloss,
+        "series": c.series.iter().map(|s| json!({
+            "label": s.label,
+            "style": s.style.as_str(),
+            "points": s.points.iter().map(|p| json!({
+                "x": p.x, "y": p.y, "label": p.label,
+            })).collect::<Vec<_>>(),
+        })).collect::<Vec<_>>(),
+    })
+}
+
+fn evidence_json(r: &ExperimentRecord) -> Option<serde_json::Value> {
+    r.evidence.as_ref().map(|e| {
+        json!({
+            "facts": e.facts.as_ref().map(|f| json!({
+                "rows": f.rows,
+                "params": f.params,
+                "iterations": f.iterations,
+                "converged": f.converged,
+                "gini": f.gini,
+                "baseline_gini": f.baseline_gini,
+                "deviance": f.deviance,
+                "aic": f.aic,
+                "alpha": f.alpha,
+            })),
+            "lift": e.lift.iter().map(|b| json!({
+                "decile": b.decile,
+                "exposure": b.exposure,
+                "actual": b.actual,
+                "predicted": b.predicted,
+                "baseline_actual": b.baseline_actual,
+            })).collect::<Vec<_>>(),
+            "fold_deltas": e.fold_deltas,
+            "charts": e.charts.iter().map(chart_json).collect::<Vec<_>>(),
+        })
+    })
+}
+
 fn rails_json(r: &ExperimentRecord) -> Option<serde_json::Value> {
     r.rails.as_ref().map(|g| {
         json!({
@@ -186,7 +233,7 @@ async fn update_experiment(
     r: &ExperimentRecord,
 ) -> Result<(), String> {
     sqlx::query(
-        "UPDATE experiments SET status = $1, progress = NULL, fit_summary = $2, guardrails = $3, verdict_tag = $4, verdict_text = $5, gloss_text = $6, lineage = $7, landed_at = COALESCE(landed_at, now()) WHERE run_id = $8 AND code = $9",
+        "UPDATE experiments SET status = $1, progress = NULL, fit_summary = $2, guardrails = $3, verdict_tag = $4, verdict_text = $5, gloss_text = $6, lineage = $7, evidence = COALESCE($10, evidence), landed_at = COALESCE(landed_at, now()) WHERE run_id = $8 AND code = $9",
     )
     .bind(status_of(r.disposition))
     .bind(fit_summary_json(r))
@@ -197,6 +244,7 @@ async fn update_experiment(
     .bind(&r.verdict.lineage)
     .bind(run_id)
     .bind(r.plan.code)
+    .bind(evidence_json(r))
     .execute(pool)
     .await
     .map_err(|e| e.to_string())?;
@@ -237,6 +285,7 @@ async fn finish_run(pool: &PgPool, run_id: i64, outcome: &RunOutcome) -> Result<
         "holdout_delta": outcome.holdout_delta,
         "winner_code": winner_code,
         "filed_span": [filed_lo, filed_hi],
+        "segment_effects": outcome.segment_effects.as_ref().map(chart_json),
         "profile": {
             "rows": outcome.profile.rows,
             "mileage_missing_pct": outcome.profile.mileage_missing_pct,
@@ -499,13 +548,26 @@ pub async fn approve_review(
     }
 
     let base_gini = base_metrics["gini"].as_f64().unwrap_or(0.0);
-    // Replays can approve again: the merge always creates the next unused
-    // version number, parented on the run's base
-    let (new_version,): (i32,) = sqlx::query_as(
-        "SELECT COALESCE(max(version), 0) + 1 FROM model_versions WHERE name = $1",
+    // The merge lands one above the version this run branched from, so the
+    // number always names a real parent. A replay branches from the same
+    // place, so its merge replaces the earlier replay's candidate instead of
+    // climbing to a version nothing branched from. Reviews that pointed at a
+    // retired candidate keep their approval and lose only the pointer.
+    let new_version = base_version + 1;
+    sqlx::query(
+        "UPDATE reviews SET result_version = NULL WHERE result_version IN (SELECT id FROM model_versions WHERE name = $1 AND version >= $2 AND created_by_run IS NOT NULL)",
     )
     .bind(MODEL_NAME)
-    .fetch_one(&mut *tx)
+    .bind(new_version)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+    sqlx::query(
+        "DELETE FROM model_versions WHERE name = $1 AND version >= $2 AND created_by_run IS NOT NULL",
+    )
+    .bind(MODEL_NAME)
+    .bind(new_version)
+    .execute(&mut *tx)
     .await
     .map_err(|e| e.to_string())?;
     let (v13_id,): (i64,) = sqlx::query_as(

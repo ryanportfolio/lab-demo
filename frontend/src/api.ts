@@ -24,6 +24,71 @@ export interface Experiment {
   lineage: string | null;
 }
 
+export interface Pt {
+  x: number;
+  y: number;
+  label: string | null;
+}
+export interface EvidenceSeries {
+  label: string;
+  style: 'bar' | 'line' | 'step' | 'dot';
+  points: Pt[];
+}
+export interface EvidenceChart {
+  kind: string;
+  title: string;
+  xLabel: string;
+  yLabel: string;
+  series: EvidenceSeries[];
+  notes: string[];
+  gloss: string;
+}
+export interface LiftBucket {
+  decile: number;
+  exposure: number;
+  actual: number;
+  predicted: number;
+  baselineActual: number;
+}
+export interface FitFacts {
+  rows: number;
+  params: number;
+  iterations: number;
+  converged: boolean;
+  gini: number;
+  baselineGini: number;
+  deviance: number;
+  aic: number;
+  alpha: number | null;
+}
+export interface Evidence {
+  code: string;
+  facts: FitFacts | null;
+  lift: LiftBucket[];
+  foldDeltas: number[];
+  charts: EvidenceChart[];
+}
+
+export interface AnswerStep {
+  tool: string;
+  target: string;
+  status: string;
+}
+export interface Citation {
+  code: string;
+  label: string;
+  status: string;
+}
+export interface Answer {
+  question: string;
+  intent: string;
+  paragraphs: string[];
+  gloss: string;
+  citations: Citation[];
+  steps: AnswerStep[];
+  charts: EvidenceChart[];
+}
+
 export interface RailState {
   key: string;
   label: string;
@@ -150,6 +215,55 @@ export async function approveReview(reviewId: string): Promise<number> {
     'human',
   );
   return d.approveReview.version;
+}
+
+const CHART_FIELDS = `
+  kind title xLabel yLabel notes gloss
+  series { label style points { x y label } }
+`;
+
+export async function fetchEvidence(
+  runId: string,
+  code: string,
+): Promise<Evidence | null> {
+  const d = await gql<{ evidence: Evidence | null }>(
+    `query($runId: ID!, $code: String!) {
+      evidence(runId: $runId, code: $code) {
+        code
+        facts { rows params iterations converged gini baselineGini deviance aic alpha }
+        lift { decile exposure actual predicted baselineActual }
+        foldDeltas
+        charts { ${CHART_FIELDS} }
+      }
+    }`,
+    { runId, code },
+  );
+  return d.evidence;
+}
+
+/// The context expert answers as the agent role: it may read every artifact
+/// in the run, and the same role is refused at the approve gate.
+export async function ask(runId: string, question: string): Promise<Answer> {
+  const d = await gql<{ ask: Answer }>(
+    `query($runId: ID!, $question: String!) {
+      ask(runId: $runId, question: $question) {
+        question intent paragraphs gloss
+        citations { code label status }
+        steps { tool target status }
+        charts { ${CHART_FIELDS} }
+      }
+    }`,
+    { runId, question },
+    'agent',
+  );
+  return d.ask;
+}
+
+export async function fetchSuggestedQuestions(): Promise<string[]> {
+  const d = await gql<{ suggestedQuestions: string[] }>(
+    `query { suggestedQuestions }`,
+  );
+  return d.suggestedQuestions;
 }
 
 export async function fetchActiveModel(): Promise<ActiveModel> {

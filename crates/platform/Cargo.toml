@@ -10,6 +10,7 @@ plab-core = { path = "../core" }
 plab-fit = { path = "../fit" }
 plab-agent = { path = "../agent" }
 plab-datagen = { path = "../datagen" }
+nalgebra = "0.33"
 
 [lib]
 name = "plab_platform"

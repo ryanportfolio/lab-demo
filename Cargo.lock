@@ -1475,6 +1475,7 @@ dependencies = [
 name = "plab-platform"
 version = "0.1.0"
 dependencies = [
+ "nalgebra",
  "plab-agent",
  "plab-core",
  "plab-datagen",

@@ -12,6 +12,8 @@ import {
   type Review,
   type Run,
 } from './api';
+import AskPanel from './AskPanel';
+import EvidencePanel from './EvidencePanel';
 import Frontier from './Frontier';
 import ReviewView from './ReviewView';
 import { countWord, fmtAic, fmtDelta, fmtDev, fmtGini, fmtThousands } from './format';
@@ -48,10 +50,18 @@ function Card({
   e,
   budgetLimit,
   onHover,
+  runId,
+  plain,
+  open,
+  onToggle,
 }: {
   e: Experiment;
   budgetLimit: number;
   onHover: (code: string | null) => void;
+  runId: string | null;
+  plain: boolean;
+  open: boolean;
+  onToggle: (code: string) => void;
 }) {
   const [on, setOn] = useState(false);
   useEffect(() => {
@@ -70,7 +80,8 @@ function Card({
 
   return (
     <div
-      className={`exp${on ? ' on' : ''}${e.status === 'scrapped' ? ' dim' : ''}${e.status === 'winner' ? ' win' : ''}`}
+      id={`card-${e.code}`}
+      className={`exp${on ? ' on' : ''}${e.status === 'scrapped' ? ' dim' : ''}${e.status === 'winner' ? ' win' : ''}${open ? ' open' : ''}`}
       onMouseEnter={() => onHover(e.code)}
       onMouseLeave={() => onHover(null)}
     >
@@ -123,6 +134,21 @@ function Card({
           {e.glossText && <div className="gloss">{e.glossText}</div>}
         </div>
       )}
+      {landed && (
+        <button
+          className="open-ev"
+          aria-expanded={open}
+          aria-controls={`ev-${e.code}`}
+          onClick={() => onToggle(e.code)}
+        >
+          {open ? 'Hide the evidence' : 'Show the evidence'}
+        </button>
+      )}
+      {open && runId && (
+        <div id={`ev-${e.code}`}>
+          <EvidencePanel runId={runId} code={e.code} plain={plain} />
+        </div>
+      )}
     </div>
   );
 }
@@ -146,6 +172,8 @@ export default function App() {
   const [nowMs, setNowMs] = useState(Date.now());
   const [hovered, setHovered] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
+  const [openCard, setOpenCard] = useState<string | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
   const landedSeen = useRef<Set<string>>(new Set());
   const starting = useRef(false);
 
@@ -264,9 +292,32 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  // the palette opens on the shortcut their product uses
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setAskOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const revealCard = useCallback((code: string) => {
+    setViewState('console');
+    setOpenCard(code);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`card-${code}`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  }, []);
+
   const replay = useCallback(async () => {
     try {
       setReview(null);
+      setOpenCard(null);
       landedSeen.current.clear();
       setViewState('console');
       const r = await startRun();
@@ -335,19 +386,27 @@ export default function App() {
 
   return (
     <>
-      <header className="intro">
-        <div className="eyebrow">Working build</div>
-        <h1>Experiments</h1>
-        <p>
-          A working slice of the agent era of Prediction Lab: you state the
-          goal and the guardrails, the modeling agent runs the grind against a
-          real backend, and every experiment ends in a written verdict.
-          Scrapped paths stay on the board with their reasons, so no dead end
-          gets walked twice. One winner earns its way to review.
-        </p>
-        <div className="who">
-          Ryan Allen · <a href="https://fullbuild.ai">fullbuild.ai</a> ·
-          synthetic data, real fits
+      <header className="topbar">
+        <div className="brand">
+          <span className="logo" aria-hidden="true" />
+          Prediction Lab
+        </div>
+        <nav className="crumb" aria-label="Breadcrumb">
+          Models<span>›</span>Bodily Injury Frequency
+          <span>›</span>
+          <b>{view === 'review' ? 'Review' : 'Experiments'}</b>
+        </nav>
+        <div className="tb-right">
+          <button
+            className="askbtn"
+            onClick={() => setAskOpen(true)}
+            disabled={!run}
+          >
+            Ask AI
+            <span className="kbd" aria-hidden="true">
+              ⌘K
+            </span>
+          </button>
         </div>
       </header>
 
@@ -359,20 +418,7 @@ export default function App() {
         </div>
       )}
 
-      <section className="window" aria-label="Prediction Lab window">
-        <div className="titlebar">
-          <div className="dots">
-            <i />
-            <i />
-            <i />
-          </div>
-          <div className="crumb">
-            Prediction Lab<span>›</span>Models<span>›</span>Bodily Injury
-            Frequency<span>›</span>
-            <b>{view === 'review' ? 'Review' : 'Experiments'}</b>
-          </div>
-          <div className="tb-right"></div>
-        </div>
+      <section className="app" aria-label="Experiments">
         <div className="layout">
           <div className="main">
             {view === 'console' && (
@@ -439,6 +485,12 @@ export default function App() {
                       e={e}
                       budgetLimit={budgetLimit}
                       onHover={setHovered}
+                      runId={run?.id ?? null}
+                      plain={plain}
+                      open={openCard === e.code}
+                      onToggle={(code) =>
+                        setOpenCard((cur) => (cur === code ? null : code))
+                      }
                     />
                   ))}
                 </div>
@@ -589,6 +641,19 @@ export default function App() {
           </aside>
         </div>
       </section>
+
+      <footer className="site-foot">
+        Built by Ryan Allen · <a href="https://fullbuild.ai">fullbuild.ai</a> ·
+        synthetic data, real fits
+      </footer>
+
+      <AskPanel
+        runId={run?.id ?? null}
+        plain={plain}
+        open={askOpen}
+        onClose={() => setAskOpen(false)}
+        onCite={revealCard}
+      />
     </>
   );
 }

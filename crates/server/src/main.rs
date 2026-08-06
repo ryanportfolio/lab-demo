@@ -2,6 +2,7 @@
 //! GraphQL layer: the modeling agent can open a review, it cannot approve
 //! one, and hiding a button is not the mechanism.
 
+mod context;
 mod runsvc;
 mod schema;
 mod seed;

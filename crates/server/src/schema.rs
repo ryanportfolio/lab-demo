@@ -64,6 +64,94 @@ pub struct Experiment {
     pub lineage: Option<String>,
 }
 
+#[derive(SimpleObject, Clone)]
+pub struct Pt {
+    pub x: f64,
+    pub y: f64,
+    /// tick label when the x axis is categorical
+    pub label: Option<String>,
+}
+
+#[derive(SimpleObject, Clone)]
+pub struct EvidenceSeries {
+    pub label: String,
+    pub style: String,
+    pub points: Vec<Pt>,
+}
+
+#[derive(SimpleObject, Clone)]
+pub struct EvidenceChart {
+    pub kind: String,
+    pub title: String,
+    pub x_label: String,
+    pub y_label: String,
+    pub series: Vec<EvidenceSeries>,
+    pub notes: Vec<String>,
+    pub gloss: String,
+}
+
+#[derive(SimpleObject, Clone)]
+pub struct LiftBucket {
+    pub decile: i32,
+    pub exposure: f64,
+    pub actual: f64,
+    pub predicted: f64,
+    pub baseline_actual: f64,
+}
+
+#[derive(SimpleObject, Clone)]
+pub struct FitFacts {
+    pub rows: i64,
+    pub params: i32,
+    pub iterations: i32,
+    pub converged: bool,
+    pub gini: f64,
+    pub baseline_gini: f64,
+    pub deviance: f64,
+    pub aic: f64,
+    pub alpha: Option<f64>,
+}
+
+/// What the platform kept from one experiment's fits. The agent's contract
+/// never carries this; it is here so a reader can check the verdict against
+/// the artifact it was written from.
+#[derive(SimpleObject, Clone)]
+pub struct Evidence {
+    pub code: String,
+    pub facts: Option<FitFacts>,
+    pub lift: Vec<LiftBucket>,
+    pub fold_deltas: Vec<f64>,
+    pub charts: Vec<EvidenceChart>,
+}
+
+/// One step the context expert took, shown to the reader so the answer can be
+/// checked against the same artifacts.
+#[derive(SimpleObject, Clone)]
+pub struct AnswerStep {
+    pub tool: String,
+    pub target: String,
+    pub status: String,
+}
+
+#[derive(SimpleObject, Clone)]
+pub struct Citation {
+    pub code: String,
+    pub label: String,
+    pub status: String,
+}
+
+#[derive(SimpleObject, Clone)]
+pub struct Answer {
+    pub question: String,
+    /// which artifact the question was routed to
+    pub intent: String,
+    pub paragraphs: Vec<String>,
+    pub gloss: String,
+    pub citations: Vec<Citation>,
+    pub steps: Vec<AnswerStep>,
+    pub charts: Vec<EvidenceChart>,
+}
+
 #[derive(SimpleObject)]
 pub struct RailState {
     pub key: String,
@@ -182,6 +270,38 @@ impl QueryRoot {
         Ok(rows.into_iter().map(model_from_row).collect())
     }
 
+    /// The artifacts behind one experiment's verdict, loaded when a reader
+    /// opens the card rather than on every poll.
+    async fn evidence(
+        &self,
+        ctx: &Context<'_>,
+        run_id: ID,
+        code: String,
+    ) -> Result<Option<Evidence>> {
+        let pool = ctx.data::<PgPool>()?;
+        fetch_evidence(pool, run_id.parse::<i64>()?, &code).await
+    }
+
+    /// The context expert. Answers are composed from this run's artifacts and
+    /// carry the steps taken, so nothing here rests on trust. Reading is open
+    /// to both roles; changing a model is not something this path can do.
+    async fn ask(
+        &self,
+        ctx: &Context<'_>,
+        run_id: ID,
+        question: String,
+    ) -> Result<Answer> {
+        let pool = ctx.data::<PgPool>()?;
+        crate::context::ask(pool, run_id.parse::<i64>()?, &question)
+            .await
+            .map_err(async_graphql::Error::new)
+    }
+
+    /// Questions the console offers, each one landing on a real artifact.
+    async fn suggested_questions(&self) -> Vec<String> {
+        crate::context::SUGGESTED.iter().map(|s| s.to_string()).collect()
+    }
+
     async fn run(&self, ctx: &Context<'_>, id: ID) -> Result<Option<Run>> {
         let pool = ctx.data::<PgPool>()?;
         fetch_run(pool, id.parse::<i64>()?).await
@@ -279,6 +399,106 @@ async fn fetch_model(pool: &PgPool, where_clause: &str) -> Result<ModelVersion> 
         .fetch_one(pool)
         .await?;
     Ok(model_from_row(row))
+}
+
+pub fn chart_from_json(v: &serde_json::Value) -> EvidenceChart {
+    let strs = |key: &str| -> Vec<String> {
+        v[key]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|s| s.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    EvidenceChart {
+        kind: v["kind"].as_str().unwrap_or_default().into(),
+        title: v["title"].as_str().unwrap_or_default().into(),
+        x_label: v["x_label"].as_str().unwrap_or_default().into(),
+        y_label: v["y_label"].as_str().unwrap_or_default().into(),
+        notes: strs("notes"),
+        gloss: v["gloss"].as_str().unwrap_or_default().into(),
+        series: v["series"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|s| EvidenceSeries {
+                        label: s["label"].as_str().unwrap_or_default().into(),
+                        style: s["style"].as_str().unwrap_or("line").into(),
+                        points: s["points"]
+                            .as_array()
+                            .map(|p| {
+                                p.iter()
+                                    .map(|pt| Pt {
+                                        x: pt["x"].as_f64().unwrap_or(0.0),
+                                        y: pt["y"].as_f64().unwrap_or(0.0),
+                                        label: pt["label"].as_str().map(String::from),
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+    }
+}
+
+pub fn evidence_from_json(code: &str, v: &serde_json::Value) -> Evidence {
+    Evidence {
+        code: code.to_string(),
+        facts: v["facts"].as_object().map(|f| FitFacts {
+            rows: f["rows"].as_i64().unwrap_or(0),
+            params: f["params"].as_i64().unwrap_or(0) as i32,
+            iterations: f["iterations"].as_i64().unwrap_or(0) as i32,
+            converged: f["converged"].as_bool().unwrap_or(false),
+            gini: f["gini"].as_f64().unwrap_or(0.0),
+            baseline_gini: f["baseline_gini"].as_f64().unwrap_or(0.0),
+            deviance: f["deviance"].as_f64().unwrap_or(0.0),
+            aic: f["aic"].as_f64().unwrap_or(0.0),
+            alpha: f["alpha"].as_f64(),
+        }),
+        lift: v["lift"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|b| LiftBucket {
+                        decile: b["decile"].as_i64().unwrap_or(0) as i32,
+                        exposure: b["exposure"].as_f64().unwrap_or(0.0),
+                        actual: b["actual"].as_f64().unwrap_or(0.0),
+                        predicted: b["predicted"].as_f64().unwrap_or(0.0),
+                        baseline_actual: b["baseline_actual"].as_f64().unwrap_or(0.0),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        fold_deltas: v["fold_deltas"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|d| d.as_f64()).collect())
+            .unwrap_or_default(),
+        charts: v["charts"]
+            .as_array()
+            .map(|a| a.iter().map(chart_from_json).collect())
+            .unwrap_or_default(),
+    }
+}
+
+pub async fn fetch_evidence(
+    pool: &PgPool,
+    run_id: i64,
+    code: &str,
+) -> Result<Option<Evidence>> {
+    let row: Option<(Option<serde_json::Value>,)> = sqlx::query_as(
+        "SELECT evidence FROM experiments WHERE run_id = $1 AND code = $2",
+    )
+    .bind(run_id)
+    .bind(code)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row
+        .and_then(|(v,)| v)
+        .map(|v| evidence_from_json(code, &v)))
 }
 
 async fn fetch_run(pool: &PgPool, id: i64) -> Result<Option<Run>> {
@@ -514,18 +734,10 @@ async fn fetch_review_by_run(pool: &PgPool, run_id: i64) -> Result<Option<Review
     .bind(run_id)
     .fetch_one(pool)
     .await?;
-    let next_version = match result_version {
-        Some(v) => v,
-        None => {
-            let (max,): (Option<i32>,) = sqlx::query_as(
-                "SELECT max(version) FROM model_versions WHERE name = $1",
-            )
-            .bind(runsvc::MODEL_NAME)
-            .fetch_one(pool)
-            .await?;
-            max.unwrap_or(12) + 1
-        }
-    };
+    // The merge lands one above the version this run branched from. Numbering
+    // off the highest row instead would offer a version no run branched from
+    // once a replay had already merged once.
+    let next_version = result_version.unwrap_or(base_version.0 + 1);
 
     Ok(Some(Review {
         id: ID(r.0.to_string()),
