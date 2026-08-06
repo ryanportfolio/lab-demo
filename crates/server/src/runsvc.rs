@@ -464,7 +464,7 @@ pub async fn approve_review(
         return Err("this review is already approved".into());
     }
 
-    let (base_id, base_version, base_factors, base_metrics): (i64, i32, serde_json::Value, serde_json::Value) =
+    let (_base_id, base_version, base_factors, base_metrics): (i64, i32, serde_json::Value, serde_json::Value) =
         sqlx::query_as(
             "SELECT mv.id, mv.version, mv.factors, mv.metrics FROM runs r JOIN model_versions mv ON mv.id = r.base_model_id WHERE r.id = $1",
         )
@@ -529,11 +529,16 @@ pub async fn approve_review(
     .await
     .map_err(|e| e.to_string())?;
 
-    sqlx::query("UPDATE model_versions SET status = 'superseded' WHERE id = $1")
-        .bind(base_id)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| e.to_string())?;
+    // Exactly one active version: the merge supersedes every other row,
+    // including versions earlier replays created
+    sqlx::query(
+        "UPDATE model_versions SET status = 'superseded' WHERE name = $1 AND id != $2",
+    )
+    .bind(MODEL_NAME)
+    .bind(v13_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
     sqlx::query(
         "UPDATE reviews SET status = 'approved', approved_by = $1, approved_at = now(), result_version = $2 WHERE id = $3",
     )
