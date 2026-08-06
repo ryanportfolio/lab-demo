@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Experiments, a working build for Prediction Lab</title>
+    <script>
+      (function () {
+        try {
+          var q = new URLSearchParams(location.search);
+          var stored = q.get('theme') || localStorage.getItem('plab-demo-theme');
+          var theme =
+            stored === 'light' || stored === 'dark' || stored === 'system'
+              ? stored
+              : 'system';
+          var resolved =
+            theme === 'system'
+              ? matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+              : theme;
+          document.documentElement.classList.add(resolved);
+          document.documentElement.dataset.themePref = theme;
+        } catch (e) {
+          document.documentElement.classList.add('light');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
