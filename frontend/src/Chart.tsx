@@ -8,9 +8,11 @@
 import { useId } from 'react';
 import type { EvidenceChart, EvidenceSeries } from './api';
 
-const W = 560;
+// A narrower viewBox for the same rendered width means the labels inside it
+// come out larger on screen
+const W = 460;
 const H = 250;
-const PAD = { l: 54, r: 14, t: 14, b: 46 };
+const PAD = { l: 60, r: 14, t: 16, b: 52 };
 
 /** Charts whose natural reference is 1.00 rather than 0 */
 const RELATIVITY = new Set(['age_curve', 'segment_effects', 'territory']);
@@ -152,7 +154,7 @@ export default function Chart({
               y1={sy(t)}
               y2={sy(t)}
             />
-            <text className="tick" x={PAD.l - 6} y={sy(t) + 3} textAnchor="end">
+            <text className="tick" x={PAD.l - 8} y={sy(t) + 4} textAnchor="end">
               {fmtTick(t, yHi - yLo)}
             </text>
           </g>
@@ -269,10 +271,10 @@ export default function Chart({
             key={`x${i}`}
             className="tick"
             x={longLabels ? 0 : sx(t.x)}
-            y={longLabels ? 0 : H - PAD.b + 15}
+            y={longLabels ? 0 : H - PAD.b + 18}
             transform={
               longLabels
-                ? `translate(${sx(t.x)} ${H - PAD.b + 13}) rotate(-32)`
+                ? `translate(${sx(t.x)} ${H - PAD.b + 16}) rotate(-32)`
                 : undefined
             }
             textAnchor={longLabels ? 'end' : 'middle'}
@@ -287,7 +289,7 @@ export default function Chart({
           className="axis"
           x={0}
           y={0}
-          transform={`translate(11 ${PAD.t + plotH / 2}) rotate(-90)`}
+          transform={`translate(13 ${PAD.t + plotH / 2}) rotate(-90)`}
           textAnchor="middle"
         >
           {chart.yLabel}

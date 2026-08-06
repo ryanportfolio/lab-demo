@@ -15,7 +15,28 @@ Poisson GLM fit by the backend at run time.
 - **Backend**: Rust, axum, async-graphql, sqlx, Postgres (Railway), nalgebra
 - **Frontend**: TypeScript, React, Vite, GraphQL over plain typed fetch
 - **No LLM anywhere**: the modeling agent is a deterministic planner with
-  two-layer prose templates (dense expert copy plus a Plain terms gloss)
+  two-layer prose templates (dense expert copy plus a Plain terms gloss), and
+  the context expert routes questions to real artifacts rather than
+  generating text
+
+## Three things a reader can do
+
+1. **Watch the run.** Seven experiments fit against a real backend, each one
+   landing with chips, fold dots, and a written verdict.
+2. **Open the evidence.** Every landed card carries what the platform kept:
+   fit facts (rows, parameters, IRLS iterations, deviance, AIC), the lift
+   staircase by risk decile, the five fold deltas, and one chart per
+   archetype drawn from the same numbers the verdict was written from. A
+   verdict without its artifact is a claim, so the artifact ships with it.
+3. **Ask about the run** (the button, or the shortcut). The context expert
+   answers from this run's artifacts, shows the steps it took, cites the
+   experiments it read, and draws the relevant chart. A question with no
+   artifact behind it gets an honest miss instead of a guess. It reads and it
+   draws; it cannot fit, merge, or approve anything.
+
+Evidence lives in the `platform` crate and never in the agent contract, so
+the agent still writes its prose from scalars while the console shows the
+artifacts those scalars came from.
 
 ## Architecture, and the one boundary that matters
 
