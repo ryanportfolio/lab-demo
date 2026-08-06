@@ -584,6 +584,7 @@ export default function Chart({
   return (
     <figure className="chart" data-kind={chart.kind}>
       <figcaption>{chart.title}</figcaption>
+      <Plot chart={chart} hidden={hidden} big={false} onExpand={() => setExpanded(true)} />
       <button
         type="button"
         className="expand"
@@ -594,7 +595,6 @@ export default function Chart({
           <path d="M1 4.2 V1 H4.2 M7.8 1 H11 V4.2 M11 7.8 V11 H7.8 M4.2 11 H1 V7.8" />
         </svg>
       </button>
-      <Plot chart={chart} hidden={hidden} big={false} onExpand={() => setExpanded(true)} />
       {legend}
       {notes}
       {plain && <div className="gloss">{chart.gloss}</div>}

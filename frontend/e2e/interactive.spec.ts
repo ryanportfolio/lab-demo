@@ -100,7 +100,7 @@ test('the hover readout shows the stored artifact values exactly', async ({
 
   const want = await expectedFromApi(page);
   const chart = page.locator(`.exp.win .chart[data-kind="${want.kind}"]`);
-  const svg = chart.locator('svg');
+  const svg = page.locator(`.exp.win .chart[data-kind="${want.kind}"] > svg`);
   await svg.focus();
   // the first arrow press lands the readout on the first x of the axis
   await page.keyboard.press('ArrowRight');
@@ -133,7 +133,7 @@ test('a chart opens full screen, locks the page, and its legend toggles series',
   });
 
   const want = await expectedFromApi(page);
-  await page.locator(`.exp.win .chart[data-kind="${want.kind}"] svg`).click();
+  await page.locator(`.exp.win .chart[data-kind="${want.kind}"] > svg`).click();
   const full = page.locator('.chart-full');
   await expect(full).toBeVisible();
   await expect(full.locator('svg')).toBeVisible();
@@ -173,11 +173,11 @@ test('a chart inside the palette expands above it and Escape unwinds in order', 
   await page.locator('.askbtn').click();
   await expect(page.locator('.ask')).toBeVisible();
   await page.locator('.ask-sugg button').first().click();
-  await expect(page.locator('.ask-row.ai .chart svg').first()).toBeVisible({
+  await expect(page.locator('.ask-row.ai .chart > svg').first()).toBeVisible({
     timeout: 30_000,
   });
 
-  await page.locator('.ask-row.ai .chart svg').first().click();
+  await page.locator('.ask-row.ai .chart > svg').first().click();
   await expect(page.locator('.chart-full')).toBeVisible();
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('.chart-full .tip')).toBeVisible();
