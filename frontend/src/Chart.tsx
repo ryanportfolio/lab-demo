@@ -11,8 +11,8 @@ import type { EvidenceChart, EvidenceSeries } from './api';
 // A narrower viewBox for the same rendered width means the labels inside it
 // come out larger on screen
 const W = 460;
-const H = 250;
-const PAD = { l: 60, r: 14, t: 16, b: 52 };
+const BASE_H = 250;
+const PAD = { l: 64, r: 14, t: 16, b: 52 };
 
 /** Charts whose natural reference is 1.00 rather than 0 */
 const RELATIVITY = new Set(['age_curve', 'segment_effects', 'territory']);
@@ -88,8 +88,15 @@ export default function Chart({
   yHi += padY;
   if (!rel && Math.min(...values) >= 0) yLo = Math.max(0, yLo);
 
+  // Long category names lean rather than crush, and leaning costs height, so
+  // the frame grows instead of the labels running off the bottom
+  const longLabels =
+    categorical && xTicksNeedRotation(labelled?.points.map((p) => p.label ?? ''));
+  const padB = longLabels ? 96 : PAD.b;
+  const H = longLabels ? 306 : BASE_H;
+
   const plotW = W - PAD.l - PAD.r;
-  const plotH = H - PAD.t - PAD.b;
+  const plotH = H - PAD.t - padB;
   const bandCount = categorical ? Math.max(...primary.map((s) => s.points.length), 1) : 0;
   const band = categorical ? plotW / bandCount : 0;
 
@@ -123,10 +130,6 @@ export default function Chart({
       ? band * 0.5
       : Math.max(plotW / secondary.points.length - 1.5, 1)
     : 0;
-
-  // Long category names need room, so they lean
-  const longLabels =
-    categorical && xTicksNeedRotation(primary[0]?.points.map((p) => p.label ?? ''));
 
   const color = (s: EvidenceSeries, i: number) => {
     if (chart.kind === 'segment_effects') return 'var(--chart-band)';
@@ -271,10 +274,10 @@ export default function Chart({
             key={`x${i}`}
             className="tick"
             x={longLabels ? 0 : sx(t.x)}
-            y={longLabels ? 0 : H - PAD.b + 18}
+            y={longLabels ? 0 : H - padB + 20}
             transform={
               longLabels
-                ? `translate(${sx(t.x)} ${H - PAD.b + 16}) rotate(-32)`
+                ? `translate(${sx(t.x)} ${H - padB + 20}) rotate(-38)`
                 : undefined
             }
             textAnchor={longLabels ? 'end' : 'middle'}
@@ -282,9 +285,11 @@ export default function Chart({
             {t.label}
           </text>
         ))}
-        <text className="axis" x={PAD.l} y={H - 4}>
-          {chart.xLabel}
-        </text>
+        {!longLabels && (
+          <text className="axis" x={PAD.l} y={H - 6}>
+            {chart.xLabel}
+          </text>
+        )}
         <text
           className="axis"
           x={0}

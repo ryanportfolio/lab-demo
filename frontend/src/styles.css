@@ -285,6 +285,9 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-sugg button { font: inherit; font-size: 14.5px; text-align: left; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg); cursor: pointer }
 .ask-sugg button:hover { border-color: var(--fg-subtle) }
 .ask-sugg button:focus-visible, .cites button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
+.ask-back { align-self: flex-start; font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg-muted); cursor: pointer }
+.ask-back:hover { color: var(--fg); border-color: var(--fg-subtle) }
+.ask-back:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
 .ask-turn { display: flex; flex-direction: column; gap: 10px }
 .ask-row { display: flex; gap: 10px; align-items: flex-start }
 .ask-row .who { flex: none; width: 26px; height: 26px; border-radius: var(--r-full); background: var(--chipbg); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; color: var(--fg-muted) }

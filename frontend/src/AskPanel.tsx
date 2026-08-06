@@ -88,7 +88,11 @@ export default function AskPanel({
             aria-label="Ask about this run"
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') send(q);
+              if (e.key !== 'Enter') return;
+              // Enter on an empty box goes back to the question list, so a
+              // reader is never stuck on one answer
+              if (q.trim()) send(q);
+              else setAnswers([]);
             }}
           />
           <button className="ask-esc" onClick={onClose}>
@@ -112,6 +116,12 @@ export default function AskPanel({
                 ))}
               </div>
             </div>
+          )}
+
+          {answers.length > 0 && (
+            <button className="ask-back" onClick={() => setAnswers([])}>
+              Back to the questions
+            </button>
           )}
 
           {answers.map((a, i) => (
@@ -169,7 +179,11 @@ export default function AskPanel({
             The context expert reads artifacts and draws them. It cannot fit,
             merge, or approve anything
           </span>
-          <span className="kbd">Enter to ask</span>
+          <span className="kbd">
+            {answers.length > 0
+              ? 'Enter on an empty box for the question list'
+              : 'Enter to ask'}
+          </span>
         </div>
       </div>
     </div>
