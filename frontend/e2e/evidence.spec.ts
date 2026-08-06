@@ -66,6 +66,13 @@ test('the context expert answers from artifacts and cites them', async ({
   await expect(page.locator('.ask')).toBeVisible();
   await page.screenshot({ path: `${OUT}/ask-open-light.png`, fullPage: true });
 
+  // the page underneath holds still while the palette is up
+  const before = await page.evaluate(() => window.scrollY);
+  await page.mouse.move(20, 400);
+  await page.mouse.wheel(0, 600);
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+
   // the first suggested question is the one from their own deck
   await page.locator('.ask-sugg button').first().click();
   await expect(page.locator('.ask-row.ai .bubble')).toBeVisible({

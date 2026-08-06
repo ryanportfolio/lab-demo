@@ -48,6 +48,22 @@ export default function AskPanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // While the palette is up, the page underneath holds still. Padding for the
+  // scrollbar width keeps the layout from jumping as it is taken away.
+  useEffect(() => {
+    if (!open) return;
+    const { body } = document;
+    const gap = window.innerWidth - document.documentElement.clientWidth;
+    const overflow = body.style.overflow;
+    const padRight = body.style.paddingRight;
+    body.style.overflow = 'hidden';
+    if (gap > 0) body.style.paddingRight = `${gap}px`;
+    return () => {
+      body.style.overflow = overflow;
+      body.style.paddingRight = padRight;
+    };
+  }, [open]);
+
   async function send(question: string) {
     if (!runId || !question.trim() || busy) return;
     setBusy(true);

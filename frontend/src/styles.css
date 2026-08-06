@@ -269,7 +269,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart .notes li::before { content: "•"; position: absolute; left: 2px; color: var(--fg-subtle) }
 
 /* ---- ask palette ---- */
-.ask-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(9, 9, 11, .35); display: flex; justify-content: center; padding: 8vh 16px 6vh }
+.ask-scrim { position: fixed; inset: 0; overscroll-behavior: contain; z-index: 40; background: rgba(9, 9, 11, .35); display: flex; justify-content: center; padding: 8vh 16px 6vh }
 .ask {
   width: min(760px, 100%); max-height: 100%; display: flex; flex-direction: column;
   background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl);
@@ -279,7 +279,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-mark { width: 22px; height: 22px; flex: none; border-radius: var(--r-full); background: var(--chipbg); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; color: var(--fg-muted) }
 .ask-bar input { flex: 1; font: inherit; font-size: 16px; border: 0; outline: none; background: transparent; color: var(--fg) }
 .ask-esc { font: inherit; font-size: 12.5px; font-family: var(--mono); color: var(--fg-subtle); background: transparent; border: 1px solid var(--border); border-radius: var(--r-sm); padding: 2px 6px; cursor: pointer }
-.ask-body { overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 16px }
+.ask-body { overflow-y: auto; overscroll-behavior: contain; padding: 14px; display: flex; flex-direction: column; gap: 16px }
 .ask-intro p { font-size: 14.5px; color: var(--fg-muted); line-height: 1.55 }
 .ask-sugg { display: flex; flex-direction: column; gap: 6px; margin-top: 12px }
 .ask-sugg button { font: inherit; font-size: 14.5px; text-align: left; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg); cursor: pointer }
