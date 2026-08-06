@@ -248,7 +248,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .evidence.loading { font-family: var(--mono); font-size: 13px; color: var(--fg-subtle) }
 .facts { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; color: var(--fg-muted); margin-bottom: 12px }
 .facts b { font-family: var(--mono); font-weight: 500; color: var(--fg) }
-.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 18px }
+.charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px }
 
 .chart { border: 1px solid var(--border-muted); border-radius: var(--r-lg); padding: 12px 14px 10px; background: var(--bg) }
 .chart figcaption { font-size: 14.5px; font-weight: 500; color: var(--fg); margin-bottom: 8px }
