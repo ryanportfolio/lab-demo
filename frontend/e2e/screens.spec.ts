@@ -22,6 +22,8 @@ test('console mid-run and final, light', async ({ page }) => {
   await replay.waitFor();
   if (await replay.isEnabled()) {
     await replay.click();
+    // the previous run's promote bar stays until the new run takes over
+    await expect(page.locator('.promote')).toBeHidden({ timeout: 15_000 });
   }
   await expect(page.locator('.exp').first()).toBeVisible({ timeout: 30_000 });
   await page.screenshot({ path: `${OUT}/console-midrun-light.png`, fullPage: true });
@@ -30,7 +32,9 @@ test('console mid-run and final, light', async ({ page }) => {
   await page.screenshot({ path: `${OUT}/console-final-light.png`, fullPage: true });
 
   // expert layer sanity: chips carry real numbers, verdicts are written
-  await expect(page.locator('.exp .verdict')).toHaveCount(7);
+  await expect(page.locator('.exp .verdict')).toHaveCount(7, {
+    timeout: 30_000,
+  });
   const text = await page.locator('.main').innerText();
   expect(text).toContain('ΔGini');
   expect(text).not.toContain('—'); // no em dashes anywhere

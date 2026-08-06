@@ -33,6 +33,16 @@ async fn main() {
         .await
         .expect("run migrations");
 
+    // Optional demo reset: when RESET_DEMO carries a nonce this boot has not
+    // seen before, wipe runs, reviews, and every version above v12 so the
+    // site greets its next visitor with the fresh v12 story. Nonce-guarded
+    // so restarts never wipe state mid-demo.
+    if let Ok(nonce) = std::env::var("RESET_DEMO") {
+        reset_demo_if_new_nonce(&pool, &nonce)
+            .await
+            .expect("demo reset");
+    }
+
     // Seeding is idempotent: dataset COPY and the v12 filing fit run once,
     // later boots skip in milliseconds
     seed::seed(&pool).await.expect("seed");
@@ -62,6 +72,43 @@ async fn main() {
         .expect("bind");
     println!("server listening on http://0.0.0.0:{port}/graphql");
     axum::serve(listener, app).await.expect("serve");
+}
+
+async fn reset_demo_if_new_nonce(
+    pool: &sqlx::PgPool,
+    nonce: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS demo_meta (key text PRIMARY KEY, value text NOT NULL)",
+    )
+    .execute(pool)
+    .await?;
+    let seen: Option<(String,)> =
+        sqlx::query_as("SELECT value FROM demo_meta WHERE key = 'reset_nonce'")
+            .fetch_optional(pool)
+            .await?;
+    if seen.as_ref().map(|(v,)| v.as_str()) == Some(nonce) {
+        return Ok(());
+    }
+    let mut tx = pool.begin().await?;
+    sqlx::query("DELETE FROM reviews").execute(&mut *tx).await?;
+    sqlx::query("DELETE FROM experiments").execute(&mut *tx).await?;
+    sqlx::query("DELETE FROM runs").execute(&mut *tx).await?;
+    sqlx::query("DELETE FROM model_versions WHERE version > 12")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("UPDATE model_versions SET status = 'active' WHERE version = 12")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query(
+        "INSERT INTO demo_meta (key, value) VALUES ('reset_nonce', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
+    )
+    .bind(nonce)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    println!("demo state reset (nonce {nonce})");
+    Ok(())
 }
 
 /// Serve the built frontend (SPA fallback to index.html). No static-file
