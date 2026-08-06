@@ -289,7 +289,7 @@ async fn fetch_run(pool: &PgPool, id: i64) -> Result<Option<Run>> {
         f64,
         Option<i64>,
     )> = sqlx::query_as(
-        "SELECT id, goal, branch_name, status, guardrails, outcome, EXTRACT(EPOCH FROM started_at) * 1000, elapsed_ms FROM runs WHERE id = $1",
+        "SELECT id, goal, branch_name, status, guardrails, outcome, (EXTRACT(EPOCH FROM started_at) * 1000)::float8, elapsed_ms FROM runs WHERE id = $1",
     )
     .bind(id)
     .fetch_optional(pool)
