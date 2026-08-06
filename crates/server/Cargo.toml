@@ -1,0 +1,29 @@
+[package]
+name = "plab-server"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+plab-core = { path = "../core" }
+plab-fit = { path = "../fit" }
+plab-agent = { path = "../agent" }
+plab-platform = { path = "../platform" }
+plab-datagen = { path = "../datagen" }
+axum = "0.8"
+async-graphql = "7"
+async-graphql-axum = "7"
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "json",
+    "migrate",
+    "macros",
+] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "server"
+path = "src/main.rs"

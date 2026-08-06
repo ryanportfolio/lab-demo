@@ -339,7 +339,7 @@ fn run_one(
     filed_rel: &[f64],
     filed_log: &[f64],
     baseline: &BaselineReport,
-    f12: &Fit,
+    _f12: &Fit,
     mu12: &[f64],
     fold_cache: &FoldCache,
     fold_fit_rows: &[Vec<&PolicyRow>],
