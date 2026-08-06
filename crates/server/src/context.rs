@@ -130,13 +130,8 @@ pub async fn ask(
             if let Some(c) = outcome.get("segment_effects").filter(|v| !v.is_null()) {
                 let chart = chart_from_json(c);
                 let mut lead = vec![format!(
-                    "On the model in force, {}",
-                    chart
-                        .notes
-                        .first()
-                        .cloned()
-                        .unwrap_or_default()
-                        .to_lowercase()
+                    "{}. The bars below split that gap by rating factor, and they multiply back to it.",
+                    chart.notes.first().cloned().unwrap_or_default()
                 )];
                 lead.extend(a.paragraphs.drain(..));
                 a.paragraphs = lead;
@@ -302,8 +297,8 @@ fn age_answer(exps: &[ExpRow]) -> Answer {
             let at18 = s.points.iter().find(|p| p.x == 18.0).cloned();
             if let (Some(p), Some(p25), Some(p18)) = (peak, at25, at18) {
                 a.paragraphs.push(format!(
-                    "The fitted curve reads {:.2} at age 18 and {:.2} at age 25, against age 45 at 1.00, and its highest point is {:.2} at age {}. The filed model prices 18 to 24 as one group, so every one of those movements happens inside a single band today.",
-                    p18.y, p25.y, p.y, p.x as i32
+                    "Against age 45 at 1.00, the fitted curve reads {:.2} at age 18 and {:.2} at age 25, with its highest point at age {}. The filed model prices 18 to 24 as one band, so all of that movement happens inside a single price today.",
+                    p18.y, p25.y, p.x as i32
                 ));
             }
         }
@@ -408,8 +403,15 @@ fn family_answer(exps: &[ExpRow]) -> Answer {
     let mut a = blank("A second error model was tried that allows more variety between drivers than the standard one. It describes how many claims land better, but it ranks the same drivers in the same order, so it does not earn a factor slot on its own.");
     let aic = e.f("aic_delta").unwrap_or(0.0);
     let d = e.f("delta_gini").unwrap_or(0.0);
+    // The Gini move here is normally too small to print at three places, so
+    // the sentence has to stay true either way
+    let sep = if d.abs() < 0.0005 {
+        "separation does not move by as much as 0.001 Gini, so the ranking is unchanged".to_string()
+    } else {
+        format!("separation moves by {d:+.3} Gini")
+    };
     a.paragraphs.push(format!(
-        "{} refit the same terms under a negative binomial family. AIC moves by {aic:+.0}, and AIC is the comparison to use here because deviance is not comparable across families. Separation moves by {d:+.3} Gini, so the ranking is effectively unchanged.",
+        "{} refit the same terms under a negative binomial family. AIC moves by {aic:+.0}, and AIC is the comparison to use here because deviance is not comparable across families. On the same fits, {sep}.",
         e.code
     ));
     if let Some(c) = e.chart("count_dist") {

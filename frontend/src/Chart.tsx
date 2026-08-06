@@ -53,11 +53,17 @@ export default function Chart({
   const allX = primary.flatMap((s) => s.points.map((p) => p.x));
   const xMin = Math.min(...allX);
   const xMax = Math.max(...allX);
-  // Categorical when every point carries a tick label and the axis is a small
-  // index run, which is how the server sends zones, cells, and counts
-  const categorical = primary.every(
-    (s) => s.points.length === 0 || s.points.every((p) => p.label != null),
+  // Categorical when a series carries tick labels over a short index run,
+  // which is how the server sends zones, cells, counts, and folds. A dense
+  // numeric axis like single years of age stays numeric even though a few of
+  // its points (the knots) are labelled.
+  const labelled = primary.find(
+    (s) => s.points.length > 0 && s.points.every((p) => p.label != null),
   );
+  const categorical =
+    !!labelled &&
+    primary.every((s) => s.points.length <= 32) &&
+    allX.every((x) => Number.isInteger(x));
 
   const values = primary.flatMap((s) => s.points.map((p) => p.y));
   if (rel) values.push(1);
@@ -87,8 +93,12 @@ export default function Chart({
     : Math.max(plotW / (xMax - xMin + 1) - 1, 1);
 
   const yTicks = niceTicks(yLo, yHi);
+  const catTicks = labelled?.points.map((p) => ({ x: p.x, label: p.label ?? '' })) ?? [];
+  // thin the labels when a categorical axis carries more than fits, as the
+  // zone axis does at thirty
+  const every = Math.ceil(catTicks.length / 12);
   const xTicks = categorical
-    ? primary[0]?.points.map((p) => ({ x: p.x, label: p.label ?? '' })) ?? []
+    ? catTicks.filter((_, i) => i % every === 0)
     : niceTicks(xMin, xMax, 5).map((v) => ({ x: v, label: fmtTick(v, xMax - xMin) }));
 
   // Second axis for the exposure histogram behind an effect curve
