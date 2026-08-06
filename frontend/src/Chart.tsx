@@ -618,7 +618,14 @@ export default function Chart({
               >
                 Esc
               </button>
-              <Plot chart={chart} hidden={hidden} big autoFocus />
+              {/* a phone squeezes the wide frame into unreadable text, so the
+                  full view keeps the card geometry there */}
+              <Plot
+                chart={chart}
+                hidden={hidden}
+                big={window.innerWidth >= 700}
+                autoFocus
+              />
               {legend}
               {notes}
               {plain && <div className="gloss">{chart.gloss}</div>}
