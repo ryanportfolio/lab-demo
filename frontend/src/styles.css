@@ -257,6 +257,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart .zero { stroke: var(--fg-subtle); stroke-width: 1; stroke-dasharray: 2 3 }
 .chart .tick { font-family: var(--mono); font-size: 9px; fill: var(--fg-subtle) }
 .chart .axis { font-size: 9.5px; fill: var(--fg-subtle) }
+.chart .val { font-family: var(--mono); font-size: 8.5px; fill: var(--fg-muted) }
 .chart .exposure rect { fill: var(--chart-exposure) }
 .chart .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 10.5px; color: var(--fg-muted); margin-top: 8px }
 .chart .legend span { display: inline-flex; align-items: center; gap: 5px }
@@ -265,7 +266,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart .legend i[data-style="dot"] { border-radius: var(--r-full); width: 7px; height: 7px }
 .chart .notes { list-style: none; margin-top: 8px; font-size: 11px; color: var(--fg-muted); line-height: 1.5 }
 .chart .notes li { padding-left: 10px; position: relative }
-.chart .notes li::before { content: "+"; position: absolute; left: 2px; color: var(--fg-subtle) }
+.chart .notes li::before { content: "•"; position: absolute; left: 2px; color: var(--fg-subtle) }
 
 /* ---- ask palette ---- */
 .ask-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(9, 9, 11, .35); display: flex; justify-content: center; padding: 8vh 16px 6vh }

@@ -10,12 +10,17 @@ import type { EvidenceChart, EvidenceSeries } from './api';
 
 const W = 560;
 const H = 250;
-const PAD = { l: 46, r: 14, t: 12, b: 34 };
+const PAD = { l: 54, r: 14, t: 14, b: 46 };
 
 /** Charts whose natural reference is 1.00 rather than 0 */
 const RELATIVITY = new Set(['age_curve', 'segment_effects', 'territory']);
-/** The series that rides a second axis, drawn behind everything else */
-const SECONDARY = 'Earned exposure';
+/**
+ * Series that carry a different unit from the rest of the chart and so ride a
+ * second axis behind everything else. Exposure is the weight under a curve,
+ * never a rate, and plotting it on the rate axis would flatten the rates.
+ */
+const isSecondary = (label: string) =>
+  label === 'Earned exposure' || label.startsWith('Share of exposure');
 
 function niceTicks(lo: number, hi: number, count = 4): number[] {
   if (!isFinite(lo) || !isFinite(hi) || lo === hi) return [lo];
@@ -27,6 +32,12 @@ function niceTicks(lo: number, hi: number, count = 4): number[] {
   const out: number[] = [];
   for (let v = start; v <= hi + step * 1e-6; v += step) out.push(Number(v.toFixed(10)));
   return out;
+}
+
+/** Category names longer than a tick slot get rotated rather than crushed */
+function xTicksNeedRotation(labels?: string[]): boolean {
+  if (!labels || labels.length < 3) return false;
+  return labels.some((l) => l.length > 6);
 }
 
 function fmtTick(v: number, span: number): string {
@@ -46,8 +57,8 @@ export default function Chart({
   plain: boolean;
 }) {
   const uid = useId().replace(/[:]/g, '');
-  const primary = chart.series.filter((s) => s.label !== SECONDARY);
-  const secondary = chart.series.find((s) => s.label === SECONDARY);
+  const primary = chart.series.filter((s) => !isSecondary(s.label));
+  const secondary = chart.series.find((s) => isSecondary(s.label));
   const rel = RELATIVITY.has(chart.kind);
 
   const allX = primary.flatMap((s) => s.points.map((p) => p.x));
@@ -101,9 +112,19 @@ export default function Chart({
     ? catTicks.filter((_, i) => i % every === 0)
     : niceTicks(xMin, xMax, 5).map((v) => ({ x: v, label: fmtTick(v, xMax - xMin) }));
 
-  // Second axis for the exposure histogram behind an effect curve
+  // Second axis for the weight behind a curve, kept short so it reads as
+  // background rather than as another result
   const secMax = secondary ? Math.max(...secondary.points.map((p) => p.y), 1) : 1;
-  const secY = (y: number) => PAD.t + plotH * (1 - (y / secMax) * 0.55);
+  const secY = (y: number) => PAD.t + plotH * (1 - (y / secMax) * 0.45);
+  const secW = secondary
+    ? categorical
+      ? band * 0.5
+      : Math.max(plotW / secondary.points.length - 1.5, 1)
+    : 0;
+
+  // Long category names need room, so they lean
+  const longLabels =
+    categorical && xTicksNeedRotation(primary[0]?.points.map((p) => p.label ?? ''));
 
   const color = (s: EvidenceSeries, i: number) => {
     if (chart.kind === 'segment_effects') return 'var(--chart-band)';
@@ -142,11 +163,13 @@ export default function Chart({
             {secondary.points.map((p, i) => (
               <rect
                 key={`e${i}`}
-                x={sx(p.x) - barW / 2}
+                x={sx(p.x) - secW / 2}
                 y={secY(p.y)}
-                width={barW}
+                width={secW}
                 height={Math.max(PAD.t + plotH - secY(p.y), 0)}
-              />
+              >
+                <title>{`${secondary.label} ${p.label ?? p.x}: ${p.y.toFixed(1)}`}</title>
+              </rect>
             ))}
           </g>
         )}
@@ -174,16 +197,29 @@ export default function Chart({
                   const last =
                     chart.kind === 'segment_effects' && i === s.points.length - 1;
                   return (
-                    <rect
-                      key={i}
-                      x={sx(p.x) + off}
-                      y={Math.min(top, base)}
-                      width={barW}
-                      height={Math.max(Math.abs(base - top), 1)}
-                      fill={last ? 'var(--chart-line)' : c}
-                    >
-                      <title>{`${s.label} ${p.label ?? p.x}: ${p.y.toFixed(3)}`}</title>
-                    </rect>
+                    <g key={i}>
+                      <rect
+                        x={sx(p.x) + off}
+                        y={Math.min(top, base)}
+                        width={barW}
+                        height={Math.max(Math.abs(base - top), 1)}
+                        fill={last ? 'var(--chart-line)' : c}
+                      >
+                        <title>{`${s.label} ${p.label ?? p.x}: ${p.y.toFixed(3)}`}</title>
+                      </rect>
+                      {/* a decomposition is unreadable without its numbers,
+                          and the small bars are the ones worth reading */}
+                      {chart.kind === 'segment_effects' && (
+                        <text
+                          className="val"
+                          x={sx(p.x) + off + barW / 2}
+                          y={(p.y >= 1 ? Math.min(top, base) - 4 : Math.max(top, base) + 11)}
+                          textAnchor="middle"
+                        >
+                          {`${p.y >= 1 ? '+' : ''}${Math.round((p.y - 1) * 100)}%`}
+                        </text>
+                      )}
+                    </g>
                   );
                 })}
               </g>
@@ -230,9 +266,14 @@ export default function Chart({
           <text
             key={`x${i}`}
             className="tick"
-            x={sx(t.x)}
-            y={H - PAD.b + 15}
-            textAnchor="middle"
+            x={longLabels ? 0 : sx(t.x)}
+            y={longLabels ? 0 : H - PAD.b + 15}
+            transform={
+              longLabels
+                ? `translate(${sx(t.x)} ${H - PAD.b + 13}) rotate(-32)`
+                : undefined
+            }
+            textAnchor={longLabels ? 'end' : 'middle'}
           >
             {t.label}
           </text>
@@ -257,8 +298,7 @@ export default function Chart({
             <i
               data-style={s.style}
               style={{
-                background:
-                  s.label === SECONDARY
+                background: isSecondary(s.label)
                     ? 'var(--chart-exposure)'
                     : color(s, primary.indexOf(s) >= 0 ? primary.indexOf(s) : i),
               }}
