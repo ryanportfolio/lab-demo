@@ -4,6 +4,10 @@
 
 Synthesize evidence, not prose. Deduplication must be reversible. Agreement among reports is useful only after separating independent reasoning from repeated underlying sources.
 
+## 0. Resolve campaign artifacts
+
+Use the caller-supplied campaign directory. Otherwise resolve the user's Desktop and use `RESEARCH-LAB/<campaign-id>/`, with `prediction-lab-actuarial-ux` as the default campaign ID. Request narrowly scoped write approval if the existing folder is protected by a sandbox; use `research/actuarial-ux/<campaign-id>/` only if Desktop is unavailable, approval is denied, or writing remains impossible, and disclose cross-worktree limitations. Inventory every Markdown report in `runs/`; do not assume reports embedded only in earlier chats are discoverable. Reserve `synthesis/YYYY-MM-DDTHH-mm-ssZ/` for all aggregation outputs and return its exact absolute path.
+
 ## 1. Validate inputs
 
 Inventory every report with run ID, model, date, scope, lens, blindness status, source count, and source classes. Keep contaminated or non-blind runs, but never count them as independent convergence without qualification.
@@ -68,3 +72,4 @@ Keep minority findings when they expose severe harm, excluded users, a distinct 
 - Confidence follows the evidence rubric.
 - Contradictions and important one-off findings remain visible.
 - The synthesis distinguishes what is observed, reported, inferred, unknown, and proposed.
+- Every aggregation artifact is saved under the reserved synthesis directory and its absolute path is reported.

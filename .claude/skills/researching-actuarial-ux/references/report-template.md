@@ -5,6 +5,10 @@ Use this structure so reports from different models remain comparable. Adapt pro
 ## 1. Run metadata
 
 - Campaign ID and run ID
+- Campaign directory and exact report path
+- Storage type: caller-supplied shared path | user Desktop | repository fallback
+- Persistence or cross-worktree limitation, if any
+- Completion time in UTC ISO format; filename uses file-safe `YYYY-MM-DDTHH-mm-ssZ`
 - Date and access window
 - Model/agent, if known
 - Blind, non-blind, or contaminated; explain contamination
@@ -111,3 +115,4 @@ Rank unresolved questions and name the best validation method: observation, arti
 - Shared underlying sources are fingerprinted.
 - Findings can be merged without losing their original IDs.
 - The report contains no conclusions copied from earlier research.
+- The complete report was saved, and the exact absolute path was returned.
