@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reviewing Actuarial UX Syntheses"
+  short_description: "Review independent actuarial UX syntheses"
+  default_prompt: "Use $reviewing-actuarial-ux-syntheses to reconcile all independent synthesis passes into a traceable final knowledge base."
