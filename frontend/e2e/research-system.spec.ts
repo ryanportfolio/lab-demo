@@ -148,6 +148,35 @@ test('standalone poster uses larger type and a clean review connector', async ({
   expect(layout.documentOverflow).toBeLessThanOrEqual(1);
   await expect(frame.locator('body')).not.toContainText('—');
 
+  const researchSkillLinks = frame.getByRole('link', {
+    name: 'researching-actuarial-ux',
+    exact: true,
+  });
+  await expect(researchSkillLinks).toHaveCount(2);
+  for (const link of await researchSkillLinks.all()) {
+    await expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/ryanportfolio/lab-demo/blob/main/.claude/skills/researching-actuarial-ux/SKILL.md',
+    );
+    await expect(link).toHaveAttribute('target', '_top');
+    const fontWeight = await link.evaluate((element) => Number(getComputedStyle(element).fontWeight));
+    expect(fontWeight).toBeGreaterThanOrEqual(700);
+  }
+
+  const reviewSkillLink = frame.getByRole('link', {
+    name: 'reviewing-actuarial-ux-syntheses',
+    exact: true,
+  });
+  await expect(reviewSkillLink).toHaveAttribute(
+    'href',
+    'https://github.com/ryanportfolio/lab-demo/blob/main/.claude/skills/reviewing-actuarial-ux-syntheses/SKILL.md',
+  );
+  await expect(reviewSkillLink).toHaveAttribute('target', '_top');
+  const reviewFontWeight = await reviewSkillLink.evaluate((element) =>
+    Number(getComputedStyle(element).fontWeight),
+  );
+  expect(reviewFontWeight).toBeGreaterThanOrEqual(700);
+
   await expect(frame.locator('path[d="M181 55 H241"]')).toHaveCount(1);
   await expect(frame.locator('path[d="M181 55 H270"]')).toHaveCount(0);
 });
