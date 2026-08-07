@@ -34,15 +34,17 @@ const CARD = {
   W: 460,
   H: 250,
   HL: 306,
-  PAD: { l: 64, r: 14, t: 16, b: 52 },
+  PAD: { l: 86, r: 14, t: 16, b: 52 },
   padBL: 96,
+  yTitleX: 13,
 };
 const FULL = {
   W: 920,
   H: 470,
   HL: 540,
-  PAD: { l: 76, r: 20, t: 22, b: 58 },
+  PAD: { l: 108, r: 20, t: 22, b: 58 },
   padBL: 112,
+  yTitleX: 15,
 };
 
 /** Charts whose natural reference is 1.00 rather than 0 */
@@ -435,7 +437,7 @@ function Plot({
         {yTicks.map((t) => (
           <g key={`y${t}`}>
             <line className="grid" x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} />
-            <text className="tick" x={PAD.l - 8} y={sy(t) + 4} textAnchor="end">
+            <text className="tick y-axis-tick" x={PAD.l - 10} y={sy(t) + 4} textAnchor="end">
               {yTickLabels[yTicks.indexOf(t)]}
             </text>
           </g>
@@ -691,10 +693,10 @@ function Plot({
           </text>
         )}
         <text
-          className="axis"
+          className="axis y-axis-title"
           x={0}
           y={0}
-          transform={`translate(13 ${PAD.t + plotH / 2}) rotate(-90)`}
+          transform={`translate(${G.yTitleX} ${PAD.t + plotH / 2}) rotate(-90)`}
           textAnchor="middle"
         >
           {chart.yLabel}
@@ -730,6 +732,7 @@ export default function Chart({
   // the wide frame follows the viewport while the full view is open, so a
   // window dragged narrow reflows instead of keeping unreadable text
   const [wide, setWide] = useState(true);
+  const [widePlot, setWidePlot] = useState(() => window.innerWidth >= 1241);
   const selection = controlledSelection === undefined ? localSelection : controlledSelection;
   const mode = controlledMode ?? localMode;
   const shown = useMemo(() => displayChart(chart, contract, mode), [chart, contract, mode]);
@@ -748,6 +751,13 @@ export default function Chart({
   const weakness = weakPoint(chart, contract);
 
   useEffect(() => setHidden(new Set()), [mode, chart.kind]);
+
+  useEffect(() => {
+    const onResize = () => setWidePlot(window.innerWidth >= 1241);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => {
     if (!expanded) return;
@@ -883,7 +893,7 @@ export default function Chart({
         selection={selection}
         onSelectionChange={setSelection}
         hidden={hidden}
-        big={false}
+        big={widePlot}
       />
       <button
         type="button"
