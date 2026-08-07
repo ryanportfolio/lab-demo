@@ -16,7 +16,7 @@ This demo was not designed from generic ML-dashboard conventions. And it will be
 
 ### Research → synthesis → review
 
-![Research, synthesis, and terminal evidence review workflow](docs/readme/research-synthesis-review.png)
+[![Research, synthesis, and terminal evidence review workflow](docs/readme/research-synthesis-review.png)](https://web-production-563b7.up.railway.app/actuarial-research-system.html)
 
 Independent research broadens discovery. Multiple synthesis passes structure
 the corpus without turning repetition into proof. A terminal review then
@@ -25,7 +25,7 @@ every final claim traceable to its source.
 
 ### Evidence → workflow → chart → evidence
 
-![Research-assisted Prediction Lab UX and chart workspace loop](docs/readme/evidence-design-loop.png)
+[![Research-assisted Prediction Lab UX and chart workspace loop](docs/readme/evidence-design-loop.png)](https://web-production-563b7.up.railway.app/actuarial-ux-chart-loop.html)
 
 Reviewed findings enter the broad Prediction Lab workflow as established
 requirements, contested interpretations, or hypotheses. When that workflow
