@@ -67,16 +67,18 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .review-workspace, .review-loading { width: min(1600px, 100%) }
 .run-view, .review-workspace, .review-loading { margin: 0 auto; padding: 20px 18px 28px }
 .goal-bar {
-  display: grid; grid-template-columns: minmax(340px, 1.45fr) minmax(400px, 1.7fr) auto;
-  align-items: start; gap: 22px; padding: 10px 0 16px; border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: minmax(420px, 1.45fr) minmax(390px, 1.1fr) minmax(125px, .35fr) auto;
+  grid-template-areas: "goal decision rails state";
+  align-items: center; gap: 22px; padding: 10px 0 16px; border-bottom: 1px solid var(--border);
 }
-.goal-copy { min-width: 0; display: flex; align-items: center; gap: 9px }
+.goal-copy { grid-area: goal; min-width: 0; display: flex; align-items: center; gap: 9px }
 .ai-mark {
   width: 25px; height: 25px; flex: none; display: grid; place-items: center; border: 1px solid var(--border);
   border-radius: var(--r-full); color: var(--fg-muted); font-family: var(--mono); font-size: 11.5px;
 }
 .goal-copy strong { display: block; margin-top: 4px; font-size: 17px; font-weight: 520; line-height: 1.42 }
-.goal-rails { min-width: 0; display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap }
+.goal-rails { grid-area: rails; min-width: 0; display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap }
 .goal-rails span {
   display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: var(--r-full);
   color: var(--fg-muted); font-family: var(--mono); font-size: 14px; padding: 6px 10px; white-space: nowrap;
@@ -86,7 +88,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .goal-rails [data-state="passed"] i { color: var(--ok) }
 .goal-rails [data-state="enforced"] { border-color: color-mix(in srgb, var(--warn) 42%, var(--border)); color: var(--warn) }
 .goal-rails [data-state="enforced"] i { color: var(--warn) }
-.run-state { display: grid; grid-template-columns: auto auto; gap: 2px 8px; align-items: center; text-align: right }
+.run-state { grid-area: state; display: grid; grid-template-columns: auto auto; gap: 2px 8px; align-items: center; text-align: right }
 .run-state strong { font-family: var(--mono); font-size: 17px; font-weight: 600 }
 .run-state span { color: var(--fg-subtle); font-family: var(--mono); font-size: 13.5px }
 .run-state .replay {
@@ -371,12 +373,24 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
   margin-top: 16px; border: 1px solid var(--border); border-left: 3px solid var(--ok); border-radius: 0;
   background: var(--bg); padding: 12px 14px;
 }
+.goal-bar > .promote {
+  grid-area: decision; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; gap: 12px; margin-top: 0; background: var(--bg-subtle); padding: 10px 12px;
+}
+.goal-bar > .promote button { white-space: nowrap; font-size: 15px; padding: 9px 12px }
 .promote > div { display: grid; grid-template-columns: auto auto; gap: 2px 8px; align-items: center }
 .winner-mark { grid-row: 1 / 3; width: 8px; height: 8px; background: var(--ok); transform: rotate(45deg) }
 .promote strong { font-size: 16px }
 .promote span { color: var(--fg-subtle); font-family: var(--mono); font-size: 13.5px }
 .site-foot { display: flex; justify-content: space-between; margin-top: auto; padding: 14px 18px 20px; font-size: 14px }
 .banner { width: auto; max-width: none; margin: 0 18px; padding: 9px 0 }
+
+@media (min-width: 1241px) {
+  .goal-rails { align-items: flex-start; flex-direction: column; justify-content: center; gap: 4px }
+  .goal-rails span {
+    border: 0; border-radius: 0; padding: 0; font-size: 13.5px;
+  }
+}
 
 /* Layered first entrance: geometry exists before paint; only visual properties move. */
 @keyframes entrance-resolve {
@@ -444,8 +458,14 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 
 @media (max-width: 1240px) {
   .branch-readout { display: none }
-  .goal-bar { grid-template-columns: 1fr auto }
-  .goal-rails { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start }
+  .goal-bar {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "goal state"
+      "decision decision"
+      "rails rails";
+  }
+  .goal-rails { justify-content: flex-start }
   .run-workspace {
     grid-template-columns: 250px minmax(430px, 1fr);
     grid-template-areas:
@@ -498,9 +518,17 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 
 @media (max-width: 520px) {
   .context-value { font-size: 15px; white-space: normal }
-  .goal-bar { grid-template-columns: 1fr }
-  .run-state { grid-row: 2; text-align: left; justify-self: start }
-  .goal-rails { grid-row: 3 }
+  .goal-bar {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "goal"
+      "state"
+      "decision"
+      "rails";
+  }
+  .run-state { text-align: left; justify-self: start }
+  .goal-bar > .promote { grid-template-columns: 1fr }
+  .goal-bar > .promote button { justify-self: start }
   .experiment-ledger, .frontier-panel, .selected-evidence { padding: 14px 8px }
   .ledger-row::before { left: -8px }
   .frontier-readout span { display: none }

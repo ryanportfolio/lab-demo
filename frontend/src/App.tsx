@@ -349,6 +349,18 @@ export default function App() {
                 <strong>{run?.goal ?? 'Loading the modeling run'}</strong>
               </div>
             </div>
+            {complete && winner && run && (
+              <section className="promote" aria-label="Winner ready for review">
+                <div>
+                  <span className="winner-mark" aria-hidden="true" />
+                  <strong>{winner.code} ready for human review</strong>
+                  <span>
+                    Gini {fmtGini(winner.gini ?? 0)} · {fmtDelta(winner.deltaGini ?? 0)} · {scrappedCount} failures retained
+                  </span>
+                </div>
+                <button type="button" onClick={() => setView('review')}>Open decision package →</button>
+              </section>
+            )}
             <div className="goal-rails" aria-label="Hard guardrails">
               {(run?.rails ?? []).map((rail) => (
                 <span key={rail.key} data-state={rail.mark} title={rail.note ?? rail.label}>
@@ -421,18 +433,6 @@ export default function App() {
             </section>
           </div>
 
-          {complete && winner && run && (
-            <section className="promote" aria-label="Winner ready for review">
-              <div>
-                <span className="winner-mark" aria-hidden="true" />
-                <strong>{winner.code} ready for human review</strong>
-                <span>
-                  Gini {fmtGini(winner.gini ?? 0)} · {fmtDelta(winner.deltaGini ?? 0)} · {scrappedCount} failures retained
-                </span>
-              </div>
-              <button type="button" onClick={() => setView('review')}>Open decision package →</button>
-            </section>
-          )}
         </main>
       ) : run && review ? (
         <ReviewView
