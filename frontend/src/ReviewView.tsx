@@ -1,9 +1,8 @@
-// Review handoff view: the agent's summary, guardrails with how each held,
-// the full run ledger, and the human-only approve gate.
-
+import { useEffect, useState } from 'react';
 import type { Review, Run } from './api';
 import EvidencePanel from './EvidencePanel';
-import { boldSpans } from './format';
+import { boldSpans, fmtDelta, fmtGini } from './format';
+import type { SavedChartEvidence } from './chartWorkspace';
 
 interface Props {
   run: Run;
@@ -13,17 +12,22 @@ interface Props {
   onApprove: () => void;
   approving: boolean;
   error: string | null;
+  savedEvidence: SavedChartEvidence[];
+  onAsk: (question: string) => void;
+  onSave: (evidence: SavedChartEvidence) => void;
 }
 
 function How({ text }: { text: string }) {
   return (
     <span className="how">
-      {boldSpans(text).map((s, i) =>
-        typeof s === 'string' ? s : <b key={i}>{s.b}</b>,
+      {boldSpans(text).map((span, index) =>
+        typeof span === 'string' ? span : <b key={index}>{span.b}</b>,
       )}
     </span>
   );
 }
+
+const guardrailValue = (text: string) => text.match(/\*\*(.+?)\*\*/)?.[1] ?? 'Held';
 
 export default function ReviewView({
   run,
@@ -33,104 +37,187 @@ export default function ReviewView({
   onApprove,
   approving,
   error,
+  savedEvidence,
+  onAsk,
+  onSave,
 }: Props) {
+  const [acknowledged, setAcknowledged] = useState(false);
   const approved = review.status === 'approved';
-  const nextVersion = review.nextVersion;
-  const elapsed =
-    run.elapsedMs != null ? `${(run.elapsedMs / 1000).toFixed(1)}s` : '';
-  const openerLine =
-    review.openedBy === 'agent'
-      ? 'Review requested by the modeling agent'
-      : 'Review opened by the reviewer';
+  const winner = run.experiments.find((experiment) => experiment.code === review.winnerCode);
+  const weakPoint = review.paragraphs.find((paragraph) => /exposure/i.test(paragraph));
+  const weakValue = weakPoint?.match(/(\d+(?:\.\d+)?)%/)?.[1];
+  const relevantSaved = savedEvidence.filter((item) => item.runId === run.id);
 
-  const dispClass = (disp: string) =>
-    disp === 'Winner' ? 'win' : disp === 'Absorbed' ? 'abs' : 'scr';
+  useEffect(() => setAcknowledged(false), [review.id]);
+
+  const dispositionClass = (disposition: string) =>
+    disposition === 'Winner' ? 'win' : disposition === 'Absorbed' ? 'abs' : 'scr';
 
   return (
-    <div>
-      <button className="back" onClick={onBack}>
-        ← Back to the run
-      </button>
-      <div className="rv-head">
-        <h2>Bodily Injury Frequency</h2>
-        <span className="vchip">
-          {approved
-            ? `v${nextVersion} created`
-            : `v${review.baseVersion} → v${nextVersion}`}
-        </span>
-        <span className={`status${approved ? ' approved' : ''}`}>
-          {approved ? 'Approved' : 'Open'}
-        </span>
-      </div>
-      <div className="rv-sub">
-        {openerLine} · {review.winnerCode} promoted · {run.counts.spawned}{' '}
-        experiments{elapsed ? ` · ${elapsed}` : ''}
-      </div>
-
-      <div className="rv-note">
-        <div className="byline">
-          <span className="ai" aria-hidden="true">
-            AI
-          </span>
-          <span>Modeling agent · run summary</span>
+    <main className="review-workspace" id="workspace-main">
+      <header className="review-head">
+        <div>
+          <button className="back" type="button" onClick={onBack}>← Run 038</button>
+          <span className="eyebrow">Human decision package</span>
+          <h1>Bodily Injury Frequency</h1>
         </div>
-        {review.paragraphs.map((p, i) => (
-          <p key={i}>{p}</p>
-        ))}
-        <div className="gloss">{review.gloss}</div>
-      </div>
-
-      <div className="rv-sect">
-        <h3>Guardrails, with how each held</h3>
-        {review.guardrailRows.map((g) => (
-          <div className="gr-row" key={g.what}>
-            <span className="mk">✓</span>
-            <span className="what">{g.what}</span>
-            <How text={g.how} />
-          </div>
-        ))}
-      </div>
-
-      <div className="rv-sect">
-        <h3>Run ledger, all {run.counts.spawned} accounted for</h3>
-        {review.ledgerRows.map((l) => (
-          <div className="led-row" key={l.code}>
-            <span className="lid">{l.code}</span>
-            <span className={`disp ${dispClass(l.disp)}`}>{l.disp}</span>
-            <span className="why">{l.why}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="rv-sect">
-        <h3>
-          The model diff: {review.winnerCode} against v{review.baseVersion},
-          drawn from the run's artifacts
-        </h3>
-        <EvidencePanel runId={run.id} code={review.winnerCode} plain={plain} />
-      </div>
-
-      <div className="rv-approve">
-        <span className="txt">
-          {approved
-            ? `v${nextVersion} is created and the run ledger is recorded against it.`
-            : `Approving merges the branch as v${nextVersion} and records the run ledger against it. The agent can open this review, it cannot approve it.`}
-        </span>
-        {approved ? (
-          <span className="stamp" tabIndex={-1} id="rvStamp">
-            v{nextVersion} created just now
-          </span>
-        ) : (
-          <button onClick={onApprove} disabled={approving}>
-            Approve and create v{nextVersion}
-          </button>
-        )}
-      </div>
-      {error && (
-        <div className="banner" role="alert" style={{ marginTop: 10 }}>
-          {error}
+        <div className="review-version">
+          <span>v{review.baseVersion}</span>
+          <i aria-hidden="true">→</i>
+          <strong>v{review.nextVersion}</strong>
+          <b className={`status${approved ? ' approved' : ''}`}>
+            {approved ? 'Approved' : 'Pending'}
+          </b>
         </div>
+      </header>
+
+      <section className="review-metrics" aria-label="Decision metrics">
+        <div><span>Gini</span><strong>{fmtGini(run.baselineGini ?? 0)} → {fmtGini(winner?.gini ?? 0)}</strong></div>
+        <div><span>Train</span><strong>{fmtDelta(review.trainDelta)}</strong></div>
+        <div><span>Holdout</span><strong>{fmtDelta(review.holdoutDelta)}</strong></div>
+        <div><span>Guardrails</span><strong>{review.guardrailRows.length} / {review.guardrailRows.length}</strong></div>
+        <div><span>Ledger</span><strong>{review.ledgerRows.length} / {run.counts.spawned}</strong></div>
+      </section>
+
+      <div className="review-grid">
+        <aside className="review-diff" aria-labelledby="diff-heading">
+          <div className="workspace-heading">
+            <div>
+              <span className="eyebrow">Material diff</span>
+              <h2 id="diff-heading">What changes</h2>
+            </div>
+          </div>
+          <div className="diff-row">
+            <span>Driver age</span>
+            <del>5 coarse bands</del>
+            <ins>Natural cubic spline</ins>
+          </div>
+          <div className="diff-row">
+            <span>Prior accidents</span>
+            <del>Absent</del>
+            <ins>Count capped at 3</ins>
+          </div>
+          <div className="diff-row">
+            <span>Rating factors</span>
+            <del>{run.baselineFactors ?? 9}</del>
+            <ins>{(run.baselineFactors ?? 9) + 1}</ins>
+          </div>
+
+          <div className="weak-point">
+            <span className="eyebrow">Weakest point</span>
+            {weakValue && <strong>{weakValue}% exposure</strong>}
+            <p>{weakPoint ?? 'The sparse tail needs a human check before approval.'}</p>
+          </div>
+
+          <details className="review-ledger">
+            <summary>Run ledger · all {review.ledgerRows.length}</summary>
+            {review.ledgerRows.map((row) => (
+              <div className="led-row" key={row.code}>
+                <span className="lid">{row.code}</span>
+                <span className={`disp ${dispositionClass(row.disp)}`}>{row.disp}</span>
+                <span className="why">{row.why}</span>
+              </div>
+            ))}
+          </details>
+        </aside>
+
+        <section className="review-proof" aria-labelledby="proof-heading">
+          <div className="workspace-heading review-proof-head">
+            <div>
+              <span className="eyebrow">Decision evidence</span>
+              <h2 id="proof-heading">Does the gain hold</h2>
+            </div>
+            <span className="review-requested">
+              {review.openedBy === 'agent' ? 'Requested by modeling agent' : 'Opened by reviewer'}
+            </span>
+          </div>
+          <EvidencePanel
+            runId={run.id}
+            code={review.winnerCode}
+            plain={plain}
+            experiment={winner}
+            focused
+            onAsk={onAsk}
+            onSave={onSave}
+          />
+        </section>
+      </div>
+
+      {relevantSaved.length > 0 && (
+        <section className="saved-evidence" aria-labelledby="saved-evidence-heading">
+          <div className="workspace-heading">
+            <div>
+              <span className="eyebrow">Local prototype evidence</span>
+              <h2 id="saved-evidence-heading">Carried into review</h2>
+            </div>
+            <span className="section-count">{relevantSaved.length} saved</span>
+          </div>
+          <div className="saved-evidence-list">
+            {relevantSaved.map((item) => (
+              <a className="saved-evidence-row" href={item.url} key={item.id}>
+                <span><b>{item.code}</b>{item.title}</span>
+                <strong>{item.selection}</strong>
+                <span>{item.values.join(' · ')}</span>
+                <small>{item.weakPoint}</small>
+              </a>
+            ))}
+          </div>
+          <p>Stored in this browser for the concept only. Production review evidence would be versioned server-side.</p>
+        </section>
       )}
-    </div>
+
+      <section className="guardrail-matrix" aria-labelledby="guardrail-heading">
+        <div className="workspace-heading">
+          <div>
+            <span className="eyebrow">Bounded delegation</span>
+            <h2 id="guardrail-heading">Guardrails</h2>
+          </div>
+          <strong>All held</strong>
+        </div>
+        <div className="guardrail-grid">
+          {review.guardrailRows.map((guardrail) => (
+            <details className="guardrail-cell" key={guardrail.what}>
+              <summary>
+                <i aria-hidden="true">✓</i>
+                <span>{guardrail.what}</span>
+                <b>{guardrailValue(guardrail.how)}</b>
+              </summary>
+              <How text={guardrail.how} />
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="approval-gate" aria-label="Human approval">
+        <div>
+          <span className="eyebrow">Human-only action</span>
+          <strong>
+            {approved
+              ? `v${review.nextVersion} created with the run ledger attached`
+              : `Create v${review.nextVersion} from ${review.winnerCode}`}
+          </strong>
+          <span>The agent can request review. It cannot approve.</span>
+        </div>
+        {approved ? (
+          <span className="stamp" tabIndex={-1} id="rvStamp">Approved · v{review.nextVersion}</span>
+        ) : (
+          <div className="approval-actions">
+            <label>
+              <input
+                type="checkbox"
+                checked={acknowledged}
+                onChange={(event) => setAcknowledged(event.target.checked)}
+              />
+              I reviewed the sparse tail
+            </label>
+            <button type="button" onClick={onApprove} disabled={!acknowledged || approving}>
+              {approving ? 'Creating version' : `Approve and create v${review.nextVersion}`}
+            </button>
+          </div>
+        )}
+      </section>
+
+      {error && <div className="banner" role="alert">{error}</div>}
+    </main>
   );
 }

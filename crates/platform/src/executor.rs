@@ -10,9 +10,7 @@ use crate::profile;
 use plab_agent as agent;
 use plab_core::protocol::*;
 use plab_core::{PolicyRow, N_ZONES};
-use plab_fit::design::{
-    build_design, predict_rate, score_rows, AgeForm, ModelSpec, TerritoryForm,
-};
+use plab_fit::design::{build_design, predict_rate, score_rows, AgeForm, ModelSpec, TerritoryForm};
 use plab_fit::glm::{fit_glm, fit_nb2_profile, Family, Fit};
 use plab_fit::metrics::gini;
 
@@ -241,8 +239,7 @@ pub fn execute(
     let mut review = None;
 
     if let Some(wi) = winner {
-        let is_combo =
-            records[wi].plan.archetype == Archetype::ComboSplineAccidents;
+        let is_combo = records[wi].plan.archetype == Archetype::ComboSplineAccidents;
         let mut part_deltas = Vec::new();
         if is_combo {
             for (i, r) in records.iter_mut().enumerate() {
@@ -277,11 +274,8 @@ pub fn execute(
         // The agent rewrites the winner's verdict knowing the parts, then
         // writes its review summary
         if is_combo && !part_deltas.is_empty() {
-            records[wi].verdict = agent::verdict_winner(
-                &w_fit,
-                &part_deltas,
-                config.guardrails.budget_limit,
-            );
+            records[wi].verdict =
+                agent::verdict_winner(&w_fit, &part_deltas, config.guardrails.budget_limit);
             records[wi].verdict.lineage = records[wi].plan.lineage.clone();
         } else {
             records[wi].verdict.disposition = Disposition::Winner;
@@ -400,7 +394,7 @@ fn run_one(
                 facts: None,
                 lift: Vec::new(),
                 fold_deltas: Vec::new(),
-                charts: vec![evidence::missingness_chart(train)],
+                charts: evidence::missingness_charts(train),
             }),
         };
         records.push(record.clone());
@@ -422,8 +416,7 @@ fn run_one(
         let (mut raw, zone_exp) = filing::raw_relativities(train)?;
         // normalize raw before blending, matching the filing procedure
         let total: f64 = zone_exp.iter().sum();
-        let mean: f64 =
-            (0..N_ZONES).map(|z| zone_exp[z] * raw[z]).sum::<f64>() / total;
+        let mean: f64 = (0..N_ZONES).map(|z| zone_exp[z] * raw[z]).sum::<f64>() / total;
         for r in raw.iter_mut() {
             *r /= mean;
         }
@@ -460,8 +453,7 @@ fn run_one(
         let fold_log: Vec<f64> = if is_blend {
             let (mut raw, zone_exp) = filing::raw_relativities(fit_rows)?;
             let total: f64 = zone_exp.iter().sum();
-            let mean: f64 =
-                (0..N_ZONES).map(|z| zone_exp[z] * raw[z]).sum::<f64>() / total;
+            let mean: f64 = (0..N_ZONES).map(|z| zone_exp[z] * raw[z]).sum::<f64>() / total;
             for r in raw.iter_mut() {
                 *r /= mean;
             }

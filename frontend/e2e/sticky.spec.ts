@@ -1,5 +1,5 @@
-// The goal is the thing a reader keeps checking results against, so it stays
-// on screen while the board scrolls under it.
+// Active model context is the thing a reviewer keeps checking evidence against,
+// so it stays under the app bar while the working paper scrolls.
 
 import { expect, test } from '@playwright/test';
 import * as fs from 'node:fs';
@@ -7,35 +7,34 @@ import * as fs from 'node:fs';
 const OUT = '../.tmp/shots';
 fs.mkdirSync(OUT, { recursive: true });
 
-test('the goal stays pinned under the top bar while the board scrolls', async ({
+test('active model context stays pinned while the working paper scrolls', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 700 });
   await page.goto('/?theme=light');
   await expect(page.locator('.promote')).toBeVisible({ timeout: 90_000 });
   await page.evaluate(() => (window as any).__capture.freeze());
 
-  // the collapsed board fits the tall test viewport, so open the winner's
-  // evidence to give the page something to scroll
-  await page.locator('.exp.win .open-ev').click();
-  await expect(page.locator('.exp.win .chart svg').first()).toBeVisible({
+  await page.locator('.ledger-row', { hasText: 'EXP-07' }).click();
+  await expect(page.locator('.selected-evidence .chart svg').first()).toBeVisible({
     timeout: 20_000,
   });
+  await page.locator('.exact-values summary').click();
   await page.evaluate(() => window.scrollTo(0, 0));
 
-  const goal = page.locator('.goal');
+  const context = page.locator('.context-strip');
   const topbar = page.locator('.topbar');
-  const before = await goal.boundingBox();
+  const before = await context.boundingBox();
   expect(before).not.toBeNull();
 
-  await page.mouse.wheel(0, 1400);
+  await page.evaluate(() => window.scrollTo(0, 1_400));
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
-  const after = await goal.boundingBox();
+  const after = await context.boundingBox();
   const bar = await topbar.boundingBox();
   expect(after).not.toBeNull();
-  // it moved up with the scroll, then stopped at the bar rather than leaving
-  expect(after!.y).toBeLessThan(before!.y);
+  expect(after!.y).toBe(before!.y);
   expect(after!.y).toBeGreaterThanOrEqual(bar!.y + bar!.height - 2);
   expect(after!.y).toBeLessThan(bar!.y + bar!.height + 8);
 

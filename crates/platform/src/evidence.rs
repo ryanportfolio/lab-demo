@@ -118,7 +118,11 @@ pub fn lift_buckets(
 ) -> Vec<LiftBucket> {
     let profile = |r: &[f64]| -> Vec<(f64, f64, f64)> {
         let mut idx: Vec<usize> = (0..r.len()).collect();
-        idx.sort_by(|a, b| r[*a].partial_cmp(&r[*b]).unwrap_or(std::cmp::Ordering::Equal));
+        idx.sort_by(|a, b| {
+            r[*a]
+                .partial_cmp(&r[*b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         let total: f64 = exposure.iter().sum();
         let step = total / buckets as f64;
         let mut out = Vec::with_capacity(buckets);
@@ -170,9 +174,7 @@ fn age_exposure(rows: &[&PolicyRow]) -> Vec<Pt> {
         let a = (r.driver_age as usize).min(90);
         by_age[a] += r.earned_exposure;
     }
-    (18..=90)
-        .map(|a| Pt::xy(a as f64, by_age[a]))
-        .collect()
+    (18..=90).map(|a| Pt::xy(a as f64, by_age[a])).collect()
 }
 
 /// Driver age relativity, spline against the filed bands, both expressed
@@ -198,11 +200,7 @@ pub fn age_curve_chart_with_exposure(
 
 pub fn age_curve_chart(spline_beta: &[f64], band_beta: &[f64]) -> Chart {
     let ref_basis = natural_basis(45.0, &AGE_KNOTS);
-    let ref_log: f64 = ref_basis
-        .iter()
-        .zip(spline_beta)
-        .map(|(b, c)| b * c)
-        .sum();
+    let ref_log: f64 = ref_basis.iter().zip(spline_beta).map(|(b, c)| b * c).sum();
     let mut curve = Vec::new();
     let mut step = Vec::new();
     for age in 18..=90u8 {
@@ -285,7 +283,15 @@ pub fn accidents_chart(rows: &[&PolicyRow], capped_coef: f64) -> Chart {
     let observed: Vec<Pt> = (0..=max_k)
         .map(|k| {
             let f = if exp[k] > 0.0 { clm[k] / exp[k] } else { 0.0 };
-            Pt::labelled(k as f64, f, if k == max_k { format!("{k}+") } else { k.to_string() })
+            Pt::labelled(
+                k as f64,
+                f,
+                if k == max_k {
+                    format!("{k}+")
+                } else {
+                    k.to_string()
+                },
+            )
         })
         .collect();
     let base = observed[0].y.max(1e-9);
@@ -424,9 +430,17 @@ pub fn count_dist_chart(
         pois[k] = 100.0 * pois[k] / n;
         nb[k] = 100.0 * nb[k] / n;
     }
-    let label = |k: usize| if k == 3 { "3+".to_string() } else { k.to_string() };
+    let label = |k: usize| {
+        if k == 3 {
+            "3+".to_string()
+        } else {
+            k.to_string()
+        }
+    };
     let mk = |v: &[f64]| -> Vec<Pt> {
-        (0..4).map(|k| Pt::labelled(k as f64, v[k], label(k))).collect()
+        (0..4)
+            .map(|k| Pt::labelled(k as f64, v[k], label(k)))
+            .collect()
     };
     let tail_gap_pois = observed[2] + observed[3] - (pois[2] + pois[3]);
 
@@ -546,7 +560,7 @@ pub fn interaction_chart(rows: &[&PolicyRow], mu12: &[f64], coef: f64) -> Chart 
 
 /// Missing mileage share by region, plus frequency for rows that have the
 /// column against rows that do not.
-pub fn missingness_chart(rows: &[&PolicyRow]) -> Chart {
+pub fn missingness_charts(rows: &[&PolicyRow]) -> Vec<Chart> {
     let regions = plab_core::REGIONS;
     let mut total: Vec<f64> = vec![0.0; regions.len()];
     let mut missing: Vec<f64> = vec![0.0; regions.len()];
@@ -567,49 +581,59 @@ pub fn missingness_chart(rows: &[&PolicyRow]) -> Chart {
         }
     }
     let by_region: Vec<Pt> = (0..regions.len())
-        .map(|i| Pt::labelled(i as f64, 100.0 * missing[i] / total[i].max(1.0_f64), regions[i]))
+        .map(|i| {
+            Pt::labelled(
+                i as f64,
+                100.0 * missing[i] / total[i].max(1.0_f64),
+                regions[i],
+            )
+        })
         .collect();
     let f_obs = c_obs / e_obs.max(1e-9);
     let f_mis = c_mis / e_mis.max(1e-9);
-    // the frequency bars take their own bands after the regions, matching the
-    // axis label "Region, then mileage status": sharing x with the region
-    // bars would caption a frequency with a region name
-    let n = regions.len() as f64;
     let freq: Vec<Pt> = vec![
-        Pt::labelled(n, f_obs, "Mileage present"),
-        Pt::labelled(n + 1.0, f_mis, "Mileage missing"),
+        Pt::labelled(0.0, f_obs, "Mileage present"),
+        Pt::labelled(1.0, f_mis, "Mileage missing"),
     ];
-    let lo = by_region
-        .iter()
-        .map(|p| p.y)
-        .fold(f64::MAX, f64::min);
+    let lo = by_region.iter().map(|p| p.y).fold(f64::MAX, f64::min);
     let hi = by_region.iter().map(|p| p.y).fold(f64::MIN, f64::max);
 
-    Chart {
-        kind: "missingness".into(),
-        title: "Missing mileage, and what it hides".into(),
-        x_label: "Region, then mileage status".into(),
-        y_label: "Percent missing, and claims per car year".into(),
-        series: vec![
-            Series {
+    vec![
+        Chart {
+            kind: "missingness".into(),
+            title: "Missing mileage by region".into(),
+            x_label: "Region".into(),
+            y_label: "Policies missing mileage, percent".into(),
+            series: vec![Series {
                 label: "Missing share by region".into(),
                 style: Style::Bar,
                 points: by_region,
-            },
-            Series {
+            }],
+            notes: vec![
+                format!("Missing share runs from {lo:.0}% to {hi:.0}% across regions"),
+                "The regional pattern means a blanket fill would preserve geography by accident".into(),
+            ],
+            gloss: "The blank mileage boxes are not spread evenly. This view keeps the missing-share percentage on its own axis so it cannot be mistaken for claim frequency.".into(),
+        },
+        Chart {
+            kind: "missing_frequency".into(),
+            title: "Frequency by mileage status".into(),
+            x_label: "Mileage status".into(),
+            y_label: "Claims per car year".into(),
+            series: vec![Series {
                 label: "Frequency by mileage status".into(),
                 style: Style::Bar,
                 points: freq,
-            },
-        ],
-        notes: vec![
-            format!("Missing share runs from {lo:.0}% to {hi:.0}% across regions"),
-            format!(
-                "Rows without mileage run at {f_mis:.3} claims per car year against {f_obs:.3} for rows with it"
-            ),
-        ],
-        gloss: "The blank mileage boxes are not spread evenly: some regions leave the field empty far more often, and the drivers with a blank do not claim at the same rate as the drivers without one. A model that filled the blanks in would be pricing that pattern by accident.".into(),
-    }
+            }],
+            notes: vec![
+                format!(
+                    "Rows without mileage run at {f_mis:.3} claims per car year against {f_obs:.3} for rows with it"
+                ),
+                "Different outcomes by missingness status make a simple imputation unsafe".into(),
+            ],
+            gloss: "Policies with and without mileage are compared on claim frequency alone. Keeping this separate from the regional percentage avoids a mixed-unit chart.".into(),
+        },
+    ]
 }
 
 /// Which rating factor puts a segment above or below the book, measured on
@@ -798,7 +822,8 @@ mod tests {
         // equal exposure means every bucket lands near one tenth of the book
         let target = total / 10.0;
         assert!(
-            b.iter().all(|x| (x.exposure - target).abs() < target * 0.05),
+            b.iter()
+                .all(|x| (x.exposure - target).abs() < target * 0.05),
             "buckets: {:?}",
             b.iter().map(|x| x.exposure).collect::<Vec<_>>()
         );
@@ -888,16 +913,14 @@ mod tests {
     fn missingness_reads_both_halves() {
         let r = rows(400);
         let refs: Vec<&PolicyRow> = r.iter().collect();
-        let c = missingness_chart(&refs);
-        assert_eq!(c.series[0].points.len(), 5);
-        assert_eq!(c.series[1].points.len(), 2);
-        // disjoint bands: no frequency ever renders under a region caption
-        let region_max = c.series[0]
-            .points
-            .iter()
-            .map(|p| p.x)
-            .fold(f64::MIN, f64::max);
-        assert!(c.series[1].points.iter().all(|p| p.x > region_max));
+        let charts = missingness_charts(&refs);
+        assert_eq!(charts.len(), 2);
+        assert_eq!(charts[0].kind, "missingness");
+        assert_eq!(charts[0].series[0].points.len(), 5);
+        assert_eq!(charts[0].y_label, "Policies missing mileage, percent");
+        assert_eq!(charts[1].kind, "missing_frequency");
+        assert_eq!(charts[1].series[0].points.len(), 2);
+        assert_eq!(charts[1].y_label, "Claims per car year");
     }
 
     #[test]
@@ -908,7 +931,7 @@ mod tests {
             age_curve_chart(&[0.4, -0.2, 0.1, 0.05], &[0.5, 0.2, 0.1, 0.3]),
             accidents_chart(&refs, 0.18),
             territory_chart(&[1.0, 1.1], &[1.05, 1.0]),
-            missingness_chart(&refs),
+            missingness_charts(&refs).remove(0),
         ];
         for c in charts {
             let mut text = format!("{} {} {} {}", c.title, c.x_label, c.y_label, c.gloss);

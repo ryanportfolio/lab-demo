@@ -9,9 +9,24 @@
 // exact stored value back, a click opens the chart full screen, and the
 // legend turns series on and off so one curve can be read alone.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { EvidenceChart, EvidenceSeries } from './api';
+import {
+  buildAgentQuestion,
+  contractFor,
+  displayChart,
+  isSecondarySeries,
+  makeSavedEvidence,
+  normalizeSelection,
+  selectionLabel,
+  selectionValues,
+  weakPoint,
+  type ChartContract,
+  type ChartMode,
+  type ChartSelection,
+  type ChartWorkspaceContext,
+} from './chartWorkspace';
 
 // A narrower viewBox for the same rendered width means the labels inside it
 // come out larger on screen
@@ -37,8 +52,7 @@ const RELATIVITY = new Set(['age_curve', 'segment_effects', 'territory']);
  * second axis behind everything else. Exposure is the weight under a curve,
  * never a rate, and plotting it on the rate axis would flatten the rates.
  */
-const isSecondary = (label: string) =>
-  label === 'Earned exposure' || label.startsWith('Share of exposure');
+const isSecondary = (label: string) => isSecondarySeries(label);
 
 function niceTicks(lo: number, hi: number, count = 4): number[] {
   if (!isFinite(lo) || !isFinite(hi) || lo === hi) return [lo];
@@ -110,16 +124,21 @@ function seriesColor(
 
 function Plot({
   chart,
+  contract,
+  mode,
+  selection,
+  onSelectionChange,
   hidden,
   big,
-  onExpand,
   autoFocus,
 }: {
   chart: EvidenceChart;
+  contract: ChartContract;
+  mode: ChartMode;
+  selection: ChartSelection | null;
+  onSelectionChange: (selection: ChartSelection | null) => void;
   hidden: Set<string>;
   big: boolean;
-  /** present on the card view only: click or Enter opens the full screen */
-  onExpand?: () => void;
   autoFocus?: boolean;
 }) {
   const G = big ? FULL : CARD;
@@ -127,6 +146,7 @@ function Plot({
   const W = G.W;
 
   const svgRef = useRef<SVGSVGElement>(null);
+  const dragRef = useRef<{ index: number; clientX: number } | null>(null);
   const [hover, setHover] = useState<number | null>(null);
 
   useEffect(() => {
@@ -164,6 +184,13 @@ function Plot({
   const values = primary.flatMap((s) => s.points.map((p) => p.y));
   if (rel) values.push(1);
   else values.push(0);
+  const activeGuardrail =
+    contract.guardrail &&
+    (contract.guardrail.applies === 'both' || contract.guardrail.applies === mode)
+      ? contract.guardrail
+      : undefined;
+  if (activeGuardrail?.low != null) values.push(activeGuardrail.low);
+  if (activeGuardrail?.high != null) values.push(activeGuardrail.high);
   let yLo = Math.min(...values);
   let yHi = Math.max(...values);
   const padY = (yHi - yLo) * 0.12 || Math.abs(yHi) * 0.12 || 1;
@@ -175,9 +202,9 @@ function Plot({
   // the frame grows instead of the labels running off the bottom
   const longLabels =
     categorical &&
-    xTicksNeedRotation(
+    (xTicksNeedRotation(
       primaryAll.flatMap((s) => s.points.map((p) => p.label ?? '')),
-    );
+    ) || new Set(allXAll).size > 8);
   const padB = longLabels ? G.padBL : PAD.b;
   const H = longLabels ? G.HL : G.H;
 
@@ -250,11 +277,11 @@ function Plot({
   const at = (s: EvidenceSeries, x: number) =>
     s.points.find((p) => Math.abs(p.x - x) < 1e-9);
 
-  const moveTo = (clientX: number) => {
+  const nearestIndex = (clientX: number) => {
     const el = svgRef.current;
-    if (!el || xs.length === 0) return;
+    if (!el || xs.length === 0) return null;
     const r = el.getBoundingClientRect();
-    if (r.width === 0) return;
+    if (r.width === 0) return null;
     const vx = ((clientX - r.left) / r.width) * W;
     let best = 0;
     let bd = Infinity;
@@ -265,7 +292,16 @@ function Plot({
         best = i;
       }
     });
+    return best;
+  };
+
+  const moveTo = (clientX: number) => {
+    const best = nearestIndex(clientX);
+    if (best == null) return;
     setHover(best);
+    if (dragRef.current && contract.range) {
+      onSelectionChange({ start: xs[dragRef.current.index], end: xs[best] });
+    }
   };
 
   const hx = hover != null && hover < xs.length ? xs[hover] : null;
@@ -292,13 +328,16 @@ function Plot({
         ? (catTicks.find((t) => Math.abs(t.x - hx) < 1e-9)?.label ?? String(hx))
         : `${chart.xLabel} ${fmtTick(hx, xMax - xMin || 1)}`;
 
-  // The tooltip is sized from its own mono text, then kept inside the frame
+  // The tooltip uses a 15px monospace face. Budget the label and value as
+  // separate columns; the previous 6.9px/character estimate was too narrow
+  // and let long labels such as "Earned exposure" collide with their values.
+  const tipCharW = 8.4;
   const tipW = Math.min(
     Math.max(
-      headLabel.length * 7,
-      ...rows.map((r) => (r.label.length + r.v.length) * 6.9 + 26),
-      96,
-    ) + 18,
+      headLabel.length * tipCharW + 18,
+      ...rows.map((r) => (r.label.length + r.v.length) * tipCharW + 50),
+      116,
+    ),
     plotW - 12,
   );
   const tipH = 24 + rows.length * 17;
@@ -310,50 +349,133 @@ function Plot({
     cx < PAD.l + plotW / 2 ? W - PAD.r - tipW - 6 : PAD.l + 6,
   );
   const tipY = PAD.t + 6;
+  const selected = selection ? normalizeSelection(selection) : null;
+  const selectionX = selected
+    ? {
+        start: sx(selected.start),
+        end: sx(selected.end),
+      }
+    : null;
 
   return (
     <svg
       ref={svgRef}
       viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label={`${chart.title}. ${chart.notes.join('. ')}`}
+      aria-label={`${chart.title}. ${contract.question} ${chart.notes.join('. ')}`}
       preserveAspectRatio="xMidYMid meet"
       tabIndex={0}
-      data-expandable={onExpand ? '1' : undefined}
-      onMouseMove={(e) => moveTo(e.clientX)}
-      onMouseLeave={() => setHover(null)}
-      onClick={onExpand}
+      onPointerDown={(event) => {
+        // A chart drag is an application gesture, not a browser text-selection gesture.
+        // Preventing the native default here stops SVG ticks/axis labels from becoming
+        // blue-selected when the pointer crosses them.
+        event.preventDefault();
+        const index = nearestIndex(event.clientX);
+        if (index == null) return;
+        svgRef.current?.focus();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        dragRef.current = { index, clientX: event.clientX };
+        setHover(index);
+      }}
+      onPointerMove={(event) => {
+        if (dragRef.current) event.preventDefault();
+        moveTo(event.clientX);
+      }}
+      onPointerUp={(event) => {
+        event.preventDefault();
+        const drag = dragRef.current;
+        const index = nearestIndex(event.clientX);
+        if (drag && index != null) {
+          const moved = Math.abs(event.clientX - drag.clientX) > 6;
+          onSelectionChange(
+            contract.range && moved
+              ? { start: xs[drag.index], end: xs[index] }
+              : { start: xs[index], end: xs[index] },
+          );
+        }
+        dragRef.current = null;
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      }}
+      onPointerCancel={() => {
+        dragRef.current = null;
+      }}
+      onDragStart={(event) => event.preventDefault()}
+      onPointerLeave={() => {
+        if (!dragRef.current) setHover(null);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
           e.preventDefault();
           const step = e.key === 'ArrowRight' ? 1 : -1;
-          setHover((h) =>
-            h == null
+          const next =
+            hover == null
               ? step > 0
                 ? 0
                 : xs.length - 1
-              : Math.min(xs.length - 1, Math.max(0, h + step)),
-          );
-        } else if (e.key === 'Enter' && onExpand) {
-          onExpand();
-        } else if (e.key === 'Escape' && hover != null) {
-          // card view only: Escape clears the readout before it can reach
-          // the palette underneath. In the full view the modal's capture
-          // listener takes Escape first, so this branch never runs there
+              : Math.min(xs.length - 1, Math.max(0, hover + step));
+          setHover(next);
+          if (e.shiftKey && contract.range) {
+            const anchor = selection?.start ?? xs[hover ?? next];
+            onSelectionChange({ start: anchor, end: xs[next] });
+          }
+        } else if (e.key === 'Enter' && hover != null) {
+          e.preventDefault();
+          onSelectionChange({ start: xs[hover], end: xs[hover] });
+        } else if (e.key === 'Escape' && (selection || hover != null)) {
           e.stopPropagation();
+          onSelectionChange(null);
           setHover(null);
         }
       }}
     >
       <title>{chart.title}</title>
-      {yTicks.map((t) => (
-        <g key={`y${t}`}>
-          <line className="grid" x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} />
-          <text className="tick" x={PAD.l - 8} y={sy(t) + 4} textAnchor="end">
-            {yTickLabels[yTicks.indexOf(t)]}
-          </text>
-        </g>
-      ))}
+      <g className="chart-layer chart-layer-axes">
+        {yTicks.map((t) => (
+          <g key={`y${t}`}>
+            <line className="grid" x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} />
+            <text className="tick" x={PAD.l - 8} y={sy(t) + 4} textAnchor="end">
+              {yTickLabels[yTicks.indexOf(t)]}
+            </text>
+          </g>
+        ))}
+      </g>
+
+      <g className="chart-layer chart-layer-annotations">
+        {activeGuardrail &&
+          [activeGuardrail.low, activeGuardrail.high]
+            .filter((value): value is number => value != null)
+            .map((value) => (
+              <g className="guardrail" key={`guardrail-${value}`}>
+                <line
+                  className="guardrail-line"
+                  x1={PAD.l}
+                  x2={W - PAD.r}
+                  y1={sy(value)}
+                  y2={sy(value)}
+                />
+                <text className="guardrail-label" x={W - PAD.r - 3} y={sy(value) - 5} textAnchor="end">
+                  {value > 0 ? `+${value}` : value}{mode === 'change' ? '%' : ''}
+                </text>
+              </g>
+            ))}
+
+        {selectionX && (
+          <rect
+            className="selection-band"
+            x={Math.min(selectionX.start, selectionX.end) - (categorical ? band / 2 : 4)}
+            y={PAD.t}
+            width={
+              Math.max(
+                Math.abs(selectionX.end - selectionX.start) + (categorical ? band : 8),
+                8,
+              )
+            }
+            height={plotH}
+          />
+        )}
+      </g>
 
       {hx != null && categorical && (
         <rect
@@ -365,8 +487,9 @@ function Plot({
         />
       )}
 
-      {secondary && (
-        <g className="exposure">
+      <g className="exposure chart-layer chart-layer-exposure">
+        {secondary && (
+          <>
           {secondary.points.map((p, i) => (
             <rect
               key={`e${i}`}
@@ -376,19 +499,23 @@ function Plot({
               height={Math.max(PAD.t + plotH - secY(p.y), 0)}
             />
           ))}
-        </g>
-      )}
+          </>
+        )}
+      </g>
 
       {/* the line every relativity chart is read against */}
-      <line
-        className="zero"
-        x1={PAD.l}
-        x2={W - PAD.r}
-        y1={sy(rel ? 1 : 0)}
-        y2={sy(rel ? 1 : 0)}
-      />
+      <g className="chart-layer chart-layer-axes">
+        <line
+          className="zero"
+          x1={PAD.l}
+          x2={W - PAD.r}
+          y1={sy(rel ? 1 : 0)}
+          y2={sy(rel ? 1 : 0)}
+        />
+      </g>
 
-      {primary.map((s) => {
+      <g className="chart-layer chart-layer-evidence">
+        {primary.map((s) => {
         const c = color(s);
         if (s.style === 'bar') {
           return (
@@ -406,9 +533,14 @@ function Plot({
                 // baseline: measured and near zero, not missing
                 const nub =
                   chart.kind === 'segment_effects' && Math.abs(base - top) < 2.5;
+                const breached =
+                  !!activeGuardrail &&
+                  ((activeGuardrail.low != null && p.y < activeGuardrail.low) ||
+                    (activeGuardrail.high != null && p.y > activeGuardrail.high));
                 return (
                   <g key={i}>
                     <rect
+                      className={breached ? 'guardrail-breach' : undefined}
                       x={sx(p.x) + off}
                       y={nub ? base - 1.25 : Math.min(top, base)}
                       width={barW}
@@ -467,7 +599,8 @@ function Plot({
             strokeDasharray={s.style === 'step' ? '4 3' : undefined}
           />
         );
-      })}
+        })}
+      </g>
 
       {hx != null && (
         <g className="hoverlayer">
@@ -501,7 +634,7 @@ function Plot({
               // series sharing an ink still read apart
               const cy = tipY + 27.5 + i * 17;
               return (
-                <g key={r.label}>
+                <g className="tiprow" key={r.label}>
                   {r.style === 'dot' ? (
                     <circle cx={tipX + 12.5} cy={cy} r={3.2} style={{ fill: r.col }} />
                   ) : r.style === 'bar' ? (
@@ -522,10 +655,10 @@ function Plot({
                       style={{ fill: r.col }}
                     />
                   )}
-                  <text x={tipX + 23} y={cy + 3.5}>
+                  <text className="tiplabel" x={tipX + 23} y={cy + 3.5}>
                     {r.label}
                   </text>
-                  <text x={tipX + tipW - 9} y={cy + 3.5} textAnchor="end">
+                  <text className="tipvalue" x={tipX + tipW - 9} y={cy + 3.5} textAnchor="end">
                     {r.v}
                   </text>
                 </g>
@@ -535,36 +668,38 @@ function Plot({
         </g>
       )}
 
-      {xTicks.map((t, i) => (
+      <g className="chart-layer chart-layer-axes">
+        {xTicks.map((t, i) => (
+          <text
+            key={`x${i}`}
+            className="tick"
+            x={longLabels ? 0 : sx(t.x)}
+            y={longLabels ? 0 : H - padB + 20}
+            transform={
+              longLabels
+                ? `translate(${sx(t.x)} ${H - padB + 20}) rotate(-38)`
+                : undefined
+            }
+            textAnchor={longLabels ? 'end' : 'middle'}
+          >
+            {t.label}
+          </text>
+        ))}
+        {!longLabels && (
+          <text className="axis" x={PAD.l} y={H - 6}>
+            {chart.xLabel}
+          </text>
+        )}
         <text
-          key={`x${i}`}
-          className="tick"
-          x={longLabels ? 0 : sx(t.x)}
-          y={longLabels ? 0 : H - padB + 20}
-          transform={
-            longLabels
-              ? `translate(${sx(t.x)} ${H - padB + 20}) rotate(-38)`
-              : undefined
-          }
-          textAnchor={longLabels ? 'end' : 'middle'}
+          className="axis"
+          x={0}
+          y={0}
+          transform={`translate(13 ${PAD.t + plotH / 2}) rotate(-90)`}
+          textAnchor="middle"
         >
-          {t.label}
+          {chart.yLabel}
         </text>
-      ))}
-      {!longLabels && (
-        <text className="axis" x={PAD.l} y={H - 6}>
-          {chart.xLabel}
-        </text>
-      )}
-      <text
-        className="axis"
-        x={0}
-        y={0}
-        transform={`translate(13 ${PAD.t + plotH / 2}) rotate(-90)`}
-        textAnchor="middle"
-      >
-        {chart.yLabel}
-      </text>
+      </g>
     </svg>
   );
 }
@@ -572,16 +707,47 @@ function Plot({
 export default function Chart({
   chart,
   plain,
+  selection: controlledSelection,
+  mode: controlledMode,
+  onSelectionChange,
+  onModeChange,
+  context,
 }: {
   chart: EvidenceChart;
   plain: boolean;
+  selection?: ChartSelection | null;
+  mode?: ChartMode;
+  onSelectionChange?: (selection: ChartSelection | null) => void;
+  onModeChange?: (mode: ChartMode) => void;
+  context?: ChartWorkspaceContext;
 }) {
+  const contract = useMemo(() => contractFor(chart), [chart]);
+  const [localSelection, setLocalSelection] = useState<ChartSelection | null>(null);
+  const [localMode, setLocalMode] = useState<ChartMode>('level');
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [expanded, setExpanded] = useState(false);
+  const [actionStatus, setActionStatus] = useState('');
   // the wide frame follows the viewport while the full view is open, so a
   // window dragged narrow reflows instead of keeping unreadable text
   const [wide, setWide] = useState(true);
-  const primaryAll = chart.series.filter((s) => !isSecondary(s.label));
+  const selection = controlledSelection === undefined ? localSelection : controlledSelection;
+  const mode = controlledMode ?? localMode;
+  const shown = useMemo(() => displayChart(chart, contract, mode), [chart, contract, mode]);
+  const primaryAll = shown.series.filter((s) => !isSecondary(s.label));
+  const setSelection = (next: ChartSelection | null) => {
+    setActionStatus('');
+    if (onSelectionChange) onSelectionChange(next);
+    else setLocalSelection(next);
+  };
+  const setMode = (next: ChartMode) => {
+    setActionStatus('');
+    if (onModeChange) onModeChange(next);
+    else setLocalMode(next);
+  };
+  const selectedValues = selection ? selectionValues(shown, selection) : [];
+  const weakness = weakPoint(chart, contract);
+
+  useEffect(() => setHidden(new Set()), [mode, chart.kind]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -642,14 +808,14 @@ export default function Chart({
   const visPrim = primaryAll.filter((s) => !hidden.has(s.label)).length;
   const legend = (
     <div className="legend">
-      {chart.series.map((s) => (
+      {shown.series.map((s) => (
         <button
           key={s.label}
           type="button"
           className={hidden.has(s.label) ? 'off' : undefined}
           aria-pressed={!hidden.has(s.label)}
           disabled={
-            chart.series.length < 2 ||
+            shown.series.length < 2 ||
             // the last visible result series cannot be turned off, and the
             // button says so instead of silently ignoring the click
             (visPrim <= 1 &&
@@ -660,7 +826,7 @@ export default function Chart({
         >
           <i
             data-style={s.style}
-            style={{ background: seriesColor(chart, s, primaryAll) }}
+            style={{ background: seriesColor(shown, s, primaryAll) }}
           />
           {s.label}
         </button>
@@ -676,10 +842,49 @@ export default function Chart({
     </ul>
   );
 
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      setActionStatus('Evidence link copied');
+    } catch {
+      const input = document.createElement('input');
+      input.value = location.href;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      input.remove();
+      setActionStatus('Evidence link copied');
+    }
+  }
+
   return (
-    <figure className="chart" data-kind={chart.kind}>
-      <figcaption>{chart.title}</figcaption>
-      <Plot chart={chart} hidden={hidden} big={false} onExpand={() => setExpanded(true)} />
+    <figure className="chart chart-workspace" data-kind={chart.kind} data-mode={mode}>
+      <div className="chart-title-row">
+        <div>
+          <span className="chart-question">{contract.question}</span>
+          <figcaption>{chart.title}</figcaption>
+        </div>
+        {contract.comparison && (
+          <div className="chart-mode" aria-label="Chart comparison">
+            <button type="button" aria-pressed={mode === 'level'} onClick={() => setMode('level')}>
+              Level
+            </button>
+            <button type="button" aria-pressed={mode === 'change'} onClick={() => setMode('change')}>
+              Change
+            </button>
+          </div>
+        )}
+      </div>
+      <span className="chart-y-readout">{shown.yLabel}</span>
+      <Plot
+        chart={shown}
+        contract={contract}
+        mode={mode}
+        selection={selection}
+        onSelectionChange={setSelection}
+        hidden={hidden}
+        big={false}
+      />
       <button
         type="button"
         className="expand"
@@ -691,15 +896,68 @@ export default function Chart({
         </svg>
       </button>
       {legend}
-      {notes}
+      <aside className="chart-diagnostics" aria-label="Chart diagnostics and actions">
+        <div className="chart-weakness"><b>Weakest</b>{weakness}</div>
+        <div className="chart-source">
+          {context
+            ? `${context.code} · run ${context.runId} · ${context.target} / ${context.denominator}`
+            : `${chart.xLabel} / ${shown.yLabel}`}
+        </div>
+        <div className="chart-selection-slot">
+          {selection ? (
+            <div className="chart-selection" aria-live="polite">
+            <div className="selection-readout">
+              <span className="selection-label">{selectionLabel(chart, selection)}</span>
+              <div className="selection-values">
+                {selectedValues.map((value) => <span key={value}>{value}</span>)}
+              </div>
+            </div>
+            <div className="chart-actions">
+              {context && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => context.onAsk(buildAgentQuestion(chart, context, selection, mode))}
+                  >
+                    Ask about selection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      context.onSave(makeSavedEvidence(chart, context, selection, mode));
+                      setActionStatus('Saved to human review');
+                    }}
+                  >
+                    Save to review
+                  </button>
+                  <button type="button" onClick={copyLink}>Copy evidence link</button>
+                </>
+              )}
+              <button type="button" onClick={() => setSelection(null)}>Clear</button>
+            </div>
+            <span className="chart-action-status" role="status">{actionStatus}</span>
+            </div>
+          ) : (
+            <div className="chart-selection-empty">
+              Hover previews · click or Enter pins
+              {contract.range ? ' · drag or Shift plus arrow selects a range' : ''}
+            </div>
+          )}
+        </div>
+        <details className="chart-notes">
+          <summary>Method notes</summary>
+          {notes}
+        </details>
+      </aside>
       {plain && <div className="gloss">{chart.gloss}</div>}
 
       {expanded &&
         createPortal(
           <div className="chart-scrim" onMouseDown={() => setExpanded(false)}>
             <figure
-              className="chart chart-full"
+              className="chart chart-workspace chart-full"
               data-kind={chart.kind}
+              data-mode={mode}
               role="dialog"
               aria-modal="true"
               aria-label={chart.title}
@@ -715,13 +973,22 @@ export default function Chart({
               </button>
               {/* a phone squeezes the wide frame into unreadable text, so the
                   full view keeps the card geometry there */}
-              <Plot chart={chart} hidden={hidden} big={wide} autoFocus />
+              <Plot
+                chart={shown}
+                contract={contract}
+                mode={mode}
+                selection={selection}
+                onSelectionChange={setSelection}
+                hidden={hidden}
+                big={wide}
+                autoFocus
+              />
               {legend}
               {notes}
               {plain && <div className="gloss">{chart.gloss}</div>}
               <span className="chart-hint">
-                Hover any point for its number · arrow keys walk the axis · the
-                legend turns a series off · Esc closes
+                Hover previews · Enter pins · arrow keys walk the axis
+                {contract.range ? ' · Shift plus arrow selects a range' : ''} · Esc closes
               </span>
             </figure>
           </div>,

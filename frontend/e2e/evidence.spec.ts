@@ -12,47 +12,48 @@ async function ready(page: Page) {
   await page.evaluate(() => (window as any).__capture.freeze());
 }
 
-test('evidence opens on every landed card', async ({ page }) => {
+test('every ledger entry resolves to its retained evidence', async ({ page }) => {
   await page.goto('/?theme=light');
   await ready(page);
 
-  const cards = page.locator('.exp');
-  const count = await cards.count();
+  const rows = page.locator('.ledger-row');
+  const count = await rows.count();
   expect(count).toBe(7);
 
   for (let i = 0; i < count; i++) {
-    const card = cards.nth(i);
-    const code = (await card.locator('.id').innerText()).trim();
-    await card.locator('.open-ev').click();
+    const row = rows.nth(i);
+    const code = (await row.locator('.ledger-code').innerText()).trim();
+    await row.click();
     // every experiment owes the reader an artifact, fitted or refused
-    await expect(card.locator('.evidence')).toBeVisible({ timeout: 20_000 });
-    await expect(card.locator('.chart svg').first()).toBeVisible({
+    await expect(page.locator('.selected-evidence .evidence-head')).toContainText(code, {
       timeout: 20_000,
     });
-    const charts = await card.locator('.chart').count();
-    expect(charts, `${code} should draw at least one chart`).toBeGreaterThan(0);
-    if (i > 0) await card.locator('.open-ev').click();
+    await expect(page.locator('.selected-evidence .chart svg').first()).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(row).toHaveAttribute('aria-pressed', 'true');
   }
 });
 
 test('winner evidence, light and dark', async ({ page }) => {
   await page.goto('/?theme=light&plain=1');
   await ready(page);
-  const winner = page.locator('.exp.win');
-  await winner.locator('.open-ev').click();
-  await expect(winner.locator('.chart svg').first()).toBeVisible({
+  const winner = page.locator('.ledger-row', { hasText: 'EXP-07' });
+  await winner.click();
+  const evidence = page.locator('.selected-evidence .evidence');
+  await expect(evidence.locator('.chart svg').first()).toBeVisible({
     timeout: 20_000,
   });
-  // the winner carries its archetype charts plus lift and folds
-  await expect(winner.locator('.chart')).toHaveCount(4, { timeout: 20_000 });
-  await expect(winner.locator('.facts')).toContainText('training rows');
+  // one chart tells the story at a time; four linked artifacts remain available
+  await expect(evidence.locator('.chart')).toHaveCount(1, { timeout: 20_000 });
+  await expect(evidence.locator('.evidence-tabs button')).toHaveCount(4);
+  await expect(evidence.locator('.facts')).toContainText('rows');
   await page.screenshot({ path: `${OUT}/evidence-winner-light.png`, fullPage: true });
 
   await page.goto('/?theme=dark');
   await ready(page);
-  const w2 = page.locator('.exp.win');
-  await w2.locator('.open-ev').click();
-  await expect(w2.locator('.chart svg').first()).toBeVisible({ timeout: 20_000 });
+  await page.locator('.ledger-row', { hasText: 'EXP-07' }).click();
+  await expect(page.locator('.selected-evidence .chart svg').first()).toBeVisible({ timeout: 20_000 });
   await page.screenshot({ path: `${OUT}/evidence-winner-dark.png`, fullPage: true });
 });
 
@@ -97,9 +98,10 @@ test('the context expert answers from artifacts and cites them', async ({
   // a citation takes the reader to the card it was read from
   await page.locator('.cites button').first().click();
   await expect(page.locator('.ask')).toBeHidden();
-  await expect(page.locator('.exp.open .evidence')).toBeVisible({
+  await expect(page.locator('.selected-evidence .evidence')).toBeVisible({
     timeout: 20_000,
   });
+  await expect(page.locator('.ledger-row[aria-pressed="true"]')).toBeVisible();
 });
 
 test('the context expert misses honestly', async ({ page }) => {
@@ -107,7 +109,7 @@ test('the context expert misses honestly', async ({ page }) => {
   await ready(page);
   await page.keyboard.press('Control+k');
   await expect(page.locator('.ask')).toBeVisible();
-  await page.locator('.ask-compose input').fill('what is the weather in texas');
+  await page.locator('.ask-compose textarea').fill('what is the weather in texas');
   await page.locator('.ask-send').click();
   await expect(page.locator('.ask-row.ai .bubble')).toContainText(
     'No artifact in this run matches that question',

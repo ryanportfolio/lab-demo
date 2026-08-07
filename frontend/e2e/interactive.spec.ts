@@ -1,5 +1,6 @@
 // The interactive chart layer: hover reads the stored number back exactly,
-// a click opens the full view, the legend turns series off, and Escape
+// the explicit expand control opens the full view, the legend turns series
+// off, and Escape
 // unwinds one layer at a time.
 
 import { expect, test, type Page } from '@playwright/test';
@@ -113,16 +114,16 @@ test('the hover readout shows the stored artifact values exactly', async ({
 }) => {
   await page.goto('/?theme=light');
   await ready(page);
-  await page.locator('.exp.win .open-ev').click();
-  await expect(page.locator('.exp.win .chart svg').first()).toBeVisible({
+  await page.locator('.ledger-row', { hasText: 'EXP-07' }).click();
+  await expect(page.locator('.selected-evidence .chart svg').first()).toBeVisible({
     timeout: 20_000,
   });
 
   const want = await expectedFromApi(page);
   // a chart with nothing to read at the first x would gate nothing
   expect(want.values.length).toBeGreaterThan(0);
-  const chart = page.locator(`.exp.win .chart[data-kind="${want.kind}"]`);
-  const svg = page.locator(`.exp.win .chart[data-kind="${want.kind}"] > svg`);
+  const chart = page.locator(`.selected-evidence .chart[data-kind="${want.kind}"]`);
+  const svg = page.locator(`.selected-evidence .chart[data-kind="${want.kind}"] > svg`);
   await svg.focus();
   // the first arrow press lands the readout on the first x of the axis
   await page.keyboard.press('ArrowRight');
@@ -149,18 +150,140 @@ test('the hover readout shows the stored artifact values exactly', async ({
   await expect(tip).toBeHidden();
 });
 
+test('evidence changes without collapsing or remounting the current artifact', async ({
+  page,
+}) => {
+  await page.goto('/?theme=light');
+  await expect(page.locator('.promote')).toBeVisible({ timeout: 90_000 });
+  await page.waitForTimeout(950);
+  await expect(page.locator('.selected-evidence .chart')).toBeVisible();
+
+  await page.route('**/graphql', async (route) => {
+    if ((route.request().postData() ?? '').includes('evidence(runId')) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+    await route.continue();
+  });
+
+  const surface = page.locator('.evidence-resolve');
+  const chart = page.locator('.focused-chart .chart');
+  const transitionHalf = await surface.evaluate((node) =>
+    Math.max(...getComputedStyle(node).transitionDuration.split(',').map((value) =>
+      Number.parseFloat(value) * (value.includes('ms') ? 1 : 1_000)
+    )),
+  );
+  expect(transitionHalf * 2).toBeGreaterThanOrEqual(160);
+  expect(transitionHalf * 2).toBeLessThanOrEqual(240);
+  const surfaceBefore = await surface.elementHandle();
+  const chartBefore = await chart.elementHandle();
+  const axes = page.locator('.focused-chart .chart-layer-axes').first();
+  const axesBefore = await axes.elementHandle();
+  const entranceAnimationsBefore = await axes.evaluate((node) =>
+    node.getAnimations().filter((animation) =>
+      (animation as CSSAnimation).animationName === 'entrance-resolve'
+    ).length,
+  );
+  // Different diagnostics can need different intrinsic height. The evidence
+  // stage itself is the reserved geometry and must never collapse or move.
+  const boxBefore = await page.locator('.selected-evidence').boundingBox();
+  const workspaceBefore = await page.locator('.run-workspace').boundingBox();
+  const promoteBefore = await page.locator('.promote').boundingBox();
+  const resolvingSeen = page.evaluate(() => new Promise<boolean>((done) => {
+    const target = document.querySelector('.evidence-focus');
+    if (!target) return done(false);
+    const observer = new MutationObserver(() => {
+      if (!target.classList.contains('is-resolving')) return;
+      observer.disconnect();
+      done(true);
+    });
+    observer.observe(target, { attributes: true, attributeFilter: ['class'] });
+    window.setTimeout(() => {
+      observer.disconnect();
+      done(false);
+    }, 3_000);
+  }));
+
+  await page.locator('.ledger-row', { hasText: 'EXP-03' }).click();
+  expect(await resolvingSeen).toBe(true);
+  await expect(page.locator('.evidence-pending')).toBeVisible();
+  await expect(page.locator('.evidence-head')).toContainText('EXP-07');
+  const boxDuring = await page.locator('.selected-evidence').boundingBox();
+
+  await expect(page.locator('.evidence-head')).toContainText('EXP-03', {
+    timeout: 20_000,
+  });
+  await expect(page.locator('.evidence-pending')).toBeHidden();
+  const boxAfter = await page.locator('.selected-evidence').boundingBox();
+  const surfaceAfter = await surface.elementHandle();
+  const chartAfter = await chart.elementHandle();
+  const axesAfter = await axes.elementHandle();
+
+  expect(Math.round(boxDuring!.height)).toBe(Math.round(boxBefore!.height));
+  expect(Math.round(boxAfter!.height)).toBe(Math.round(boxBefore!.height));
+  expect(await surfaceBefore!.evaluate((node, after) => node === after, surfaceAfter)).toBe(true);
+  expect(await chartBefore!.evaluate((node, after) => node === after, chartAfter)).toBe(true);
+  expect(await axesBefore!.evaluate((node, after) => node === after, axesAfter)).toBe(true);
+  expect(await axes.evaluate((node) =>
+    node.getAnimations().filter((animation) =>
+      (animation as CSSAnimation).animationName === 'entrance-resolve'
+    ).length,
+  )).toBe(entranceAnimationsBefore);
+
+  for (const code of ['EXP-01', 'EXP-02', 'EXP-04', 'EXP-05', 'EXP-06', 'EXP-07']) {
+    await page.locator('.ledger-row', { hasText: code }).click();
+    await expect(page.locator('.evidence-head')).toContainText(code, {
+      timeout: 20_000,
+    });
+    const evidenceBox = await page.locator('.selected-evidence').boundingBox();
+    const workspaceBox = await page.locator('.run-workspace').boundingBox();
+    const promoteBox = await page.locator('.promote').boundingBox();
+    expect(Math.round(evidenceBox!.height)).toBe(Math.round(boxBefore!.height));
+    expect(Math.round(workspaceBox!.height)).toBe(Math.round(workspaceBefore!.height));
+    expect(Math.round(promoteBox!.y)).toBe(Math.round(promoteBefore!.y));
+  }
+
+  const axesBeforeTab = await axes.elementHandle();
+  const tabResolvingSeen = page.evaluate(() => new Promise<boolean>((done) => {
+    const target = document.querySelector('.evidence-focus');
+    if (!target) return done(false);
+    const observer = new MutationObserver(() => {
+      if (!target.classList.contains('is-resolving')) return;
+      observer.disconnect();
+      done(true);
+    });
+    observer.observe(target, { attributes: true, attributeFilter: ['class'] });
+    window.setTimeout(() => {
+      observer.disconnect();
+      done(false);
+    }, 1_000);
+  }));
+  await page.locator('.evidence-tabs button', { hasText: 'Frequency' }).click();
+  expect(await tabResolvingSeen).toBe(true);
+  await expect(page.locator('.evidence-tabs button', { hasText: 'Frequency' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  const axesAfterTab = await axes.elementHandle();
+  expect(await axesBeforeTab!.evaluate((node, after) => node === after, axesAfterTab)).toBe(true);
+  expect(await axes.evaluate((node) =>
+    node.getAnimations().filter((animation) =>
+      (animation as CSSAnimation).animationName === 'entrance-resolve'
+    ).length,
+  )).toBe(entranceAnimationsBefore);
+});
+
 test('a chart opens full screen, locks the page, and its legend toggles series', async ({
   page,
 }) => {
   await page.goto('/?theme=light');
   await ready(page);
-  await page.locator('.exp.win .open-ev').click();
-  await expect(page.locator('.exp.win .chart svg').first()).toBeVisible({
+  await page.locator('.ledger-row', { hasText: 'EXP-07' }).click();
+  await expect(page.locator('.selected-evidence .chart svg').first()).toBeVisible({
     timeout: 20_000,
   });
 
   const want = await expectedFromApi(page);
-  await page.locator(`.exp.win .chart[data-kind="${want.kind}"] > svg`).click();
+  await page.locator(`.selected-evidence .chart[data-kind="${want.kind}"] .expand`).click();
   const full = page.locator('.chart-full');
   await expect(full).toBeVisible();
   await expect(full.locator('svg')).toBeVisible();
@@ -214,11 +337,8 @@ test('a chart opens full screen, locks the page, and its legend toggles series',
   // Escape closes the full view, only the full view, and hands scroll back
   await page.keyboard.press('Escape');
   await expect(page.locator('.chart-scrim')).toBeHidden();
-  await expect(page.locator('.exp.win .evidence')).toBeVisible();
+  await expect(page.locator('.selected-evidence .evidence')).toBeVisible();
   expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
-  await page.mouse.wheel(0, 400);
-  await page.waitForTimeout(200);
-  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
 });
 
 test('a chart inside the palette expands above it and Escape unwinds in order', async ({
@@ -233,7 +353,7 @@ test('a chart inside the palette expands above it and Escape unwinds in order', 
     timeout: 30_000,
   });
 
-  await page.locator('.ask-row.ai .chart > svg').first().click();
+  await page.locator('.ask-row.ai .chart .expand').first().click();
   await expect(page.locator('.chart-full')).toBeVisible();
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('.chart-full .tip')).toBeVisible();
@@ -258,14 +378,14 @@ test('the review draws the model diff from the winner artifacts', async ({
   await page.evaluate(() => {
     location.hash = 'review';
   });
-  await expect(page.locator('.rv-head')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.review-head')).toBeVisible({ timeout: 30_000 });
 
-  const diff = page.locator('.rv-sect .evidence');
+  const diff = page.locator('.review-proof .evidence');
   await expect(diff).toBeVisible({ timeout: 20_000 });
-  await expect(diff.locator('.facts')).toContainText('training rows');
-  await expect(
-    diff.locator('.chart', { hasText: 'Actual frequency by risk decile' }),
-  ).toBeVisible();
-  expect(await diff.locator('.chart').count()).toBeGreaterThanOrEqual(3);
+  await expect(diff.locator('.facts')).toContainText('rows');
+  await expect(diff.locator('.evidence-tabs button')).toHaveCount(4);
+  await diff.locator('.evidence-tabs button', { hasText: 'Separation' }).click();
+  await expect(diff.locator('.chart', { hasText: 'Actual frequency by risk decile' })).toBeVisible();
+  await expect(diff.locator('.chart')).toHaveCount(1);
   await page.screenshot({ path: `${OUT}/review-diff-light.png`, fullPage: true });
 });

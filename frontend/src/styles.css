@@ -40,6 +40,7 @@ body {
   transition: background var(--t-normal) var(--ease), color var(--t-normal) var(--ease);
 }
 .no-anim *, .no-anim { transition: none !important; animation: none !important }
+.no-anim .evidence-focus.is-resolving .evidence-resolve { opacity: 1 !important; filter: none !important }
 
 
 
@@ -278,9 +279,14 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border-muted) }
 .ask-bar h2 { flex: 1; font-size: 14px; font-weight: 500; color: var(--fg) }
 .ask-mark { width: 22px; height: 22px; flex: none; border-radius: var(--r-full); background: var(--chipbg); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; color: var(--fg-muted) }
-.ask-compose { display: flex; align-items: center; gap: 8px }
-.ask-compose input { flex: 1; font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg) }
-.ask-compose input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px }
+.ask-compose { display: flex; align-items: flex-end; gap: 8px }
+.ask-compose textarea {
+  flex: 1; min-width: 0; min-height: 40px; max-height: 112px; resize: none;
+  overflow-x: hidden; overflow-wrap: anywhere; white-space: pre-wrap;
+  font: inherit; font-size: 14px; line-height: 1.4; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg);
+}
+.ask-compose textarea:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px }
 .ask-send { font: inherit; font-size: 13px; font-weight: 500; padding: 9px 18px; border: 0; border-radius: var(--r-md); background: var(--primary); color: var(--primary-fg); cursor: pointer }
 .ask-send:disabled { opacity: .45; cursor: default }
 .ask-send:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
@@ -291,7 +297,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-sugg { display: flex; flex-direction: column; gap: 6px; margin-top: 12px }
 .ask-sugg button { font: inherit; font-size: 14.5px; text-align: left; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg); cursor: pointer }
 .ask-sugg button:hover:not(:disabled) { border-color: var(--fg-subtle) }
-.ask-sugg button:disabled, .ask-compose input:disabled { opacity: .5; cursor: default }
+.ask-sugg button:disabled, .ask-compose textarea:disabled { opacity: .5; cursor: default }
 .ask-sugg button:focus-visible, .cites button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
 .ask-back { align-self: flex-start; font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg-muted); cursor: pointer }
 .ask-back:hover { color: var(--fg); border-color: var(--fg-subtle) }
