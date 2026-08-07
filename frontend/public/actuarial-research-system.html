@@ -955,8 +955,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     #ars-poster .ars-top {
       position: relative;
       display: grid;
-      grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.72fr);
-      gap: 3vw;
+      grid-template-columns: minmax(560px, 1.2fr) minmax(300px, 0.7fr) minmax(330px, 0.72fr);
+      gap: clamp(18px, 2vw, 38px);
       align-items: center;
       padding: 18px clamp(22px, 3.4vw, 64px) 16px;
       border-bottom: 1px solid color-mix(in srgb, var(--ars-ink) 15%, transparent);
@@ -1007,12 +1007,13 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
 
     #ars-poster .ars-switch {
+      align-self: center;
       display: inline-flex;
-      width: min(100%, 390px);
+      width: 100%;
       min-height: 44px;
       align-items: center;
       gap: 11px;
-      margin-bottom: 6px;
+      margin-bottom: 0;
       padding: 10px 14px;
       border: 1px solid color-mix(in srgb, var(--ars-mint) 68%, rgb(19 33 29));
       border-radius: 4px;
@@ -1272,6 +1273,10 @@ html&gt;body{padding:0}&lt;/style&gt;
         padding-bottom: 12px;
       }
 
+      #ars-poster .ars-top {
+        grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.72fr);
+      }
+
       #ars-poster .ars-switch {
         min-height: 36px;
         margin-bottom: 0;
@@ -1280,8 +1285,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         box-shadow: 4px 4px 0 color-mix(in srgb, var(--ars-mint) 22%, transparent);
       }
 
-      #ars-poster .ars-thesis &gt; .ars-label,
-      #ars-poster .ars-thesis &gt; p {
+      #ars-poster .ars-thesis {
         display: none;
       }
 
@@ -1302,6 +1306,16 @@ html&gt;body{padding:0}&lt;/style&gt;
 
       #ars-poster .ars-list li + li {
         margin-top: 3px;
+      }
+    }
+
+    @media (max-width: 1500px) {
+      #ars-poster .ars-top {
+        grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.72fr);
+      }
+
+      #ars-poster .ars-thesis {
+        display: none;
       }
     }
 
@@ -1335,8 +1349,8 @@ html&gt;body{padding:0}&lt;/style&gt;
       &lt;div class=&quot;ars-kicker text-small&quot;&gt;Prediction Lab / actuarial UX evidence system&lt;/div&gt;
       &lt;h1 class=&quot;ars-title&quot;&gt;Research &lt;span&gt;→&lt;/span&gt; Synthesis &lt;span&gt;→&lt;/span&gt; Review&lt;/h1&gt;
     &lt;/div&gt;
+    &lt;a class=&quot;ars-switch&quot; href=&quot;/actuarial-ux-chart-loop.html&quot; target=&quot;_top&quot; aria-label=&quot;Explore the actuarial UX chart workspace loop&quot;&gt;&lt;i data-lucide=&quot;workflow&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;Chart workspace loop&lt;/span&gt;&lt;/a&gt;
     &lt;div class=&quot;ars-thesis&quot;&gt;
-      &lt;a class=&quot;ars-switch&quot; href=&quot;/actuarial-ux-chart-loop.html&quot; target=&quot;_top&quot; aria-label=&quot;Explore the actuarial UX chart workspace loop&quot;&gt;&lt;i data-lucide=&quot;workflow&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;Chart workspace loop&lt;/span&gt;&lt;/a&gt;
       &lt;div class=&quot;ars-label text-small&quot;&gt;Why this system exists&lt;/div&gt;
       &lt;p&gt;To learn broadly, structure rigorously, and reach decisions without mistaking repetition or polished consensus for stronger evidence.&lt;/p&gt;
     &lt;/div&gt;

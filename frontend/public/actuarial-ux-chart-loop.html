@@ -956,8 +956,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     #ux-chart-loop .ucl-top {
       position: relative;
       display: grid;
-      grid-template-columns: minmax(0, 1.65fr) minmax(310px, 0.72fr);
-      gap: 3vw;
+      grid-template-columns: minmax(560px, 1.2fr) minmax(300px, 0.7fr) minmax(330px, 0.72fr);
+      gap: clamp(18px, 2vw, 38px);
       align-items: center;
       padding: 18px clamp(22px, 3.4vw, 64px) 16px;
       border-bottom: 1px solid color-mix(in srgb, var(--ucl-ink) 15%, transparent);
@@ -1007,12 +1007,13 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
 
     #ux-chart-loop .ucl-switch {
+      align-self: center;
       display: inline-flex;
-      width: min(100%, 390px);
+      width: 100%;
       min-height: 44px;
       align-items: center;
       gap: 11px;
-      margin-bottom: 6px;
+      margin-bottom: 0;
       padding: 10px 14px;
       border: 1px solid color-mix(in srgb, var(--ucl-mint) 68%, rgb(19 33 29));
       border-radius: 4px;
@@ -1134,6 +1135,17 @@ html&gt;body{padding:0}&lt;/style&gt;
       color: var(--stage-accent);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       overflow-wrap: anywhere;
+    }
+
+    #ux-chart-loop .ucl-skill-name a {
+      color: inherit;
+      font-weight: 700;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    #ux-chart-loop .ucl-skill-name strong {
+      font-weight: 700;
     }
 
     #ux-chart-loop .ucl-stage-sub {
@@ -1302,6 +1314,10 @@ html&gt;body{padding:0}&lt;/style&gt;
         padding-bottom: 9px;
       }
 
+      #ux-chart-loop .ucl-top {
+        grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.72fr);
+      }
+
       #ux-chart-loop .ucl-switch {
         min-height: 36px;
         margin-bottom: 0;
@@ -1310,8 +1326,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         box-shadow: 4px 4px 0 color-mix(in srgb, var(--ucl-mint) 22%, transparent);
       }
 
-      #ux-chart-loop .ucl-thesis &gt; .ucl-label,
-      #ux-chart-loop .ucl-thesis &gt; p {
+      #ux-chart-loop .ucl-thesis {
         display: none;
       }
 
@@ -1346,6 +1361,16 @@ html&gt;body{padding:0}&lt;/style&gt;
       }
     }
 
+    @media (max-width: 1500px) {
+      #ux-chart-loop .ucl-top {
+        grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.72fr);
+      }
+
+      #ux-chart-loop .ucl-thesis {
+        display: none;
+      }
+    }
+
     @media (max-width: 1220px) {
       #ux-chart-loop .ucl-title {
         font-size: calc(var(--font-size-base) * 2.45);
@@ -1374,10 +1399,10 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;header class=&quot;ucl-top&quot;&gt;
     &lt;div&gt;
       &lt;div class=&quot;ucl-kicker text-small&quot;&gt;Prediction Lab / evidence-driven design loop&lt;/div&gt;
-      &lt;h1 class=&quot;ucl-title&quot;&gt;Evidence becomes workflow.&lt;br&gt;Workflow becomes &lt;span&gt;evidence.&lt;/span&gt;&lt;/h1&gt;
+      &lt;h1 class=&quot;ucl-title&quot;&gt;Evidence becomes workflow&lt;br&gt;Workflow becomes &lt;span&gt;evidence&lt;/span&gt;&lt;/h1&gt;
     &lt;/div&gt;
+    &lt;a class=&quot;ucl-switch&quot; href=&quot;/actuarial-research-system.html&quot; target=&quot;_top&quot; aria-label=&quot;Explore the actuarial UX research system&quot;&gt;&lt;i data-lucide=&quot;workflow&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;Research system&lt;/span&gt;&lt;/a&gt;
     &lt;div class=&quot;ucl-thesis&quot;&gt;
-      &lt;a class=&quot;ucl-switch&quot; href=&quot;/actuarial-research-system.html&quot; target=&quot;_top&quot; aria-label=&quot;Explore the actuarial UX research system&quot;&gt;&lt;i data-lucide=&quot;workflow&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;Research system&lt;/span&gt;&lt;/a&gt;
       &lt;div class=&quot;ucl-label text-small&quot;&gt;Shared decision spine&lt;/div&gt;
       &lt;p&gt;User · stage · target · exposure / denominator · baseline · slice · guardrail · reviewer · consequence&lt;/p&gt;
     &lt;/div&gt;
@@ -1434,7 +1459,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;div class=&quot;ucl-step text-small&quot;&gt;Skill 02&lt;/div&gt;
         &lt;div&gt;
           &lt;h2&gt;Actuarial UX system&lt;/h2&gt;
-          &lt;div class=&quot;ucl-skill-name text-small&quot;&gt;prediction-lab-actuarial-ux&lt;/div&gt;
+          &lt;div class=&quot;ucl-skill-name text-small&quot;&gt;&lt;strong&gt;&lt;a href=&quot;https://github.com/ryanportfolio/lab-demo/blob/main/.claude/skills/prediction-lab-actuarial-ux/SKILL.md&quot; target=&quot;_top&quot;&gt;prediction-lab-actuarial-ux&lt;/a&gt;&lt;/strong&gt;&lt;/div&gt;
           &lt;p class=&quot;ucl-stage-sub&quot;&gt;Shape the complete decision workflow&lt;/p&gt;
         &lt;/div&gt;
       &lt;/div&gt;
@@ -1478,7 +1503,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;div class=&quot;ucl-step text-small&quot;&gt;Skill 03&lt;/div&gt;
         &lt;div&gt;
           &lt;h2&gt;Chart workspace&lt;/h2&gt;
-          &lt;div class=&quot;ucl-skill-name text-small&quot;&gt;designing-actuarial-chart-workspaces&lt;/div&gt;
+          &lt;div class=&quot;ucl-skill-name text-small&quot;&gt;&lt;strong&gt;&lt;a href=&quot;https://github.com/ryanportfolio/lab-demo/blob/main/.claude/skills/designing-actuarial-chart-workspaces/SKILL.md&quot; target=&quot;_top&quot;&gt;designing-actuarial-chart-workspaces&lt;/a&gt;&lt;/strong&gt;&lt;/div&gt;
           &lt;p class=&quot;ucl-stage-sub&quot;&gt;Turn evidence into an explorable working surface&lt;/p&gt;
         &lt;/div&gt;
       &lt;/div&gt;
