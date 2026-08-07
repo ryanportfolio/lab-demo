@@ -234,9 +234,6 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 
 .app { flex: 1 }
 .banner { padding: 10px 22px }
-.site-foot { padding: 18px 22px 28px; font-size: 13.5px; color: var(--fg-subtle); border-top: 1px solid var(--border-muted) }
-.site-foot a { color: inherit }
-
 /* ---- evidence ---- */
 .exp.open { grid-column: 1 / -1; border-color: var(--fg-subtle) }
 .open-ev {

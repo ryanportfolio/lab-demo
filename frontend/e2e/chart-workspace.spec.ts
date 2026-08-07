@@ -184,6 +184,7 @@ test('human handoff stays above evidence and desktop guardrails form a checklist
   await expect(promote).toBeVisible();
   await expect(promote).toContainText('ready for human review');
   await expect(page.locator('.run-view > .promote')).toHaveCount(0);
+  await expect(page.locator('footer.site-foot')).toHaveCount(0);
 
   const promoteBox = await promote.boundingBox();
   const workspaceBox = await page.locator('.run-workspace').boundingBox();
