@@ -10,6 +10,40 @@ verdict, and the one winner earns a review a human has to sign.
 Synthetic data, real fits. Every number on screen comes out of a genuine
 Poisson GLM fit by the backend at run time.
 
+## Research and design system
+
+This demo was not designed from generic ML-dashboard conventions. It came out
+of a repeatable evidence-to-design system built around actuarial decisions.
+
+### Research → synthesis → review
+
+![Research, synthesis, and terminal evidence review workflow](docs/readme/research-synthesis-review.png)
+
+Independent research broadens discovery. Multiple synthesis passes structure
+the corpus without turning repetition into proof. A terminal review then
+separates interpretive agreement from genuinely independent evidence and keeps
+every final claim traceable to its source.
+
+### Evidence → workflow → chart → evidence
+
+![Research-assisted Prediction Lab UX and chart workspace loop](docs/readme/evidence-design-loop.png)
+
+Reviewed findings enter the broad Prediction Lab workflow as established
+requirements, contested interpretations, or hypotheses. When that workflow
+reaches a chart or diagnostic, the chart-workspace skill turns it into a
+working surface: **see → isolate → compare → explain → act → preserve**. Real
+workflow testing then returns observed behavior, failures, and unanswered
+questions to the next research cycle.
+
+### Custom skills
+
+| Skill | Job |
+|---|---|
+| [`researching-actuarial-ux`](.claude/skills/researching-actuarial-ux/SKILL.md) | Run independent actuarial UX research and synthesize frozen report sets. |
+| [`reviewing-actuarial-ux-syntheses`](.claude/skills/reviewing-actuarial-ux-syntheses/SKILL.md) | Audit multiple syntheses, repair lineage, preserve disputes, and produce decision-grade findings. |
+| [`prediction-lab-actuarial-ux`](.claude/skills/prediction-lab-actuarial-ux/SKILL.md) | Turn evidence into a living actuarial working paper across context, experiments, evidence, and human review. |
+| [`designing-actuarial-chart-workspaces`](.claude/skills/designing-actuarial-chart-workspaces/SKILL.md) | Make charts answer actuarial questions while preserving exact values, weak points, provenance, and state. |
+
 ## Stack
 
 - **Backend**: Rust, axum, async-graphql, sqlx, Postgres (Railway), nalgebra
