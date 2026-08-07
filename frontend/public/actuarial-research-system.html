@@ -1,0 +1,1705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Actuarial UX Research System</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{box-sizing:border-box;padding:0;background:inherit}.page-switch{position:fixed;top:12px;left:50%;z-index:10;display:inline-flex;align-items:center;transform:translateX(-50%);padding:10px 14px;border:1px solid light-dark(rgb(26 28 31 / 18%),rgb(255 255 255 / 22%));border-radius:999px;background:light-dark(rgb(255 255 255 / 92%),rgb(24 24 24 / 92%));box-shadow:0 6px 20px rgb(0 0 0 / 10%);color:light-dark(rgb(26 28 31),rgb(255 255 255));font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.04em;text-decoration:none;text-transform:uppercase;backdrop-filter:blur(10px)}.page-switch:hover{transform:translate(-50%,-1px)}.page-switch:focus-visible{outline:3px solid light-dark(rgb(0 162 64),rgb(64 201 119));outline-offset:3px}iframe{display:block;width:100%;height:100vh;margin:0;border:0}@media(max-width:1400px){.page-switch{top:3px;padding:7px 11px;font-size:12px}}</style>
+</head>
+<body>
+<a class="page-switch" href="/actuarial-ux-chart-loop.html" aria-label="Explore the actuarial UX chart workspace loop">Chart workspace loop →</a>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Actuarial UX Research System" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Actuarial UX Research System&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 16px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: var(--border-radius-lg, 12.5px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed=&quot;true&quot;],
+    [aria-selected=&quot;true&quot;],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;ars-poster&quot;&gt;
+  &lt;style&gt;
+    html,
+    body {
+      height: 100%;
+      overflow: hidden !important;
+    }
+
+    body {
+      padding: 0 !important;
+    }
+
+    #ars-poster {
+      --ars-dark: color-mix(in oklab, var(--foreground) 92%, var(--purple));
+      --ars-light: var(--background);
+      --ars-ink: var(--foreground);
+      --ars-mint: var(--green);
+      --ars-pink: var(--viz-series-4);
+      --ars-acid: var(--yellow);
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: minmax(116px, 15vh) minmax(0, 1fr) minmax(158px, 23vh);
+      color: var(--ars-ink);
+      background:
+        linear-gradient(color-mix(in srgb, var(--ars-ink) 5%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--ars-ink) 5%, transparent) 1px, transparent 1px),
+        var(--ars-light);
+      background-size: 24px 24px;
+      font-size: clamp(15px, 1.7vh, 18px);
+      font-weight: 400;
+    }
+
+    #ars-poster * {
+      box-sizing: border-box;
+    }
+
+    #ars-poster h1,
+    #ars-poster h2,
+    #ars-poster h3,
+    #ars-poster p,
+    #ars-poster ul {
+      margin-top: 0;
+    }
+
+    #ars-poster h1,
+    #ars-poster h2,
+    #ars-poster h3,
+    #ars-poster strong {
+      font-weight: 500;
+    }
+
+    #ars-poster .ars-mono,
+    #ars-poster .ars-kicker,
+    #ars-poster .ars-label,
+    #ars-poster .ars-pass,
+    #ars-poster .ars-output-label,
+    #ars-poster .ars-spine-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    #ars-poster .ars-top {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.72fr);
+      gap: 3vw;
+      align-items: center;
+      padding: 18px clamp(22px, 3.4vw, 64px) 16px;
+      border-bottom: 1px solid color-mix(in srgb, var(--ars-ink) 15%, transparent);
+    }
+
+    #ars-poster .ars-top::before {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 7px;
+      background: linear-gradient(90deg, var(--ars-mint) 0 60%, var(--ars-pink) 60% 79%, var(--ars-acid) 79% 100%);
+      content: &quot;&quot;;
+    }
+
+    #ars-poster .ars-kicker {
+      margin-bottom: 6px;
+      color: var(--muted-foreground);
+    }
+
+    #ars-poster .ars-title {
+      max-width: 1000px;
+      margin-bottom: 0;
+      font-size: calc(var(--font-size-base) * 3.2);
+      line-height: 0.93;
+      letter-spacing: -0.045em;
+    }
+
+    #ars-poster .ars-title span {
+      color: var(--ars-mint);
+    }
+
+    #ars-poster .ars-thesis {
+      align-self: stretch;
+      display: grid;
+      align-content: center;
+      padding-left: 22px;
+      border-left: 1px solid color-mix(in srgb, var(--ars-ink) 20%, transparent);
+    }
+
+    #ars-poster .ars-thesis .ars-label {
+      margin-bottom: 7px;
+      color: var(--ars-pink);
+    }
+
+    #ars-poster .ars-thesis p {
+      max-width: 430px;
+      margin-bottom: 0;
+      line-height: 1.4;
+    }
+
+    #ars-poster .ars-pipeline {
+      position: relative;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      color: var(--ars-light);
+      background:
+        radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ars-light) 15%, transparent) 1px, transparent 1.5px),
+        var(--ars-dark);
+      background-size: 24px 24px;
+      border-bottom: 7px solid var(--ars-mint);
+    }
+
+    #ars-poster .ars-stage {
+      --stage-accent: var(--ars-mint);
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(82px, 14vh) minmax(0, 1fr) auto;
+      padding: clamp(18px, 2.4vh, 28px) clamp(20px, 2.3vw, 42px) clamp(15px, 2vh, 24px);
+      border-right: 1px solid color-mix(in srgb, var(--ars-light) 18%, transparent);
+    }
+
+    #ars-poster .ars-stage:nth-child(2) {
+      --stage-accent: var(--ars-pink);
+    }
+
+    #ars-poster .ars-stage:nth-child(3) {
+      --stage-accent: var(--ars-acid);
+      border-right: 0;
+    }
+
+    #ars-poster .ars-stage::before {
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 38%;
+      height: 4px;
+      background: var(--stage-accent);
+      content: &quot;&quot;;
+    }
+
+    #ars-poster .ars-stage-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    #ars-poster .ars-pass {
+      color: var(--stage-accent);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+
+    #ars-poster .ars-stage h2 {
+      margin-bottom: 3px;
+      color: var(--ars-light);
+      font-size: calc(var(--font-size-base) * 1.8);
+      line-height: 1;
+      letter-spacing: -0.025em;
+    }
+
+    #ars-poster .ars-stage-sub {
+      margin-bottom: 0;
+      color: color-mix(in srgb, var(--ars-light) 62%, transparent);
+    }
+
+    #ars-poster .ars-schematic {
+      width: 100%;
+      height: 100%;
+      min-height: 72px;
+      color: var(--stage-accent);
+    }
+
+    #ars-poster .ars-schematic .ars-faint {
+      color: color-mix(in srgb, var(--ars-light) 30%, transparent);
+    }
+
+    #ars-poster .ars-copy {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(120px, 0.75fr);
+      gap: clamp(14px, 1.7vw, 28px);
+      padding-top: 12px;
+      border-top: 1px solid color-mix(in srgb, var(--ars-light) 16%, transparent);
+    }
+
+    #ars-poster .ars-label {
+      margin-bottom: 8px;
+      color: var(--stage-accent);
+    }
+
+    #ars-poster .ars-list {
+      margin-bottom: 0;
+      padding-left: 16px;
+      line-height: 1.34;
+    }
+
+    #ars-poster .ars-list li + li {
+      margin-top: 7px;
+    }
+
+    #ars-poster .ars-why {
+      padding-left: 14px;
+      border-left: 1px solid color-mix(in srgb, var(--ars-light) 22%, transparent);
+      line-height: 1.34;
+    }
+
+    #ars-poster .ars-why p {
+      margin-bottom: 0;
+    }
+
+    #ars-poster .ars-output {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 11px;
+      border-top: 1px solid color-mix(in srgb, var(--ars-light) 16%, transparent);
+    }
+
+    #ars-poster .ars-output i {
+      color: var(--stage-accent);
+    }
+
+    #ars-poster .ars-output-label {
+      color: var(--stage-accent);
+    }
+
+    #ars-poster .ars-output p {
+      margin-bottom: 0;
+      color: color-mix(in srgb, var(--ars-light) 68%, transparent);
+    }
+
+    #ars-poster .ars-bottom {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.62fr);
+      gap: clamp(24px, 3vw, 54px);
+      align-items: center;
+      padding: 16px clamp(22px, 3.4vw, 64px);
+    }
+
+    #ars-poster .ars-spine-label {
+      margin-bottom: 9px;
+      color: var(--muted-foreground);
+    }
+
+    #ars-poster .ars-spine {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+    }
+
+    #ars-poster .ars-node {
+      min-width: 0;
+      padding: 8px 4px 7px;
+      border-top: 3px solid var(--node-accent, var(--ars-mint));
+      background: color-mix(in srgb, var(--ars-light) 88%, transparent);
+    }
+
+    #ars-poster .ars-node:nth-of-type(3) { --node-accent: var(--ars-pink); }
+    #ars-poster .ars-node:nth-of-type(4) { --node-accent: var(--ars-acid); }
+    #ars-poster .ars-node:nth-of-type(5) { --node-accent: var(--purple); }
+
+    #ars-poster .ars-node strong,
+    #ars-poster .ars-node span {
+      display: block;
+    }
+
+    #ars-poster .ars-node span {
+      color: var(--muted-foreground);
+    }
+
+    #ars-poster .ars-chevron {
+      color: var(--muted-foreground);
+    }
+
+    #ars-poster .ars-rule {
+      align-self: stretch;
+      display: grid;
+      align-content: center;
+      padding-left: 20px;
+      border-left: 1px solid color-mix(in srgb, var(--ars-ink) 18%, transparent);
+    }
+
+    #ars-poster .ars-rule-mark {
+      width: 44px;
+      height: 6px;
+      margin-bottom: 10px;
+      background: linear-gradient(90deg, var(--ars-mint) 0 48%, var(--ars-pink) 48% 76%, var(--ars-acid) 76%);
+    }
+
+    #ars-poster .ars-rule h3 {
+      margin-bottom: 5px;
+      font-size: calc(var(--font-size-base) * 1.45);
+      line-height: 1.04;
+    }
+
+    #ars-poster .ars-rule p {
+      margin-bottom: 0;
+      color: var(--muted-foreground);
+      line-height: 1.32;
+    }
+
+    @media (max-height: 780px) {
+      #ars-poster {
+        grid-template-rows: 104px minmax(0, 1fr) 144px;
+        font-size: 14px;
+      }
+
+      #ars-poster .ars-top,
+      #ars-poster .ars-stage,
+      #ars-poster .ars-bottom {
+        padding-top: 12px;
+        padding-bottom: 12px;
+      }
+
+      #ars-poster .ars-stage {
+        grid-template-rows: auto 54px minmax(0, 1fr) auto;
+      }
+
+      #ars-poster .ars-copy {
+        grid-template-columns: minmax(0, 1.45fr) minmax(110px, 0.55fr);
+        gap: 12px;
+        padding-top: 8px;
+      }
+
+      #ars-poster .ars-output {
+        margin-top: 8px;
+        padding-top: 8px;
+      }
+
+      #ars-poster .ars-list li + li {
+        margin-top: 3px;
+      }
+    }
+
+    @media (max-width: 1120px) {
+      #ars-poster .ars-title {
+        font-size: calc(var(--font-size-base) * 2.55);
+      }
+
+      #ars-poster .ars-stage {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      #ars-poster .ars-copy {
+        grid-template-columns: 1fr;
+      }
+
+      #ars-poster .ars-why {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      #ars-poster .ars-extra {
+        display: none;
+      }
+    }
+  &lt;/style&gt;
+
+  &lt;header class=&quot;ars-top&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;ars-kicker text-small&quot;&gt;Prediction Lab / actuarial UX evidence system&lt;/div&gt;
+      &lt;h1 class=&quot;ars-title&quot;&gt;Research &lt;span&gt;→&lt;/span&gt; Synthesis &lt;span&gt;→&lt;/span&gt; Review&lt;/h1&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;ars-thesis&quot;&gt;
+      &lt;div class=&quot;ars-label text-small&quot;&gt;Why this system exists&lt;/div&gt;
+      &lt;p&gt;To learn broadly, structure rigorously, and reach decisions without mistaking repetition or polished consensus for stronger evidence.&lt;/p&gt;
+    &lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;main class=&quot;ars-pipeline&quot; aria-label=&quot;Three-stage actuarial UX research system&quot;&gt;
+    &lt;section class=&quot;ars-stage&quot;&gt;
+      &lt;div class=&quot;ars-stage-head&quot;&gt;
+        &lt;div class=&quot;ars-pass text-small&quot;&gt;Pass 01&lt;/div&gt;
+        &lt;div&gt;
+          &lt;h2&gt;Research skill&lt;/h2&gt;
+          &lt;p class=&quot;ars-stage-sub&quot;&gt;Independent discovery sessions&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;svg class=&quot;ars-schematic&quot; viewBox=&quot;0 0 420 110&quot; role=&quot;img&quot; aria-label=&quot;Multiple independent research runs create separate reports&quot;&gt;
+        &lt;g class=&quot;ars-faint&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1&quot;&gt;
+          &lt;path d=&quot;M40 28 C130 28 120 55 203 55&quot; /&gt;
+          &lt;path d=&quot;M40 82 C130 82 120 55 203 55&quot; /&gt;
+          &lt;path d=&quot;M102 18 C152 18 150 55 203 55&quot; /&gt;
+          &lt;path d=&quot;M102 92 C152 92 150 55 203 55&quot; /&gt;
+          &lt;path d=&quot;M203 55 H330&quot; /&gt;
+        &lt;/g&gt;
+        &lt;g fill=&quot;currentColor&quot;&gt;
+          &lt;circle cx=&quot;40&quot; cy=&quot;28&quot; r=&quot;5&quot; /&gt;&lt;circle cx=&quot;40&quot; cy=&quot;82&quot; r=&quot;5&quot; /&gt;
+          &lt;circle cx=&quot;102&quot; cy=&quot;18&quot; r=&quot;5&quot; /&gt;&lt;circle cx=&quot;102&quot; cy=&quot;92&quot; r=&quot;5&quot; /&gt;
+          &lt;circle cx=&quot;203&quot; cy=&quot;55&quot; r=&quot;7&quot; /&gt;
+        &lt;/g&gt;
+        &lt;g fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;&gt;
+          &lt;rect x=&quot;330&quot; y=&quot;31&quot; width=&quot;58&quot; height=&quot;48&quot; /&gt;
+          &lt;path d=&quot;M340 43 H378 M340 53 H372 M340 63 H380&quot; /&gt;
+        &lt;/g&gt;
+      &lt;/svg&gt;
+
+      &lt;div class=&quot;ars-copy&quot;&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ars-label text-small&quot;&gt;What&lt;/div&gt;
+          &lt;ul class=&quot;ars-list&quot;&gt;
+            &lt;li&gt;Same question, scope, and evidence bar.&lt;/li&gt;
+            &lt;li&gt;Blind sessions search tools, workflows, practitioner feedback, and Prediction Lab.&lt;/li&gt;
+            &lt;li&gt;Facts, inference, sources, and unknowns stay distinct.&lt;/li&gt;
+            &lt;li class=&quot;ars-extra&quot;&gt;Each run saves one timestamped report.&lt;/li&gt;
+          &lt;/ul&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;ars-why&quot;&gt;
+          &lt;div class=&quot;ars-label text-small&quot;&gt;Why&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Broader discovery.&lt;/strong&gt; Different agents surface different sources, edge cases, and latent problems.&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;ars-output&quot;&gt;
+        &lt;i data-lucide=&quot;files&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ars-output-label text-small&quot;&gt;Output&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Raw corpus&lt;/strong&gt; · &lt;code&gt;runs/&amp;lt;timestamp&amp;gt;--&amp;lt;run&amp;gt;--&amp;lt;model&amp;gt;.md&lt;/code&gt;&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;ars-stage&quot;&gt;
+      &lt;div class=&quot;ars-stage-head&quot;&gt;
+        &lt;div class=&quot;ars-pass text-small&quot;&gt;Pass 02&lt;/div&gt;
+        &lt;div&gt;
+          &lt;h2&gt;Synthesis&lt;/h2&gt;
+          &lt;p class=&quot;ars-stage-sub&quot;&gt;Several independent aggregation passes&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;svg class=&quot;ars-schematic&quot; viewBox=&quot;0 0 420 110&quot; role=&quot;img&quot; aria-label=&quot;Raw findings are clustered into canonical claims while outliers remain visible&quot;&gt;
+        &lt;g class=&quot;ars-faint&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1&quot;&gt;
+          &lt;path d=&quot;M36 24 H118 L168 52&quot; /&gt;&lt;path d=&quot;M36 52 H168&quot; /&gt;&lt;path d=&quot;M36 80 H118 L168 52&quot; /&gt;
+          &lt;path d=&quot;M182 52 H260&quot; /&gt;&lt;path d=&quot;M312 52 H378&quot; /&gt;
+        &lt;/g&gt;
+        &lt;g fill=&quot;currentColor&quot;&gt;
+          &lt;rect x=&quot;26&quot; y=&quot;18&quot; width=&quot;10&quot; height=&quot;10&quot; /&gt;&lt;rect x=&quot;26&quot; y=&quot;47&quot; width=&quot;10&quot; height=&quot;10&quot; /&gt;
+          &lt;rect x=&quot;26&quot; y=&quot;75&quot; width=&quot;10&quot; height=&quot;10&quot; /&gt;&lt;circle cx=&quot;174&quot; cy=&quot;52&quot; r=&quot;8&quot; /&gt;
+          &lt;circle cx=&quot;286&quot; cy=&quot;52&quot; r=&quot;22&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; /&gt;
+          &lt;circle cx=&quot;378&quot; cy=&quot;52&quot; r=&quot;7&quot; /&gt;
+        &lt;/g&gt;
+        &lt;g fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;&gt;
+          &lt;path d=&quot;M272 52 L283 63 L302 40&quot; /&gt;
+        &lt;/g&gt;
+      &lt;/svg&gt;
+
+      &lt;div class=&quot;ars-copy&quot;&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ars-label text-small&quot;&gt;What&lt;/div&gt;
+          &lt;ul class=&quot;ars-list&quot;&gt;
+            &lt;li&gt;Freeze the report set before analysis.&lt;/li&gt;
+            &lt;li&gt;Atomize claims; dedupe findings and source families.&lt;/li&gt;
+            &lt;li&gt;Cluster equivalents; retain contradictions, qualifications, outliers, and negative evidence.&lt;/li&gt;
+            &lt;li class=&quot;ars-extra&quot;&gt;Build findings, ledgers, gaps, backlog, and design implications.&lt;/li&gt;
+          &lt;/ul&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;ars-why&quot;&gt;
+          &lt;div class=&quot;ars-label text-small&quot;&gt;Why&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Usable structure.&lt;/strong&gt; Research volume becomes a navigable evidence map—not a popularity contest.&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;ars-output&quot;&gt;
+        &lt;i data-lucide=&quot;layers-3&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ars-output-label text-small&quot;&gt;Output&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Synthesis bundles&lt;/strong&gt; · &lt;code&gt;synthesis/&amp;lt;timestamp&amp;gt;/&lt;/code&gt;&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;ars-stage&quot;&gt;
+      &lt;div class=&quot;ars-stage-head&quot;&gt;
+        &lt;div class=&quot;ars-pass text-small&quot;&gt;Pass 03&lt;/div&gt;
+        &lt;div&gt;
+          &lt;h2&gt;Review syntheses&lt;/h2&gt;
+          &lt;p class=&quot;ars-stage-sub&quot;&gt;One terminal evidence audit&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;svg class=&quot;ars-schematic&quot; viewBox=&quot;0 0 420 110&quot; role=&quot;img&quot; aria-label=&quot;Three kinds of convergence are examined separately before a final claim is accepted&quot;&gt;
+        &lt;g fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;&gt;
+          &lt;circle cx=&quot;106&quot; cy=&quot;55&quot; r=&quot;33&quot; /&gt;&lt;circle cx=&quot;148&quot; cy=&quot;55&quot; r=&quot;33&quot; /&gt;&lt;circle cx=&quot;127&quot; cy=&quot;34&quot; r=&quot;33&quot; /&gt;
+          &lt;path d=&quot;M181 55 H241&quot; /&gt;
+          &lt;path d=&quot;M286 24 L331 42 V69 C331 85 311 94 286 100 C261 94 241 85 241 69 V42 Z&quot; /&gt;
+          &lt;path d=&quot;M268 61 L282 75 L309 45&quot; /&gt;
+        &lt;/g&gt;
+        &lt;g class=&quot;ars-faint&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1&quot;&gt;
+          &lt;path d=&quot;M338 55 H392&quot; /&gt;&lt;circle cx=&quot;396&quot; cy=&quot;55&quot; r=&quot;4&quot; fill=&quot;currentColor&quot; /&gt;
+        &lt;/g&gt;
+      &lt;/svg&gt;
+
+      &lt;div class=&quot;ars-copy&quot;&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ars-label text-small&quot;&gt;What&lt;/div&gt;
+          &lt;ul class=&quot;ars-list&quot;&gt;
+            &lt;li&gt;One top-level folder = one synthesis pass; nested work stays attached.&lt;/li&gt;
+            &lt;li&gt;Separate published conclusions, provenance, working state, and unknown artifacts.&lt;/li&gt;
+            &lt;li&gt;Rebuild lineage; adjudicate splits, disputes, omissions, and contamination.&lt;/li&gt;
+            &lt;li class=&quot;ars-extra&quot;&gt;Measure interpretive, research, and evidence convergence separately.&lt;/li&gt;
+          &lt;/ul&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;ars-why&quot;&gt;
+          &lt;div class=&quot;ars-label text-small&quot;&gt;Why&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Decision-grade truth.&lt;/strong&gt; Agreement can show stable interpretation; only independent evidence raises confidence.&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;ars-output&quot;&gt;
+        &lt;i data-lucide=&quot;shield-check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ars-output-label text-small&quot;&gt;Output&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Audited knowledge base&lt;/strong&gt; · &lt;code&gt;final/&amp;lt;timestamp&amp;gt;--&amp;lt;review&amp;gt;--&amp;lt;model&amp;gt;/&lt;/code&gt;&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+  &lt;/main&gt;
+
+  &lt;footer class=&quot;ars-bottom&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;ars-spine-label text-small&quot;&gt;Reversible evidence spine&lt;/div&gt;
+      &lt;div class=&quot;ars-spine&quot; aria-label=&quot;Source to design decision traceability chain&quot;&gt;
+        &lt;div class=&quot;ars-node&quot;&gt;&lt;strong&gt;Source&lt;/strong&gt;&lt;span class=&quot;text-small&quot;&gt;Fingerprint&lt;/span&gt;&lt;/div&gt;
+        &lt;i class=&quot;ars-chevron&quot; data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div class=&quot;ars-node&quot;&gt;&lt;strong&gt;Raw finding&lt;/strong&gt;&lt;span class=&quot;text-small&quot;&gt;Run-local&lt;/span&gt;&lt;/div&gt;
+        &lt;i class=&quot;ars-chevron&quot; data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div class=&quot;ars-node&quot;&gt;&lt;strong&gt;Synthesis&lt;/strong&gt;&lt;span class=&quot;text-small&quot;&gt;&lt;code&gt;Pxx/CAN-*&lt;/code&gt;&lt;/span&gt;&lt;/div&gt;
+        &lt;i class=&quot;ars-chevron&quot; data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div class=&quot;ars-node&quot;&gt;&lt;strong&gt;Final claim&lt;/strong&gt;&lt;span class=&quot;text-small&quot;&gt;&lt;code&gt;L3-CAN-*&lt;/code&gt;&lt;/span&gt;&lt;/div&gt;
+        &lt;i class=&quot;ars-chevron&quot; data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div class=&quot;ars-node&quot;&gt;&lt;strong&gt;Decision&lt;/strong&gt;&lt;span class=&quot;text-small&quot;&gt;Requirement / tension / hypothesis&lt;/span&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;aside class=&quot;ars-rule&quot;&gt;
+      &lt;div class=&quot;ars-rule-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/div&gt;
+      &lt;h3&gt;Coverage ≠ confidence.&lt;/h3&gt;
+      &lt;p&gt;More sessions broaden discovery. More synthesis agreement stabilizes interpretation. Only independent, direct, relevant evidence strengthens confidence.&lt;/p&gt;
+    &lt;/aside&gt;
+  &lt;/footer&gt;
+&lt;/div&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>

@@ -1,0 +1,1764 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Prediction Lab UX and Chart Workspace Loop</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{box-sizing:border-box;padding:0;background:inherit}.page-switch{position:fixed;top:12px;left:50%;z-index:10;display:inline-flex;align-items:center;transform:translateX(-50%);padding:10px 14px;border:1px solid light-dark(rgb(26 28 31 / 18%),rgb(255 255 255 / 22%));border-radius:999px;background:light-dark(rgb(255 255 255 / 92%),rgb(24 24 24 / 92%));box-shadow:0 6px 20px rgb(0 0 0 / 10%);color:light-dark(rgb(26 28 31),rgb(255 255 255));font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.04em;text-decoration:none;text-transform:uppercase;backdrop-filter:blur(10px)}.page-switch:hover{transform:translate(-50%,-1px)}.page-switch:focus-visible{outline:3px solid light-dark(rgb(146 79 247),rgb(173 123 249));outline-offset:3px}iframe{display:block;width:100%;height:100vh;margin:0;border:0}@media(max-width:1400px){.page-switch{top:3px;padding:7px 11px;font-size:12px}}</style>
+</head>
+<body>
+<a class="page-switch" href="/actuarial-research-system.html" aria-label="Explore the actuarial UX research system">Research system →</a>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Prediction Lab UX and Chart Workspace Loop" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Prediction Lab UX and Chart Workspace Loop&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 16px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: var(--border-radius-lg, 12.5px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed=&quot;true&quot;],
+    [aria-selected=&quot;true&quot;],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;ux-chart-loop&quot;&gt;
+  &lt;style&gt;
+    html,
+    body {
+      height: 100%;
+      overflow: hidden !important;
+    }
+
+    body {
+      padding: 0 !important;
+    }
+
+    #ux-chart-loop {
+      --ucl-dark: color-mix(in oklab, var(--foreground) 92%, var(--purple));
+      --ucl-light: var(--background);
+      --ucl-ink: var(--foreground);
+      --ucl-mint: var(--green);
+      --ucl-pink: var(--viz-series-4);
+      --ucl-acid: var(--yellow);
+      --ucl-violet: var(--purple);
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: minmax(118px, 16vh) minmax(0, 1fr) minmax(160px, 22vh);
+      color: var(--ucl-ink);
+      background:
+        linear-gradient(color-mix(in srgb, var(--ucl-ink) 5%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--ucl-ink) 5%, transparent) 1px, transparent 1px),
+        var(--ucl-light);
+      background-size: 24px 24px;
+      font-size: clamp(14px, 1.55vh, 17px);
+      font-weight: 400;
+    }
+
+    #ux-chart-loop * {
+      box-sizing: border-box;
+    }
+
+    #ux-chart-loop h1,
+    #ux-chart-loop h2,
+    #ux-chart-loop h3,
+    #ux-chart-loop p,
+    #ux-chart-loop ul {
+      margin-top: 0;
+    }
+
+    #ux-chart-loop h1,
+    #ux-chart-loop h2,
+    #ux-chart-loop h3,
+    #ux-chart-loop strong {
+      font-weight: 500;
+    }
+
+    #ux-chart-loop .ucl-mono,
+    #ux-chart-loop .ucl-kicker,
+    #ux-chart-loop .ucl-label,
+    #ux-chart-loop .ucl-step,
+    #ux-chart-loop .ucl-output-label,
+    #ux-chart-loop .ucl-loop-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    #ux-chart-loop .ucl-top {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(310px, 0.72fr);
+      gap: 3vw;
+      align-items: center;
+      padding: 18px clamp(22px, 3.4vw, 64px) 16px;
+      border-bottom: 1px solid color-mix(in srgb, var(--ucl-ink) 15%, transparent);
+    }
+
+    #ux-chart-loop .ucl-top::before {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 7px;
+      background: linear-gradient(90deg, var(--ucl-mint) 0 28%, var(--ucl-pink) 28% 54%, var(--ucl-acid) 54% 80%, var(--ucl-violet) 80%);
+      content: &quot;&quot;;
+    }
+
+    #ux-chart-loop .ucl-kicker {
+      margin-bottom: 6px;
+      color: var(--muted-foreground);
+    }
+
+    #ux-chart-loop .ucl-title {
+      margin-bottom: 0;
+      font-size: calc(var(--font-size-base) * 3.05);
+      line-height: 0.94;
+      letter-spacing: -0.045em;
+    }
+
+    #ux-chart-loop .ucl-title span {
+      color: var(--ucl-mint);
+    }
+
+    #ux-chart-loop .ucl-thesis {
+      align-self: stretch;
+      display: grid;
+      align-content: center;
+      padding-left: 22px;
+      border-left: 1px solid color-mix(in srgb, var(--ucl-ink) 20%, transparent);
+    }
+
+    #ux-chart-loop .ucl-thesis .ucl-label {
+      margin-bottom: 7px;
+      color: var(--ucl-pink);
+    }
+
+    #ux-chart-loop .ucl-thesis p {
+      max-width: 440px;
+      margin-bottom: 0;
+      line-height: 1.4;
+    }
+
+    #ux-chart-loop .ucl-flow {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      color: var(--ucl-light);
+      background:
+        radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ucl-light) 15%, transparent) 1px, transparent 1.5px),
+        var(--ucl-dark);
+      background-size: 24px 24px;
+      border-bottom: 7px solid var(--ucl-mint);
+    }
+
+    #ux-chart-loop .ucl-stage {
+      --stage-accent: var(--ucl-mint);
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(74px, 12vh) minmax(0, 1fr) auto;
+      padding: clamp(17px, 2.2vh, 26px) clamp(17px, 1.8vw, 34px) clamp(14px, 1.9vh, 22px);
+      border-right: 1px solid color-mix(in srgb, var(--ucl-light) 18%, transparent);
+    }
+
+    #ux-chart-loop .ucl-stage:nth-child(2) { --stage-accent: var(--ucl-pink); }
+    #ux-chart-loop .ucl-stage:nth-child(3) { --stage-accent: var(--ucl-acid); }
+    #ux-chart-loop .ucl-stage:nth-child(4) {
+      --stage-accent: var(--ucl-violet);
+      border-right: 0;
+    }
+
+    #ux-chart-loop .ucl-stage::before {
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 42%;
+      height: 4px;
+      background: var(--stage-accent);
+      content: &quot;&quot;;
+    }
+
+    #ux-chart-loop .ucl-stage::after {
+      position: absolute;
+      top: 50%;
+      right: -10px;
+      z-index: 2;
+      width: 19px;
+      height: 19px;
+      border-top: 1px solid color-mix(in srgb, var(--ucl-light) 54%, transparent);
+      border-right: 1px solid color-mix(in srgb, var(--ucl-light) 54%, transparent);
+      background: var(--ucl-dark);
+      content: &quot;&quot;;
+      transform: rotate(45deg);
+    }
+
+    #ux-chart-loop .ucl-stage:last-child::after {
+      display: none;
+    }
+
+    #ux-chart-loop .ucl-stage-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 11px;
+      align-items: start;
+    }
+
+    #ux-chart-loop .ucl-step {
+      color: var(--stage-accent);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+
+    #ux-chart-loop .ucl-stage h2 {
+      margin-bottom: 3px;
+      color: var(--ucl-light);
+      font-size: calc(var(--font-size-base) * 1.62);
+      line-height: 1;
+      letter-spacing: -0.025em;
+    }
+
+    #ux-chart-loop .ucl-skill-name {
+      margin-bottom: 4px;
+      color: var(--stage-accent);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow-wrap: anywhere;
+    }
+
+    #ux-chart-loop .ucl-stage-sub {
+      margin-bottom: 0;
+      color: color-mix(in srgb, var(--ucl-light) 62%, transparent);
+    }
+
+    #ux-chart-loop .ucl-schematic {
+      width: 100%;
+      height: 100%;
+      min-height: 66px;
+      color: var(--stage-accent);
+    }
+
+    #ux-chart-loop .ucl-schematic .ucl-faint {
+      color: color-mix(in srgb, var(--ucl-light) 30%, transparent);
+    }
+
+    #ux-chart-loop .ucl-copy {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(105px, 0.72fr);
+      gap: clamp(12px, 1.3vw, 22px);
+      padding-top: 11px;
+      border-top: 1px solid color-mix(in srgb, var(--ucl-light) 16%, transparent);
+    }
+
+    #ux-chart-loop .ucl-label {
+      margin-bottom: 7px;
+      color: var(--stage-accent);
+    }
+
+    #ux-chart-loop .ucl-list {
+      margin-bottom: 0;
+      padding-left: 15px;
+      line-height: 1.31;
+    }
+
+    #ux-chart-loop .ucl-list li + li {
+      margin-top: 6px;
+    }
+
+    #ux-chart-loop .ucl-why {
+      padding-left: 12px;
+      border-left: 1px solid color-mix(in srgb, var(--ucl-light) 22%, transparent);
+      line-height: 1.31;
+    }
+
+    #ux-chart-loop .ucl-why p {
+      margin-bottom: 0;
+    }
+
+    #ux-chart-loop .ucl-output {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 9px;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid color-mix(in srgb, var(--ucl-light) 16%, transparent);
+    }
+
+    #ux-chart-loop .ucl-output i {
+      color: var(--stage-accent);
+    }
+
+    #ux-chart-loop .ucl-output-label {
+      color: var(--stage-accent);
+    }
+
+    #ux-chart-loop .ucl-output p {
+      margin-bottom: 0;
+      color: color-mix(in srgb, var(--ucl-light) 68%, transparent);
+    }
+
+    #ux-chart-loop .ucl-bottom {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.62fr);
+      gap: clamp(24px, 3vw, 54px);
+      align-items: center;
+      padding: 14px clamp(22px, 3.4vw, 64px);
+    }
+
+    #ux-chart-loop .ucl-loop-label {
+      margin-bottom: 8px;
+      color: var(--muted-foreground);
+    }
+
+    #ux-chart-loop .ucl-return {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px solid color-mix(in srgb, var(--ucl-ink) 18%, transparent);
+      border-bottom: 1px solid color-mix(in srgb, var(--ucl-ink) 18%, transparent);
+    }
+
+    #ux-chart-loop .ucl-return::before {
+      position: absolute;
+      inset: -1px auto auto 0;
+      width: 24%;
+      height: 3px;
+      background: var(--ucl-violet);
+      content: &quot;&quot;;
+    }
+
+    #ux-chart-loop .ucl-return-icon {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid var(--ucl-violet);
+      border-radius: 50%;
+      color: var(--ucl-violet);
+    }
+
+    #ux-chart-loop .ucl-return p {
+      margin-bottom: 0;
+    }
+
+    #ux-chart-loop .ucl-return-path {
+      color: var(--muted-foreground);
+      text-align: right;
+    }
+
+    #ux-chart-loop .ucl-learning {
+      align-self: stretch;
+      display: grid;
+      align-content: center;
+      padding-left: 20px;
+      border-left: 1px solid color-mix(in srgb, var(--ucl-ink) 18%, transparent);
+    }
+
+    #ux-chart-loop .ucl-learning-mark {
+      width: 48px;
+      height: 6px;
+      margin-bottom: 9px;
+      background: linear-gradient(90deg, var(--ucl-mint) 0 36%, var(--ucl-pink) 36% 68%, var(--ucl-acid) 68%);
+    }
+
+    #ux-chart-loop .ucl-learning h3 {
+      margin-bottom: 5px;
+      font-size: calc(var(--font-size-base) * 1.4);
+      line-height: 1.04;
+    }
+
+    #ux-chart-loop .ucl-learning p {
+      margin-bottom: 0;
+      color: var(--muted-foreground);
+      line-height: 1.32;
+    }
+
+    @media (max-height: 780px) {
+      #ux-chart-loop {
+        grid-template-rows: 104px minmax(0, 1fr) 146px;
+        font-size: 14px;
+      }
+
+      #ux-chart-loop .ucl-top,
+      #ux-chart-loop .ucl-stage,
+      #ux-chart-loop .ucl-bottom {
+        padding-top: 9px;
+        padding-bottom: 9px;
+      }
+
+      #ux-chart-loop .ucl-stage {
+        grid-template-rows: auto 36px minmax(0, 1fr) auto;
+      }
+
+      #ux-chart-loop .ucl-copy {
+        grid-template-columns: minmax(0, 1.35fr) minmax(88px, 0.55fr);
+        gap: 10px;
+        padding-top: 8px;
+      }
+
+      #ux-chart-loop .ucl-list,
+      #ux-chart-loop .ucl-why {
+        line-height: 1.24;
+      }
+
+      #ux-chart-loop .ucl-output {
+        margin-top: 7px;
+        padding-top: 7px;
+      }
+
+      #ux-chart-loop .ucl-list li + li {
+        margin-top: 3px;
+      }
+
+      #ux-chart-loop .ucl-extra {
+        display: none;
+      }
+    }
+
+    @media (max-width: 1220px) {
+      #ux-chart-loop .ucl-title {
+        font-size: calc(var(--font-size-base) * 2.45);
+      }
+
+      #ux-chart-loop .ucl-stage {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      #ux-chart-loop .ucl-copy {
+        grid-template-columns: 1fr;
+      }
+
+      #ux-chart-loop .ucl-why {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      #ux-chart-loop .ucl-extra {
+        display: none;
+      }
+    }
+  &lt;/style&gt;
+
+  &lt;header class=&quot;ucl-top&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;ucl-kicker text-small&quot;&gt;Prediction Lab / evidence-driven design loop&lt;/div&gt;
+      &lt;h1 class=&quot;ucl-title&quot;&gt;Evidence becomes workflow.&lt;br&gt;Workflow becomes &lt;span&gt;evidence.&lt;/span&gt;&lt;/h1&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;ucl-thesis&quot;&gt;
+      &lt;div class=&quot;ucl-label text-small&quot;&gt;Shared decision spine&lt;/div&gt;
+      &lt;p&gt;User · stage · target · exposure / denominator · baseline · slice · guardrail · reviewer · consequence&lt;/p&gt;
+    &lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;main class=&quot;ucl-flow&quot; aria-label=&quot;Research synthesis to actuarial UX to chart workspace to validation loop&quot;&gt;
+    &lt;section class=&quot;ucl-stage&quot;&gt;
+      &lt;div class=&quot;ucl-stage-head&quot;&gt;
+        &lt;div class=&quot;ucl-step text-small&quot;&gt;Input 01&lt;/div&gt;
+        &lt;div&gt;
+          &lt;h2&gt;Synthesis research&lt;/h2&gt;
+          &lt;div class=&quot;ucl-skill-name text-small&quot;&gt;reviewed evidence base&lt;/div&gt;
+          &lt;p class=&quot;ucl-stage-sub&quot;&gt;What the product should investigate&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;svg class=&quot;ucl-schematic&quot; viewBox=&quot;0 0 360 90&quot; role=&quot;img&quot; aria-label=&quot;Many sourced findings become an evidence brief with retained disagreements&quot;&gt;
+        &lt;g class=&quot;ucl-faint&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1&quot;&gt;
+          &lt;path d=&quot;M24 18 H96 L145 45&quot; /&gt;&lt;path d=&quot;M24 45 H145&quot; /&gt;&lt;path d=&quot;M24 72 H96 L145 45&quot; /&gt;
+          &lt;path d=&quot;M158 45 H238&quot; /&gt;&lt;path d=&quot;M292 45 H338&quot; /&gt;
+        &lt;/g&gt;
+        &lt;g fill=&quot;currentColor&quot;&gt;
+          &lt;circle cx=&quot;24&quot; cy=&quot;18&quot; r=&quot;4&quot; /&gt;&lt;circle cx=&quot;24&quot; cy=&quot;45&quot; r=&quot;4&quot; /&gt;&lt;circle cx=&quot;24&quot; cy=&quot;72&quot; r=&quot;4&quot; /&gt;
+          &lt;circle cx=&quot;151&quot; cy=&quot;45&quot; r=&quot;7&quot; /&gt;&lt;rect x=&quot;238&quot; y=&quot;24&quot; width=&quot;54&quot; height=&quot;42&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; /&gt;
+          &lt;circle cx=&quot;338&quot; cy=&quot;45&quot; r=&quot;5&quot; /&gt;
+        &lt;/g&gt;
+        &lt;path d=&quot;M247 35 H282 M247 45 H276 M247 55 H284&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; /&gt;
+      &lt;/svg&gt;
+
+      &lt;div class=&quot;ucl-copy&quot;&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ucl-label text-small&quot;&gt;Feeds the loop&lt;/div&gt;
+          &lt;ul class=&quot;ucl-list&quot;&gt;
+            &lt;li&gt;Established requirements.&lt;/li&gt;
+            &lt;li&gt;Contested interpretations.&lt;/li&gt;
+            &lt;li&gt;Latent friction and coverage gaps.&lt;/li&gt;
+            &lt;li class=&quot;ucl-extra&quot;&gt;Source lineage, weak evidence, and questions still unresolved.&lt;/li&gt;
+          &lt;/ul&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;ucl-why&quot;&gt;
+          &lt;div class=&quot;ucl-label text-small&quot;&gt;Why&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Evidence before taste.&lt;/strong&gt; Design starts from bounded learning, not habit or generic dashboard patterns.&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;ucl-output&quot;&gt;
+        &lt;i data-lucide=&quot;file-search&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div&gt;&lt;div class=&quot;ucl-output-label text-small&quot;&gt;Output&lt;/div&gt;&lt;p&gt;&lt;strong&gt;Decision brief&lt;/strong&gt; · requirements, tensions, hypotheses&lt;/p&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;ucl-stage&quot;&gt;
+      &lt;div class=&quot;ucl-stage-head&quot;&gt;
+        &lt;div class=&quot;ucl-step text-small&quot;&gt;Skill 02&lt;/div&gt;
+        &lt;div&gt;
+          &lt;h2&gt;Actuarial UX system&lt;/h2&gt;
+          &lt;div class=&quot;ucl-skill-name text-small&quot;&gt;prediction-lab-actuarial-ux&lt;/div&gt;
+          &lt;p class=&quot;ucl-stage-sub&quot;&gt;Shape the complete decision workflow&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;svg class=&quot;ucl-schematic&quot; viewBox=&quot;0 0 360 90&quot; role=&quot;img&quot; aria-label=&quot;Four linked surfaces preserve one actuarial decision context&quot;&gt;
+        &lt;g class=&quot;ucl-faint&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1&quot;&gt;
+          &lt;path d=&quot;M67 24 H144 M216 24 H293 M67 66 H144 M216 66 H293&quot; /&gt;
+          &lt;path d=&quot;M106 24 V66 M254 24 V66&quot; /&gt;
+        &lt;/g&gt;
+        &lt;g fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot;&gt;
+          &lt;rect x=&quot;30&quot; y=&quot;12&quot; width=&quot;74&quot; height=&quot;24&quot; /&gt;&lt;rect x=&quot;128&quot; y=&quot;12&quot; width=&quot;74&quot; height=&quot;24&quot; /&gt;
+          &lt;rect x=&quot;226&quot; y=&quot;12&quot; width=&quot;74&quot; height=&quot;24&quot; /&gt;&lt;rect x=&quot;128&quot; y=&quot;54&quot; width=&quot;74&quot; height=&quot;24&quot; /&gt;
+        &lt;/g&gt;
+        &lt;circle cx=&quot;165&quot; cy=&quot;45&quot; r=&quot;6&quot; fill=&quot;currentColor&quot; /&gt;
+      &lt;/svg&gt;
+
+      &lt;div class=&quot;ucl-copy&quot;&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ucl-label text-small&quot;&gt;Four linked surfaces&lt;/div&gt;
+          &lt;ul class=&quot;ucl-list&quot;&gt;
+            &lt;li&gt;Context register.&lt;/li&gt;
+            &lt;li&gt;Experiment ledger.&lt;/li&gt;
+            &lt;li&gt;Evidence.&lt;/li&gt;
+            &lt;li&gt;Human decision gate.&lt;/li&gt;
+          &lt;/ul&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;ucl-why&quot;&gt;
+          &lt;div class=&quot;ucl-label text-small&quot;&gt;Why&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Decision continuity.&lt;/strong&gt; Question → experiment → evidence → review remains one living actuarial working paper.&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;ucl-output&quot;&gt;
+        &lt;i data-lucide=&quot;workflow&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div&gt;&lt;div class=&quot;ucl-output-label text-small&quot;&gt;Required handoff&lt;/div&gt;&lt;p&gt;Any chart, diagnostic, visual evidence, or chart interaction activates Skill 03.&lt;/p&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;ucl-stage&quot;&gt;
+      &lt;div class=&quot;ucl-stage-head&quot;&gt;
+        &lt;div class=&quot;ucl-step text-small&quot;&gt;Skill 03&lt;/div&gt;
+        &lt;div&gt;
+          &lt;h2&gt;Chart workspace&lt;/h2&gt;
+          &lt;div class=&quot;ucl-skill-name text-small&quot;&gt;designing-actuarial-chart-workspaces&lt;/div&gt;
+          &lt;p class=&quot;ucl-stage-sub&quot;&gt;Turn evidence into an explorable working surface&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;svg class=&quot;ucl-schematic&quot; viewBox=&quot;0 0 360 90&quot; role=&quot;img&quot; aria-label=&quot;One linked selection travels through six chart-workspace actions&quot;&gt;
+        &lt;path d=&quot;M27 45 H329&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; /&gt;
+        &lt;g fill=&quot;currentColor&quot;&gt;
+          &lt;circle cx=&quot;27&quot; cy=&quot;45&quot; r=&quot;5&quot; /&gt;&lt;circle cx=&quot;87&quot; cy=&quot;45&quot; r=&quot;5&quot; /&gt;&lt;circle cx=&quot;147&quot; cy=&quot;45&quot; r=&quot;5&quot; /&gt;
+          &lt;circle cx=&quot;207&quot; cy=&quot;45&quot; r=&quot;5&quot; /&gt;&lt;circle cx=&quot;267&quot; cy=&quot;45&quot; r=&quot;5&quot; /&gt;&lt;circle cx=&quot;329&quot; cy=&quot;45&quot; r=&quot;7&quot; /&gt;
+        &lt;/g&gt;
+        &lt;g class=&quot;ucl-faint&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1&quot;&gt;
+          &lt;path d=&quot;M27 20 V70 M87 28 V62 M147 16 V74 M207 26 V64 M267 20 V70 M329 12 V78&quot; /&gt;
+        &lt;/g&gt;
+      &lt;/svg&gt;
+
+      &lt;div class=&quot;ucl-copy&quot;&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ucl-label text-small&quot;&gt;Interaction contract&lt;/div&gt;
+          &lt;ul class=&quot;ucl-list&quot;&gt;
+            &lt;li&gt;See → isolate → compare.&lt;/li&gt;
+            &lt;li&gt;Explain → act → preserve.&lt;/li&gt;
+            &lt;li&gt;Keep weak point, denominator, exposure, exact values, and provenance visible.&lt;/li&gt;
+            &lt;li class=&quot;ucl-extra&quot;&gt;One selection links plot, table, diagnostics, citations, and review.&lt;/li&gt;
+          &lt;/ul&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;ucl-why&quot;&gt;
+          &lt;div class=&quot;ucl-label text-small&quot;&gt;Why&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Charts answer questions.&lt;/strong&gt; They are working surfaces—not static reports or decorative summaries.&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;ucl-output&quot;&gt;
+        &lt;i data-lucide=&quot;chart-no-axes-combined&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div&gt;&lt;div class=&quot;ucl-output-label text-small&quot;&gt;Output&lt;/div&gt;&lt;p&gt;&lt;strong&gt;Preservable evidence state&lt;/strong&gt; · selection, context, comparison, source&lt;/p&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;ucl-stage&quot;&gt;
+      &lt;div class=&quot;ucl-stage-head&quot;&gt;
+        &lt;div class=&quot;ucl-step text-small&quot;&gt;Loop 04&lt;/div&gt;
+        &lt;div&gt;
+          &lt;h2&gt;Verify &amp; learn&lt;/h2&gt;
+          &lt;div class=&quot;ucl-skill-name text-small&quot;&gt;real workflow evidence&lt;/div&gt;
+          &lt;p class=&quot;ucl-stage-sub&quot;&gt;Test the designed hypothesis with actuaries&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;svg class=&quot;ucl-schematic&quot; viewBox=&quot;0 0 360 90&quot; role=&quot;img&quot; aria-label=&quot;Observed user behavior and failures return to the research evidence base&quot;&gt;
+        &lt;g class=&quot;ucl-faint&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1&quot;&gt;
+          &lt;path d=&quot;M34 68 C77 17 126 17 170 54 S270 91 327 25&quot; /&gt;
+          &lt;path d=&quot;M34 75 H327&quot; /&gt;
+        &lt;/g&gt;
+        &lt;g fill=&quot;currentColor&quot;&gt;
+          &lt;circle cx=&quot;34&quot; cy=&quot;68&quot; r=&quot;5&quot; /&gt;&lt;circle cx=&quot;98&quot; cy=&quot;27&quot; r=&quot;5&quot; /&gt;&lt;circle cx=&quot;170&quot; cy=&quot;54&quot; r=&quot;5&quot; /&gt;
+          &lt;circle cx=&quot;251&quot; cy=&quot;72&quot; r=&quot;5&quot; /&gt;&lt;circle cx=&quot;327&quot; cy=&quot;25&quot; r=&quot;7&quot; /&gt;
+        &lt;/g&gt;
+        &lt;path d=&quot;M303 23 H327 V47&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; /&gt;
+      &lt;/svg&gt;
+
+      &lt;div class=&quot;ucl-copy&quot;&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;ucl-label text-small&quot;&gt;Observe&lt;/div&gt;
+          &lt;ul class=&quot;ucl-list&quot;&gt;
+            &lt;li&gt;Can a skeptical actuary find context, pattern, weak point, source, and next action?&lt;/li&gt;
+            &lt;li&gt;Do desktop, narrow, keyboard, loading, stale, and error states hold?&lt;/li&gt;
+            &lt;li&gt;Where do users export, screenshot, reconstruct, hesitate, or abandon?&lt;/li&gt;
+          &lt;/ul&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;ucl-why&quot;&gt;
+          &lt;div class=&quot;ucl-label text-small&quot;&gt;Why&lt;/div&gt;
+          &lt;p&gt;&lt;strong&gt;Reality updates research.&lt;/strong&gt; Designed assumptions become observed evidence, failures, and sharper questions.&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;ucl-output&quot;&gt;
+        &lt;i data-lucide=&quot;refresh-cw&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+        &lt;div&gt;&lt;div class=&quot;ucl-output-label text-small&quot;&gt;Returns&lt;/div&gt;&lt;p&gt;Behavior · artifacts · telemetry · support signals · unresolved questions&lt;/p&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+  &lt;/main&gt;
+
+  &lt;footer class=&quot;ucl-bottom&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;ucl-loop-label text-small&quot;&gt;The research-assisted loop&lt;/div&gt;
+      &lt;div class=&quot;ucl-return&quot;&gt;
+        &lt;div class=&quot;ucl-return-icon&quot;&gt;&lt;i data-lucide=&quot;corner-up-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;
+        &lt;p&gt;&lt;strong&gt;Verification findings return to the next research and synthesis cycle.&lt;/strong&gt; The evidence base is revised; the broad workflow is reframed; the chart contract is refined; then it is tested again.&lt;/p&gt;
+        &lt;div class=&quot;ucl-return-path ucl-mono text-small&quot;&gt;Validate → synthesize → redesign → validate&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;aside class=&quot;ucl-learning&quot;&gt;
+      &lt;div class=&quot;ucl-learning-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/div&gt;
+      &lt;h3&gt;No automatic promotion.&lt;/h3&gt;
+      &lt;p&gt;A repeated idea does not become truth. Evidence may move a design claim from &lt;strong&gt;hypothesis&lt;/strong&gt; → &lt;strong&gt;contested&lt;/strong&gt; → &lt;strong&gt;established&lt;/strong&gt; only when direct, relevant validation supports it.&lt;/p&gt;
+    &lt;/aside&gt;
+  &lt;/footer&gt;
+&lt;/div&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>
