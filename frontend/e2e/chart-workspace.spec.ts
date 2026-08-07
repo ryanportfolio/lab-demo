@@ -93,6 +93,48 @@ test('tooltip keeps labels and values in separate readable columns', async ({ pa
   expect(Math.min(...gaps)).toBeGreaterThanOrEqual(8);
 });
 
+test('y-axis titles keep a clear gutter from tick labels on wide screens', async ({ page }) => {
+  const chartsByExperiment: Record<string, number> = {
+    'EXP-01': 3,
+    'EXP-02': 3,
+    'EXP-03': 3,
+    'EXP-04': 3,
+    'EXP-05': 3,
+    'EXP-06': 2,
+    'EXP-07': 4,
+  };
+
+  const assertAxisGap = async () => {
+    const gap = await page.locator('.selected-evidence .chart-workspace').evaluate((chart) => {
+      const title = chart.querySelector('.y-axis-title')!.getBoundingClientRect();
+      const ticks = [...chart.querySelectorAll('.y-axis-tick')].map((tick) =>
+        tick.getBoundingClientRect(),
+      );
+      return Math.min(...ticks.map((tick) => tick.left)) - title.right;
+    });
+    expect(gap).toBeGreaterThanOrEqual(8);
+  };
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+  for (const [code, count] of Object.entries(chartsByExperiment)) {
+    await page.locator('.ledger-row', { hasText: code }).click();
+    await expect(page.locator('.selected-evidence .evidence-head')).toContainText(code);
+    const tabs = page.locator('.selected-evidence .evidence-tabs button');
+    await expect(tabs).toHaveCount(count);
+    for (let index = 0; index < count; index++) {
+      await tabs.nth(index).click();
+      await assertAxisGap();
+    }
+  }
+
+  await page.setViewportSize({ width: 2560, height: 1440 });
+  await page.goto('/?theme=light&noanim=1&exp=EXP-07&chart=age_curve');
+  await expect(page.locator('.selected-evidence .chart-workspace')).toBeVisible({ timeout: 90_000 });
+  await assertAxisGap();
+});
+
 test('expanded method notes stay in document flow above evidence provenance', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1&exp=EXP-07&chart=age_curve');
   const focused = page.locator('.selected-evidence .focused-chart');
