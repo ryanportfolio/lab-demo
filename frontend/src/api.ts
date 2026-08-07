@@ -151,6 +151,14 @@ export interface ActiveModel {
   factorCount: number;
 }
 
+export interface DatasetSummary {
+  rows: number;
+  exposure: number;
+  claims: number;
+  frequency: number;
+  missingMileagePct: number;
+}
+
 async function gql<T>(
   query: string,
   variables: Record<string, unknown> = {},
@@ -271,4 +279,15 @@ export async function fetchActiveModel(): Promise<ActiveModel> {
     `query { activeModel { version gini factorCount } }`,
   );
   return d.activeModel;
+}
+
+export async function fetchDatasetSummary(): Promise<DatasetSummary> {
+  const d = await gql<{ datasetSummary: DatasetSummary }>(
+    `query {
+      datasetSummary {
+        rows exposure claims frequency missingMileagePct
+      }
+    }`,
+  );
+  return d.datasetSummary;
 }

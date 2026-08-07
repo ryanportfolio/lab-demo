@@ -1,0 +1,321 @@
+import type { EvidenceChart, EvidenceSeries } from './api';
+
+export type ChartMode = 'level' | 'change';
+
+export interface ChartSelection {
+  start: number;
+  end: number;
+}
+
+interface Comparison {
+  baseline: string;
+  candidate: string;
+  change: 'absolute' | 'percent';
+  label: string;
+}
+
+export interface ChartGuardrail {
+  low?: number;
+  high?: number;
+  label: string;
+  applies: 'level' | 'change' | 'both';
+}
+
+export interface ChartContract {
+  question: string;
+  range: boolean;
+  comparison?: Comparison;
+  guardrail?: ChartGuardrail;
+}
+
+export interface ChartWorkspaceContext {
+  runId: string;
+  code: string;
+  target: string;
+  denominator: string;
+  model: string;
+  onAsk: (question: string) => void;
+  onSave: (evidence: SavedChartEvidence) => void;
+}
+
+export interface SavedChartEvidence {
+  id: string;
+  runId: string;
+  code: string;
+  chartKind: string;
+  title: string;
+  question: string;
+  selection: string;
+  mode: ChartMode;
+  values: string[];
+  weakPoint: string;
+  source: string;
+  url: string;
+  savedAt: string;
+}
+
+const QUESTIONS: Record<string, string> = {
+  age_curve: 'How does the fitted age shape differ from v12, and where is exposure thin?',
+  accidents: 'Does capped claim history explain observed frequency without pricing sparse counts?',
+  territory: 'How far would this experiment move the filed territory table?',
+  count_dist: 'Does the alternate family explain the observed claim-count distribution?',
+  interaction: 'Does the interaction explain residual frequency in a credible cell?',
+  missingness: 'Where is mileage missing most, and which regions need remediation?',
+  missing_frequency: 'Do policies with missing mileage have different claim frequency?',
+  segment_effects: 'Which rating factors drive this segment away from the book average?',
+  lift: 'Does this model separate observed risk better than v12 across risk deciles?',
+  folds: 'Does the gain survive every held-back validation fold?',
+};
+
+const comparisons: Record<string, Comparison> = {
+  age_curve: {
+    baseline: 'v12 bands',
+    candidate: 'Fitted spline',
+    change: 'percent',
+    label: '% vs v12',
+  },
+  accidents: {
+    baseline: 'Fitted, capped at 3',
+    candidate: 'Observed',
+    change: 'absolute',
+    label: 'Observed gap',
+  },
+  territory: {
+    baseline: 'Filed',
+    candidate: 'Blended',
+    change: 'percent',
+    label: '% vs filed',
+  },
+  interaction: {
+    baseline: 'Expected without interaction',
+    candidate: 'Observed',
+    change: 'absolute',
+    label: 'Observed gap',
+  },
+  lift: {
+    baseline: 'Actual, v12 deciles',
+    candidate: 'Actual, this model',
+    change: 'absolute',
+    label: 'Frequency vs v12',
+  },
+};
+
+export const isSecondarySeries = (series: EvidenceSeries | string) => {
+  const label = typeof series === 'string' ? series : series.label;
+  return label === 'Earned exposure' || label.startsWith('Share of exposure');
+};
+
+export function contractFor(chart: EvidenceChart): ChartContract {
+  const comparison = comparisons[chart.kind];
+  const hasComparison =
+    comparison &&
+    chart.series.some((series) => series.label === comparison.baseline) &&
+    chart.series.some((series) => series.label === comparison.candidate);
+  return {
+    question: QUESTIONS[chart.kind] ?? `What decision does ${chart.title.toLowerCase()} support?`,
+    range: chart.kind === 'age_curve' || chart.kind === 'lift',
+    comparison: hasComparison ? comparison : undefined,
+    guardrail:
+      chart.kind === 'territory'
+        ? { low: -5, high: 5, label: 'Filed tolerance ±5%', applies: 'change' }
+        : chart.kind === 'folds'
+          ? { low: 0, label: 'Must remain above zero', applies: 'level' }
+          : undefined,
+  };
+}
+
+export function displayChart(
+  chart: EvidenceChart,
+  contract: ChartContract,
+  mode: ChartMode,
+): EvidenceChart {
+  if (mode !== 'change' || !contract.comparison) return chart;
+  const baseline = chart.series.find((series) => series.label === contract.comparison!.baseline)!;
+  const candidate = chart.series.find((series) => series.label === contract.comparison!.candidate)!;
+  const points = candidate.points.flatMap((point) => {
+    const base = baseline.points.find((item) => Math.abs(item.x - point.x) < 1e-9);
+    if (!base) return [];
+    const y =
+      contract.comparison!.change === 'percent'
+        ? base.y === 0
+          ? 0
+          : 100 * (point.y / base.y - 1)
+        : point.y - base.y;
+    return [{ ...point, y }];
+  });
+  const weight = chart.series.filter(isSecondarySeries);
+  return {
+    ...chart,
+    yLabel: contract.comparison.label,
+    series: [
+      ...weight,
+      {
+        label: contract.comparison.label,
+        style: chart.kind === 'territory' || chart.kind === 'lift' ? 'bar' : 'line',
+        points,
+      },
+    ],
+  };
+}
+
+export function normalizeSelection(selection: ChartSelection): ChartSelection {
+  return {
+    start: Math.min(selection.start, selection.end),
+    end: Math.max(selection.start, selection.end),
+  };
+}
+
+export function selectionLabel(chart: EvidenceChart, selection: ChartSelection): string {
+  const selected = normalizeSelection(selection);
+  const labelAt = (x: number) =>
+    chart.series
+      .flatMap((series) => series.points)
+      .find((point) => Math.abs(point.x - x) < 1e-9)?.label ?? String(x);
+  const start = labelAt(selected.start);
+  const end = labelAt(selected.end);
+  return selected.start === selected.end ? start : `${start}–${end}`;
+}
+
+export function selectionValues(
+  chart: EvidenceChart,
+  selection: ChartSelection,
+): string[] {
+  const selected = normalizeSelection(selection);
+  return chart.series.flatMap((series) => {
+    const points = series.points.filter((point) => point.x >= selected.start && point.x <= selected.end);
+    if (!points.length) return [];
+    if (isSecondarySeries(series)) {
+      const total = series.points.reduce((sum, point) => sum + point.y, 0);
+      const amount = points.reduce((sum, point) => sum + point.y, 0);
+      if (series.label === 'Earned exposure') {
+        const share = total > 0 ? (100 * amount) / total : 0;
+        return [`Earned exposure ${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })} · ${share.toFixed(1)}% of book`];
+      }
+      return [`${series.label} ${amount.toFixed(1)}%`];
+    }
+    const first = points[0].y;
+    const last = points[points.length - 1].y;
+    const fmt = (value: number) =>
+      Math.abs(value) >= 10 ? value.toFixed(1) : Math.abs(value) >= 1 ? value.toFixed(2) : value.toFixed(3);
+    return [
+      `${series.label} ${points.length === 1 ? fmt(first) : `${fmt(first)} → ${fmt(last)}`}`,
+    ];
+  });
+}
+
+export function weakPoint(chart: EvidenceChart, contract: ChartContract): string {
+  if (chart.kind === 'territory') return chart.notes.find((note) => note.includes('5%')) ?? chart.notes[0];
+  if (chart.kind === 'folds') return chart.notes[0];
+  if (chart.kind === 'lift') {
+    const actual = chart.series.find((series) => series.label === 'Actual, this model');
+    const predicted = chart.series.find((series) => series.label === 'Predicted');
+    if (actual && predicted) {
+      const gaps = actual.points.flatMap((point) => {
+        const expected = predicted.points.find((item) => Math.abs(item.x - point.x) < 1e-9);
+        return expected ? [{ point, gap: Math.abs(point.y - expected.y) }] : [];
+      });
+      if (gaps.length) {
+        const largest = gaps.reduce((max, item) => (item.gap > max.gap ? item : max));
+        return `Largest calibration gap: decile ${largest.point.label ?? largest.point.x} · ${largest.gap.toFixed(3)} claims per car-year`;
+      }
+    }
+  }
+  const weight = chart.series.find(isSecondarySeries);
+  if (weight?.points.length) {
+    const thinnest = weight.points.reduce((min, point) => (point.y < min.y ? point : min));
+    const label =
+      chart.series.flatMap((series) => series.points).find((point) => point.x === thinnest.x)?.label ??
+      thinnest.x;
+    if (weight.label === 'Earned exposure') {
+      const dimension = chart.xLabel.toLowerCase().includes('age') ? 'age ' : '';
+      return `Thinnest evidence: ${dimension}${label} · ${thinnest.y.toLocaleString('en-US', { maximumFractionDigits: 0 })} earned car-years`;
+    }
+    return `Thinnest evidence: ${label} · ${thinnest.y.toFixed(1)}% of exposure`;
+  }
+  return chart.notes[1] ?? chart.notes[0] ?? `${contract.question} Exact evidence available.`;
+}
+
+export function parseSelection(value: string | null): ChartSelection | null {
+  if (!value) return null;
+  const [rawStart, rawEnd = rawStart] = value.split(':');
+  const start = Number(rawStart);
+  const end = Number(rawEnd);
+  return Number.isFinite(start) && Number.isFinite(end) ? normalizeSelection({ start, end }) : null;
+}
+
+export function selectionForChart(
+  chart: EvidenceChart,
+  selection: ChartSelection | null,
+  allowRange: boolean,
+): ChartSelection | null {
+  if (!selection) return null;
+  const xs = Array.from(
+    new Set(chart.series.flatMap((series) => series.points.map((point) => point.x))),
+  ).sort((a, b) => a - b);
+  if (!xs.length) return null;
+  const normalized = normalizeSelection(selection);
+  if (normalized.start < xs[0] || normalized.end > xs[xs.length - 1]) return null;
+  const nearest = (value: number) =>
+    xs.reduce((best, x) => (Math.abs(x - value) < Math.abs(best - value) ? x : best));
+  const start = nearest(normalized.start);
+  return normalizeSelection({ start, end: allowRange ? nearest(normalized.end) : start });
+}
+
+export const serializeSelection = (selection: ChartSelection) => {
+  const normalized = normalizeSelection(selection);
+  return `${normalized.start}:${normalized.end}`;
+};
+
+export function updateEvidenceUrl(updates: {
+  exp?: string | null;
+  chart?: string | null;
+  mode?: ChartMode | null;
+  selection?: ChartSelection | null;
+}) {
+  const url = new URL(location.href);
+  const set = (key: string, value?: string | null) => {
+    if (value) url.searchParams.set(key, value);
+    else url.searchParams.delete(key);
+  };
+  if ('exp' in updates) set('exp', updates.exp);
+  if ('chart' in updates) set('chart', updates.chart);
+  if ('mode' in updates) set('mode', updates.mode === 'change' ? 'change' : null);
+  if ('selection' in updates) {
+    set('sel', updates.selection ? serializeSelection(updates.selection) : null);
+  }
+  history.replaceState(null, '', `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
+}
+
+export function buildAgentQuestion(
+  chart: EvidenceChart,
+  context: ChartWorkspaceContext,
+  selection: ChartSelection,
+  mode: ChartMode,
+): string {
+  return `Explain ${selectionLabel(chart, selection)} in ${context.code}'s ${chart.title}. Use ${mode === 'change' ? 'the change comparison' : 'the level view'}, ${context.target} per ${context.denominator}, model ${context.model}, run ${context.runId}, and this chart's exact values and exposure. Call out weak evidence and what should be checked next.`;
+}
+
+export function makeSavedEvidence(
+  chart: EvidenceChart,
+  context: ChartWorkspaceContext,
+  selection: ChartSelection,
+  mode: ChartMode,
+): SavedChartEvidence {
+  const contract = contractFor(chart);
+  const shown = displayChart(chart, contract, mode);
+  return {
+    id: `${context.runId}:${context.code}:${chart.kind}:${serializeSelection(selection)}:${mode}`,
+    runId: context.runId,
+    code: context.code,
+    chartKind: chart.kind,
+    title: chart.title,
+    question: contract.question,
+    selection: selectionLabel(chart, selection),
+    mode,
+    values: selectionValues(shown, selection),
+    weakPoint: weakPoint(chart, contract),
+    source: `${context.code} · run ${context.runId} · ${context.target} / ${context.denominator}`,
+    url: location.href,
+    savedAt: new Date().toISOString(),
+  };
+}

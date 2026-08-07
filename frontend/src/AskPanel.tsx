@@ -17,6 +17,7 @@ export default function AskPanel({
   open,
   onClose,
   onCite,
+  initialQuestion = '',
 }: {
   runId: string | null;
   /** the run has finished, so its verdicts and ledger are settled */
@@ -25,13 +26,14 @@ export default function AskPanel({
   open: boolean;
   onClose: () => void;
   onCite: (code: string) => void;
+  initialQuestion?: string;
 }) {
   const [q, setQ] = useState('');
   const [suggested, setSuggested] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
   const body = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,8 +41,19 @@ export default function AskPanel({
   }, []);
 
   useEffect(() => {
-    if (open) input.current?.focus();
-  }, [open]);
+    if (!open) return;
+    if (initialQuestion) setQ(initialQuestion);
+    requestAnimationFrame(() => input.current?.focus());
+  }, [initialQuestion, open]);
+
+  useEffect(() => {
+    const field = input.current;
+    if (!field || !open) return;
+    field.style.height = 'auto';
+    const nextHeight = Math.min(field.scrollHeight, 112);
+    field.style.height = `${nextHeight}px`;
+    field.style.overflowY = field.scrollHeight > 112 ? 'auto' : 'hidden';
+  }, [open, q]);
 
   useEffect(() => {
     if (!open) return;
@@ -192,8 +205,10 @@ export default function AskPanel({
 
         <div className="ask-foot">
           <div className="ask-compose">
-            <input
+            <textarea
               ref={input}
+              rows={1}
+              wrap="soft"
               value={q}
               disabled={!ready}
               placeholder={
@@ -204,7 +219,8 @@ export default function AskPanel({
               aria-label="Type a question about this run"
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key !== 'Enter') return;
+                if (e.key !== 'Enter' || e.shiftKey) return;
+                e.preventDefault();
                 // Enter on an empty box goes back to the question list, so a
                 // reader is never stuck on one answer
                 if (q.trim()) send(q);

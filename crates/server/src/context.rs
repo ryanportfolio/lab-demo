@@ -8,8 +8,8 @@
 //! It reads and it draws. It cannot fit, merge, or approve anything.
 
 use crate::schema::{
-    chart_from_json, evidence_from_json, Answer, AnswerStep, Citation, Evidence,
-    EvidenceChart, EvidenceSeries, Pt,
+    chart_from_json, evidence_from_json, Answer, AnswerStep, Citation, Evidence, EvidenceChart,
+    EvidenceSeries, Pt,
 };
 use serde_json::Value;
 use sqlx::PgPool;
@@ -54,7 +54,10 @@ impl ExpRow {
             .as_ref()
             .and_then(|f| f["folds_pass"].as_array().cloned())
             .unwrap_or_default();
-        (all.iter().filter(|v| v.as_bool() == Some(true)).count(), all.len())
+        (
+            all.iter().filter(|v| v.as_bool() == Some(true)).count(),
+            all.len(),
+        )
     }
     fn evidence_typed(&self) -> Option<Evidence> {
         self.evidence
@@ -63,11 +66,7 @@ impl ExpRow {
     }
 }
 
-pub async fn ask(
-    pool: &PgPool,
-    run_id: i64,
-    question: &str,
-) -> Result<Answer, String> {
+pub async fn ask(pool: &PgPool, run_id: i64, question: &str) -> Result<Answer, String> {
     let rows: Vec<(
         String,
         String,
@@ -238,13 +237,36 @@ fn classify(q: &str) -> Intent {
     if has(q, &["interaction", "old cars", "older cars", "old vehicle"]) {
         return Intent::Interaction;
     }
-    if has(q, &["territor", "zone", "relativit", "filed", "regulator", "dislocation"]) {
+    if has(
+        q,
+        &[
+            "territor",
+            "zone",
+            "relativit",
+            "filed",
+            "regulator",
+            "dislocation",
+        ],
+    ) {
         return Intent::Territory;
     }
-    if has(q, &["mileage", "missing", "blank", "data quality", "impute"]) {
+    if has(
+        q,
+        &["mileage", "missing", "blank", "data quality", "impute"],
+    ) {
         return Intent::Missingness;
     }
-    if has(q, &["negative binomial", "overdispers", "dispersion", "family", "aic", "nb2"]) {
+    if has(
+        q,
+        &[
+            "negative binomial",
+            "overdispers",
+            "dispersion",
+            "family",
+            "aic",
+            "nb2",
+        ],
+    ) {
         return Intent::Family;
     }
     if has(q, &["accident", "prior claim", "cap"]) {
@@ -252,20 +274,55 @@ fn classify(q: &str) -> Intent {
     }
     // A question naming the winner is asking about the outcome even when it
     // also asks whether the lift holds; that answer carries both
-    if has(q, &["winner", "won", "best", "recommend", "which experiment", "what should", "promote"]) {
+    if has(
+        q,
+        &[
+            "winner",
+            "won",
+            "best",
+            "recommend",
+            "which experiment",
+            "what should",
+            "promote",
+        ],
+    ) {
         return Intent::Winner;
     }
-    if has(q, &["hold out", "holdout", "fold", "overfit", "generalis", "generaliz", "trust", "real lift"]) {
+    if has(
+        q,
+        &[
+            "hold out",
+            "holdout",
+            "fold",
+            "overfit",
+            "generalis",
+            "generaliz",
+            "trust",
+            "real lift",
+        ],
+    ) {
         return Intent::Validation;
     }
     // A metric question has to name a metric, or anything opening with
     // "what is" would land here
-    if has(q, &["gini", "deviance", "aic", "separation", "lorenz", "metric"])
-        && !has(q, &["young", "age"])
+    if has(
+        q,
+        &["gini", "deviance", "aic", "separation", "lorenz", "metric"],
+    ) && !has(q, &["young", "age"])
     {
         return Intent::Metric;
     }
-    if has(q, &["young", "age", "curve", "spline", "older driver", "elevated"]) {
+    if has(
+        q,
+        &[
+            "young",
+            "age",
+            "curve",
+            "spline",
+            "older driver",
+            "elevated",
+        ],
+    ) {
         return Intent::AgeCurve;
     }
     Intent::Unknown
@@ -333,8 +390,7 @@ fn age_answer(exps: &[ExpRow]) -> Answer {
     }
     if let (Some(d), Some(rows)) = (
         e.f("delta_gini"),
-        e.evidence_typed()
-            .and_then(|ev| ev.facts.map(|f| f.rows)),
+        e.evidence_typed().and_then(|ev| ev.facts.map(|f| f.rows)),
     ) {
         let (held, total) = e.folds();
         a.paragraphs.push(format!(
@@ -405,6 +461,7 @@ fn missingness_answer(exps: &[ExpRow]) -> Answer {
         return unknown_answer(exps);
     };
     let chart = e.chart("missingness");
+    let frequency = e.chart("missing_frequency");
     let mut a = blank("The blank mileage boxes are not spread evenly across the book, and drivers with a blank do not claim at the same rate as drivers without one. Filling the blanks in would price that pattern by accident, so the platform left the column alone and said why.");
     a.paragraphs.push(format!(
         "{} was refused before any fit ran. The profiler reads the mileage column as missing not at random: the missing share differs by region, and the rows that are missing it claim at a different rate from the rows that are not.",
@@ -415,10 +472,16 @@ fn missingness_answer(exps: &[ExpRow]) -> Answer {
             a.paragraphs.push(n.clone());
         }
     }
+    if let Some(c) = &frequency {
+        for n in &c.notes {
+            a.paragraphs.push(n.clone());
+        }
+    }
     if let Some(v) = &e.verdict {
         a.paragraphs.push(format!("Verdict on record: {v}."));
     }
     a.charts.extend(chart);
+    a.charts.extend(frequency);
     a.citations.push(cite(e));
     a
 }
@@ -595,11 +658,7 @@ fn fold_chart(e: &ExpRow) -> Option<EvidenceChart> {
         })
         .collect();
     let held = ev.fold_deltas.iter().filter(|d| **d > 0.0).count();
-    let worst = ev
-        .fold_deltas
-        .iter()
-        .cloned()
-        .fold(f64::MAX, f64::min);
+    let worst = ev.fold_deltas.iter().cloned().fold(f64::MAX, f64::min);
     Some(EvidenceChart {
         kind: "folds".into(),
         title: format!("Change in separation by fold, {}", e.code),
