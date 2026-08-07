@@ -25,6 +25,7 @@ async function readLayout(page: Page) {
 
     const label = poster.querySelector<HTMLElement>('.ars-label');
     const header = poster.querySelector<HTMLElement>('.ars-top');
+    const heading = header?.firstElementChild as HTMLElement | null;
     const thesis = poster.querySelector<HTMLElement>('.ars-thesis');
     const cta = poster.querySelector<HTMLElement>('.ars-switch');
     const documentElement = poster.ownerDocument.documentElement;
@@ -42,8 +43,22 @@ async function readLayout(page: Page) {
       labelFont: label ? Number(getComputedStyle(label).fontSize.replace('px', '')) : 0,
       ctaFont: cta ? Number(getComputedStyle(cta).fontSize.replace('px', '')) : 0,
       ctaHeight: cta?.getBoundingClientRect().height ?? 0,
-      headerOverflow: header && thesis
-        ? Math.max(0, thesis.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom)
+      headerOverflow: header
+        ? Math.max(
+            0,
+            ...[cta, thesis]
+              .filter((item) => item && getComputedStyle(item).display !== 'none')
+              .map((item) => item!.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom),
+          )
+        : 0,
+      ctaGapFromTitle: cta && heading
+        ? cta.getBoundingClientRect().left - heading.getBoundingClientRect().right
+        : 0,
+      thesisGapFromCta: cta && thesis && getComputedStyle(thesis).display !== 'none'
+        ? thesis.getBoundingClientRect().left - cta.getBoundingClientRect().right
+        : 0,
+      thesisWidth: thesis && getComputedStyle(thesis).display !== 'none'
+        ? thesis.getBoundingClientRect().width
         : 0,
       maxCopyCollision: Math.max(...collisions),
       maxStageOverflow: Math.max(...overflow),
@@ -74,6 +89,7 @@ async function readChartLayout(page: Page) {
 
     const label = poster.querySelector<HTMLElement>('.ucl-label');
     const header = poster.querySelector<HTMLElement>('.ucl-top');
+    const heading = header?.firstElementChild as HTMLElement | null;
     const thesis = poster.querySelector<HTMLElement>('.ucl-thesis');
     const cta = poster.querySelector<HTMLElement>('.ucl-switch');
     const documentElement = poster.ownerDocument.documentElement;
@@ -91,8 +107,22 @@ async function readChartLayout(page: Page) {
       labelFont: label ? Number(getComputedStyle(label).fontSize.replace('px', '')) : 0,
       ctaFont: cta ? Number(getComputedStyle(cta).fontSize.replace('px', '')) : 0,
       ctaHeight: cta?.getBoundingClientRect().height ?? 0,
-      headerOverflow: header && thesis
-        ? Math.max(0, thesis.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom)
+      headerOverflow: header
+        ? Math.max(
+            0,
+            ...[cta, thesis]
+              .filter((item) => item && getComputedStyle(item).display !== 'none')
+              .map((item) => item!.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom),
+          )
+        : 0,
+      ctaGapFromTitle: cta && heading
+        ? cta.getBoundingClientRect().left - heading.getBoundingClientRect().right
+        : 0,
+      thesisGapFromCta: cta && thesis && getComputedStyle(thesis).display !== 'none'
+        ? thesis.getBoundingClientRect().left - cta.getBoundingClientRect().right
+        : 0,
+      thesisWidth: thesis && getComputedStyle(thesis).display !== 'none'
+        ? thesis.getBoundingClientRect().width
         : 0,
       maxCopyCollision: Math.max(...collisions),
       maxStageOverflow: Math.max(...overflow),
@@ -110,6 +140,9 @@ test('standalone poster uses larger type and a clean review connector', async ({
   expect(layout.ctaFont).toBeGreaterThanOrEqual(15);
   expect(layout.ctaHeight).toBeGreaterThanOrEqual(44);
   expect(layout.headerOverflow).toBeLessThanOrEqual(1);
+  expect(layout.ctaGapFromTitle).toBeGreaterThanOrEqual(18);
+  expect(layout.thesisGapFromCta).toBeGreaterThanOrEqual(18);
+  expect(layout.thesisWidth).toBeGreaterThanOrEqual(330);
   expect(layout.maxCopyCollision).toBeLessThanOrEqual(1);
   expect(layout.maxStageOverflow).toBeLessThanOrEqual(1);
   expect(layout.documentOverflow).toBeLessThanOrEqual(1);
@@ -142,10 +175,32 @@ test('chart-loop poster uses larger type and stays contained', async ({ page }) 
   expect(layout.ctaFont).toBeGreaterThanOrEqual(15);
   expect(layout.ctaHeight).toBeGreaterThanOrEqual(44);
   expect(layout.headerOverflow).toBeLessThanOrEqual(1);
+  expect(layout.ctaGapFromTitle).toBeGreaterThanOrEqual(18);
+  expect(layout.thesisGapFromCta).toBeGreaterThanOrEqual(18);
+  expect(layout.thesisWidth).toBeGreaterThanOrEqual(330);
   expect(layout.maxCopyCollision).toBeLessThanOrEqual(1);
   expect(layout.maxStageOverflow).toBeLessThanOrEqual(1);
   expect(layout.documentOverflow).toBeLessThanOrEqual(1);
   await expect(frame.locator('body')).not.toContainText('—');
+
+  await expect(frame.locator('.ucl-title')).not.toContainText('.');
+  const skillLinks = [
+    {
+      name: 'prediction-lab-actuarial-ux',
+      href: 'https://github.com/ryanportfolio/lab-demo/blob/main/.claude/skills/prediction-lab-actuarial-ux/SKILL.md',
+    },
+    {
+      name: 'designing-actuarial-chart-workspaces',
+      href: 'https://github.com/ryanportfolio/lab-demo/blob/main/.claude/skills/designing-actuarial-chart-workspaces/SKILL.md',
+    },
+  ];
+  for (const skill of skillLinks) {
+    const link = frame.getByRole('link', { name: skill.name, exact: true });
+    await expect(link).toHaveAttribute('href', skill.href);
+    await expect(link).toHaveAttribute('target', '_top');
+    const fontWeight = await link.evaluate((element) => Number(getComputedStyle(element).fontWeight));
+    expect(fontWeight).toBeGreaterThanOrEqual(700);
+  }
 });
 
 test('compact chart-loop poster stays readable and contained', async ({ page }) => {
