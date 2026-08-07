@@ -12,8 +12,7 @@ Poisson GLM fit by the backend at run time.
 
 ## Research and design system
 
-This demo was not designed from generic ML-dashboard conventions. It came out
-of a repeatable evidence-to-design system built around actuarial decisions.
+This demo was not designed from generic ML-dashboard conventions. And it will be further refined and improved by a repeatable evidence-to-design system built around actuarial decisions.
 
 ### Research → synthesis → review
 
