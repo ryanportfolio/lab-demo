@@ -21,6 +21,7 @@ import {
   normalizeSelection,
   selectionLabel,
   selectionValues,
+  weakestSelection,
   weakPoint,
   type ChartContract,
   type ChartMode,
@@ -749,6 +750,14 @@ export default function Chart({
   };
   const selectedValues = selection ? selectionValues(shown, selection) : [];
   const weakness = weakPoint(chart, contract);
+  // With nothing pinned, the slot leads with the weak point's own numbers
+  // instead of usage instructions: the thinnest slice is the first thing a
+  // reviewer will want to interrogate, so it is one press away
+  const weakSelection = useMemo(() => weakestSelection(chart), [chart]);
+  const weakValues = useMemo(
+    () => (weakSelection ? selectionValues(shown, weakSelection) : []),
+    [shown, weakSelection],
+  );
 
   useEffect(() => setHidden(new Set()), [mode, chart.kind]);
 
@@ -946,6 +955,23 @@ export default function Chart({
               <button type="button" onClick={() => setSelection(null)}>Clear</button>
             </div>
             <span className="chart-action-status" role="status">{actionStatus}</span>
+            </div>
+          ) : weakSelection ? (
+            <div className="chart-selection-empty chart-selection-weak">
+              <button
+                type="button"
+                className="pin-weakest"
+                onClick={() => setSelection(weakSelection)}
+              >
+                Pin weakest slice · {selectionLabel(chart, weakSelection)}
+              </button>
+              <div className="selection-values">
+                {weakValues.map((value) => <span key={value}>{value}</span>)}
+              </div>
+              <span className="empty-hint">
+                Hover previews · click or Enter pins
+                {contract.range ? ' · drag or Shift plus arrow selects a range' : ''}
+              </span>
             </div>
           ) : (
             <div className="chart-selection-empty">

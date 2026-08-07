@@ -269,6 +269,11 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .chart-weakness b { flex: 0 0 auto; color: var(--bad); font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase }
 .chart-selection-slot { min-height: 120px; padding-top: 8px }
 .chart-selection-empty { min-height: 106px; display: grid; place-items: center; border: 1px dashed var(--border); color: var(--fg-subtle); font-family: var(--mono); font-size: 12.5px; text-align: center }
+.chart-selection-weak { align-content: center; gap: 7px; padding: 9px 11px }
+.chart-selection-weak .selection-values { justify-content: center }
+.pin-weakest { min-height: 38px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg); color: var(--fg-muted); cursor: pointer; padding: 6px 10px; font: inherit; font-family: var(--mono); font-size: 13px }
+.pin-weakest:hover, .pin-weakest:focus-visible { border-color: var(--brand); color: var(--fg); outline: none }
+.empty-hint { color: var(--fg-subtle); font-size: 11px }
 .chart-selection { min-height: 106px; border-left: 3px solid var(--brand); background: var(--bg-subtle); padding: 9px 11px }
 .selection-readout { display: flex; align-items: flex-start; gap: 14px }
 .selection-label { flex: 0 0 auto; color: var(--fg); font-family: var(--mono); font-size: 16px; font-weight: 650 }

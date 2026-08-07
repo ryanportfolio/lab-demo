@@ -36,6 +36,32 @@ test('every evidence chart states its question and visible weak point', async ({
   }
 });
 
+test('empty slot previews the weakest slice and one press pins it', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  const chart = page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"]');
+  const weak = chart.locator('.chart-selection-weak');
+  await expect(weak).toBeVisible();
+  // the preview carries the weak point's own numbers, not just instructions
+  await expect(weak.locator('.selection-values')).toContainText('Earned exposure');
+  // and it names the same slice the weakness sentence talks about
+  const weakness = await chart.locator('.chart-weakness').innerText();
+  const button = weak.locator('.pin-weakest');
+  const label = (await button.innerText()).replace('Pin weakest slice · ', '').trim();
+  expect(weakness).toContain(label.replace(/^age /, ''));
+
+  await button.click();
+  await expect(chart.locator('.chart-selection')).toBeVisible();
+  await expect(chart.locator('.selection-label')).toContainText(label);
+  await expect(page).toHaveURL(/sel=/);
+  await expect(page.locator('.exact-values tr.is-selected')).toHaveCount(1);
+
+  // clearing returns the preview, so the affordance never disappears
+  await chart.locator('.chart-actions button', { hasText: 'Clear' }).click();
+  await expect(weak).toBeVisible();
+});
+
 test('keyboard pin and ordered range drive chart, table, and URL together', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);
