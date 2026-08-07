@@ -179,7 +179,7 @@ export default function App() {
       history.replaceState(null, '', location.pathname + location.search);
     }
     window.scrollTo(0, 0);
-    setAnnouncement(nextView === 'review' ? 'Model review opened.' : 'Back to run 038.');
+    setAnnouncement(nextView === 'review' ? 'Model review opened.' : 'Back to the run.');
   }, []);
 
   useEffect(() => {
@@ -304,7 +304,13 @@ export default function App() {
         </div>
         <nav className="crumb" aria-label="Breadcrumb">
           Models<span>›</span>Bodily Injury Frequency<span>›</span>
-          <b>{view === 'review' ? 'Review v13' : 'Run 038'}</b>
+          <b>
+            {view === 'review'
+              ? `Review${review ? ` v${review.nextVersion}` : ''}`
+              : run
+                ? `Run ${run.id}`
+                : 'Run pending'}
+          </b>
         </nav>
         <div className="tb-right">
           <span className="branch-readout">{run?.branchName ?? 'run pending'}</span>
