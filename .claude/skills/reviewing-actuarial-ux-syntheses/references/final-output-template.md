@@ -8,7 +8,8 @@ Create one self-contained output directory with these artifacts. Adapt prose len
 
 - completion time, review ID, model, exact output path;
 - frozen input boundary and excluded directories;
-- pass/artifact inventory with hashes;
+- recursive pass/artifact inventory with parent pass, role, and hashes;
+- alias ordering rule and any timestamp/path fallback;
 - artifact guide;
 - accounting totals and unresolved validation failures;
 - statement that no new web evidence or previous final entered the primary corpus.
@@ -23,7 +24,7 @@ Create one self-contained output directory with these artifacts. Adapt prose len
 
 ### `01-synthesis-pass-inventory.md`
 
-For every pass: alias, path, date/model, artifact roles, raw-report hashes, blindness/contamination, quality dimensions, completeness class, missing lineage, and permitted use.
+For every pass: alias, path, completion date, synthesis-producing agent/model, underlying research-model families, recursively discovered artifact roles, raw-report hashes, blindness/contamination, quality dimensions, semantic role coverage across root and nested artifacts, completeness class, missing lineage, and permitted use. Use `unknown` rather than inferring producer identity.
 
 ### `02-final-canonical-findings.md`
 
@@ -35,7 +36,7 @@ Keep separate columns for eligible synthesis passes, contaminated passes, unique
 
 ### `04-cross-synthesis-dedupe-lineage.md`
 
-Map every namespaced layer-two canonical/outlier ID to a final claim, retained variant, contradiction, or quarantine reason. Include relationship and merge/split rationale. Preserve one-to-many mappings.
+Map every namespaced layer-two canonical/outlier ID to a final claim, retained variant, contradiction, or quarantine reason. Include publication status, source artifact role, exact locator, relationship, merge/split rationale, and whether any lineage edge was repaired from provenance or working state. Preserve one-to-many mappings. List working-only propositions separately; if selectively verified from raw evidence, label them reviewer-derived with zero interpretive convergence.
 
 ### `05-unified-source-evidence-audit.md`
 
@@ -59,11 +60,11 @@ Rank unresolved questions by decision value and uncertainty. Name the best next 
 
 ### `10-qa-accounting-report.md`
 
-Reconcile every pass, artifact, synthesis claim, raw finding, and source appearance. List unmapped, duplicated, repaired, excluded, and quarantined records. State whether the completion gate passed.
+Reconcile every pass, recursively discovered artifact, published synthesis claim, working-only proposition, raw finding, and source appearance. List unmapped, duplicated, repaired, excluded, and quarantined records. Confirm nested directories were attached to exactly one parent pass. State whether the completion gate passed.
 
 ## Required machine-readable crosswalks
 
-Create `data/pass-manifest.csv`, `data/claim-map.csv`, and `data/source-map.csv`. Use stable IDs and exact paths/locators so another reviewer can reproduce every human-readable artifact without guessing.
+Create `data/pass-manifest.csv`, `data/claim-map.csv`, and `data/source-map.csv`. Use stable IDs and exact paths/locators so another reviewer can reproduce every human-readable artifact without guessing. `pass-manifest.csv` must distinguish pass rows from artifact rows and include parent pass, artifact role, hash, declared completion time, alias-order fallback, synthesis producer, and underlying research-model families. `claim-map.csv` must include publication status, artifact role, working-only status, reviewer-derived status, interpretive-convergence eligibility, and lineage-repair provenance.
 
 ## Storage
 
