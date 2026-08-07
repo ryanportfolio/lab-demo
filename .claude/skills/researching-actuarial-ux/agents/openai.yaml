@@ -1,0 +1,7 @@
+interface:
+  display_name: "Researching Actuarial UX"
+  short_description: "Independent actuarial UX research and synthesis"
+  default_prompt: "Use $researching-actuarial-ux to run an independent evidence-backed research pass or synthesize supplied reports."
+
+policy:
+  allow_implicit_invocation: true

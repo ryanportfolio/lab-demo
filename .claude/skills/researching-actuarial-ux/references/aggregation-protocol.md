@@ -1,0 +1,70 @@
+# Multi-run aggregation protocol
+
+## Principle
+
+Synthesize evidence, not prose. Deduplication must be reversible. Agreement among reports is useful only after separating independent reasoning from repeated underlying sources.
+
+## 1. Validate inputs
+
+Inventory every report with run ID, model, date, scope, lens, blindness status, source count, and source classes. Keep contaminated or non-blind runs, but never count them as independent convergence without qualification.
+
+## 2. Build master ledgers
+
+Create:
+
+- A source ledger keyed by canonical URL and underlying-source fingerprint
+- An atomic finding ledger preserving every original finding ID
+- A terminology map for synonyms without rewriting original evidence
+
+## 3. Normalize findings
+
+Compare actor, decision/job, workflow stage, mechanism, consequence, and evidence. Merge only when these materially match. Similar wording is insufficient; different wording does not imply difference.
+
+Assign each canonical cluster an ID such as `CAN-014`. Record every member finding and why it was merged. Use relationship labels when findings are not duplicates: `supports`, `extends`, `narrows`, `contradicts`, `alternative cause`, or `distinct segment`.
+
+## 4. Measure convergence honestly
+
+For every canonical finding report separately:
+
+- Number of reports containing it
+- Number of blind independent runs containing it
+- Number of unique underlying sources
+- Number and kind of independent source classes
+- Products, personas, and workflow stages represented
+- Credible challenging evidence
+
+Do not convert these counts into false-precision scores.
+
+## 5. Set confidence
+
+- **Strong:** direct evidence or multiple independent, current, relevant sources across useful classes; no unresolved contradiction that changes the claim.
+- **Moderate:** one high-quality direct source or several consistent indirect sources with bounded limitations.
+- **Tentative:** inference, vendor-only evidence, sparse context, weak independence, or uncertain transferability.
+- **Contested:** credible evidence supports materially different interpretations, segments, or outcomes.
+
+Confidence describes evidence for the claim, not confidence in a proposed interface.
+
+## 6. Preserve disagreement and novelty
+
+Keep minority findings when they expose severe harm, excluded users, a distinct workflow, a plausible alternative cause, or a strategically important unknown. Record negative evidence and failed confirmation. Never delete a finding merely because only one model found it.
+
+## 7. Produce aggregation artifacts
+
+1. **Executive synthesis:** strongest established findings, strategic tensions, and unknowns.
+2. **Canonical findings:** claim, actor/workflow, mechanism, consequence, confidence, source diversity, Prediction Lab relevance, and validation need.
+3. **Convergence matrix:** reports, blind runs, unique sources, source classes, segments, and contradictions.
+4. **Dedupe map:** every original finding ID → canonical ID or explicit retained-outlier reason.
+5. **Master source ledger:** canonical sources, fingerprints, duplicate appearances, and limitations.
+6. **Contradiction and outlier register:** competing claims, contexts, and evidence needed to resolve them.
+7. **Coverage gaps:** missing products, users, geographies, stages, and source classes.
+8. **Research backlog:** next questions ranked by decision value and best validation method.
+9. **Design opportunity brief:** only evidence-supported requirements or questions; speculative solutions remain labeled.
+
+## Completion gate
+
+- Every input report and finding is accounted for.
+- Every merge can be reversed from the dedupe map.
+- Repeated URLs and syndicated sources are not counted as independent evidence.
+- Confidence follows the evidence rubric.
+- Contradictions and important one-off findings remain visible.
+- The synthesis distinguishes what is observed, reported, inferred, unknown, and proposed.
