@@ -1,6 +1,6 @@
 # Experiments
 
-A working product slice for [Prediction Lab](https://predictionlab.ai): you
+A example concept rough draft for [Prediction Lab](https://predictionlab.ai): you
 state a goal and hard guardrails, a modeling agent runs seven experiments
 against a real insurance pricing model, every experiment ends in a written
 verdict, and the one winner earns a review a human has to sign.
