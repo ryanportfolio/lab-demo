@@ -42,6 +42,7 @@ export default function ReviewView({
   onSave,
 }: Props) {
   const [acknowledged, setAcknowledged] = useState(false);
+  const [weakFocusNonce, setWeakFocusNonce] = useState(0);
   const approved = review.status === 'approved';
   const winner = run.experiments.find((experiment) => experiment.code === review.winnerCode);
   const weakPoint = review.paragraphs.find((paragraph) => /exposure/i.test(paragraph));
@@ -107,6 +108,21 @@ export default function ReviewView({
             <span className="eyebrow">Weakest point</span>
             {weakValue && <strong>{weakValue}% exposure</strong>}
             <p>{weakPoint ?? 'The sparse tail needs a human check before approval.'}</p>
+            <button
+              type="button"
+              className="weak-open"
+              onClick={() => {
+                setWeakFocusNonce((nonce) => nonce + 1);
+                const staticFrame =
+                  document.documentElement.classList.contains('no-anim') ||
+                  matchMedia('(prefers-reduced-motion: reduce)').matches;
+                document
+                  .querySelector('.review-proof')
+                  ?.scrollIntoView({ block: 'start', behavior: staticFrame ? 'auto' : 'smooth' });
+              }}
+            >
+              Open the sparse tail in evidence →
+            </button>
           </div>
 
           <details className="review-ledger">
@@ -139,6 +155,10 @@ export default function ReviewView({
             focused
             onAsk={onAsk}
             onSave={onSave}
+            weakFocus={{
+              text: weakPoint ?? 'sparse tail exposure',
+              nonce: weakFocusNonce,
+            }}
           />
         </section>
       </div>

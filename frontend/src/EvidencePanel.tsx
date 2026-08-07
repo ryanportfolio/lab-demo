@@ -14,6 +14,7 @@ import {
   parseSelection,
   selectionForChart,
   updateEvidenceUrl,
+  weakestSelection,
   type ChartMode,
   type ChartSelection,
   type SavedChartEvidence,
@@ -184,6 +185,7 @@ export default function EvidencePanel({
   focused = false,
   onAsk,
   onSave,
+  weakFocus,
 }: {
   runId: string;
   code: string;
@@ -192,6 +194,11 @@ export default function EvidencePanel({
   focused?: boolean;
   onAsk?: (question: string) => void;
   onSave?: (evidence: SavedChartEvidence) => void;
+  /**
+   * A request to jump to the chart the weak-point prose talks about and pin
+   * its thinnest slice. The text picks the chart; the nonce fires the jump.
+   */
+  weakFocus?: { text: string; nonce: number };
 }) {
   const [evidence, setEvidence] = useState<Evidence | null>(null);
   const [shownExperiment, setShownExperiment] = useState<Experiment | undefined>(experiment);
@@ -270,6 +277,32 @@ export default function EvidencePanel({
   const displayedChart = activeChart
     ? displayChart(activeChart, contractFor(activeChart), mode)
     : undefined;
+
+  // Jump to the weak point's own chart. The chart is picked by matching the
+  // weak-point prose against chart words, not by position, so the same button
+  // stays honest if a different experiment wins a future run. Word overlap is
+  // scored because one stray shared word (say "relativity") must not beat the
+  // chart the sentence is actually about.
+  const appliedWeakFocus = useRef(0);
+  useEffect(() => {
+    if (!weakFocus || weakFocus.nonce === appliedWeakFocus.current || !charts.length) return;
+    appliedWeakFocus.current = weakFocus.nonce;
+    const prose = weakFocus.text.toLowerCase();
+    const score = (chart: EvidenceChart) =>
+      Array.from(new Set(`${chart.title} ${chart.xLabel}`.toLowerCase().split(/\W+/)))
+        .filter((word) => word.length > 4)
+        .filter((word) => prose.includes(word)).length;
+    const focusable = charts.filter((chart) => weakestSelection(chart));
+    if (!focusable.length) return;
+    const target = focusable.reduce((best, chart) => (score(chart) > score(best) ? chart : best));
+    const pinned = weakestSelection(target)!;
+    resolve(() => {
+      setActiveKey(chartKey(target));
+      setMode('level');
+      setSelection(pinned);
+    });
+    updateEvidenceUrl({ exp: shownCode, chart: target.kind, mode: null, selection: pinned });
+  }, [weakFocus, charts, shownCode, resolve]);
 
   useEffect(() => {
     if (!charts.length || activeKey) return;
