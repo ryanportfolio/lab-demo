@@ -454,11 +454,6 @@ export default function App() {
         </main>
       )}
 
-      <footer className="site-foot">
-        <span>Synthetic data · real fits · human approval</span>
-        <span>Built by Ryan Allen · <a href="https://fullbuild.ai">fullbuild.ai</a></span>
-      </footer>
-
       <div className="sr" aria-live="polite">{announcement}</div>
 
       <AskPanel
