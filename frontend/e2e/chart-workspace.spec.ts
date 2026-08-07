@@ -175,6 +175,33 @@ test('wide workspace gives evidence the stage and stacks experiment memory', asy
   }
 });
 
+test('human handoff stays above evidence and desktop guardrails form a checklist', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  const promote = page.locator('.goal-bar > .promote');
+  await expect(promote).toBeVisible();
+  await expect(promote).toContainText('ready for human review');
+  await expect(page.locator('.run-view > .promote')).toHaveCount(0);
+
+  const promoteBox = await promote.boundingBox();
+  const workspaceBox = await page.locator('.run-workspace').boundingBox();
+  expect(promoteBox!.y + promoteBox!.height).toBeLessThan(workspaceBox!.y);
+
+  const rails = await page.locator('.goal-rails > span').evaluateAll((items) =>
+    items.map((item) => {
+      const box = item.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height };
+    }),
+  );
+  expect(rails).toHaveLength(3);
+  expect(rails[1].y).toBeGreaterThanOrEqual(rails[0].y + rails[0].height);
+  expect(rails[2].y).toBeGreaterThanOrEqual(rails[1].y + rails[1].height);
+  expect(Math.abs(rails[0].x - rails[1].x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(rails[1].x - rails[2].x)).toBeLessThanOrEqual(1);
+});
+
 test('comparison is semantic and guardrails appear only where valid', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);
