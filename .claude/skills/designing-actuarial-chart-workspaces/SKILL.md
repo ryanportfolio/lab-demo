@@ -41,7 +41,7 @@ Use one linked selection across plot, table, diagnostics, citations, and review.
 | Guardrails | Overlay only real thresholds governing this decision; show distance and breach direction. |
 | Drill-down | Require a real hierarchy or supported slice. Preserve parent selection and reset. |
 | Ask from selection | Send selection, model, data, filters, run, method, and artifact. Show what the agent read; it cannot approve. |
-| Preserve | Carry selection, comparison, filters, table state, provenance, and weak point in the link or review. Label local-only state. |
+| Preserve | Carry selection, comparison, filters, table state, provenance, and weak point in the link or review. Label local-only state. Exports carry version identity and reveal when superseded. |
 
 Provide keyboard and touch parity, visible focus, useful targets, color-independent meaning, reduced motion, a semantic exact-values table, and a plain-language summary.
 

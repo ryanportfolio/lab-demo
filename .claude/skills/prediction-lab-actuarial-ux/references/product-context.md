@@ -27,6 +27,8 @@ Source: [ITC talk](https://vimeo.com/1131288047), transcript supplied by the pro
 
 ## Current product direction
 
+Release notes are first-party claims, not inspected behavior; publicly viewable founder demos are the main partial verification channel. The evidenced surface is P&C predictive modeling — nested-stochastic life projection and reserving are unevidenced, so a design assuming them carries a named dependency.
+
 Recent official releases reinforce the same principles:
 
 - AI agents can traverse the modeling pipeline, inspect artifacts, ingest data, set filters and partitions, fit models, and read results without raw queries.
@@ -36,6 +38,7 @@ Recent official releases reinforce the same principles:
 - Lorenz curves, Gini, feature importance, model effects, geographies, and distribution views reflect insurance modeling rather than generic ML alone.
 - Model import/export supports handoff, archiving, and migration from legacy software.
 - AI is optional and bounded by professional judgment. Customer data is not used to train shared AI models; BYOK and local-model options exist.
+- Agent authority (owner-supplied, 2026-08-08, not yet verified by inspection): agents can change most things except final/irreversible actions; the intended contract is that agent effects are clear and apparent, and reversible. The open half is the record: whether what an agent did stays reconstructable at review and sign-off time, not just visible in the moment.
 
 ## Product implications
 
