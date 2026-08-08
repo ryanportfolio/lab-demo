@@ -203,12 +203,15 @@ function Plot({
   if (!rel && Math.min(...values) >= 0) yLo = Math.max(0, yLo);
 
   // Long category names lean rather than crush, and leaning costs height, so
-  // the frame grows instead of the labels running off the bottom
+  // the frame grows instead of the labels running off the bottom. Leaning
+  // also surrenders the x-axis title's row, so short labels (decile numbers,
+  // claim counts) stay upright however many categories there are — crowding
+  // is a function of label width, not category count alone
+  const catLabels = primaryAll.flatMap((s) => s.points.map((p) => p.label ?? ''));
   const longLabels =
     categorical &&
-    (xTicksNeedRotation(
-      primaryAll.flatMap((s) => s.points.map((p) => p.label ?? '')),
-    ) || new Set(allXAll).size > 8);
+    (xTicksNeedRotation(catLabels) ||
+      (new Set(allXAll).size > 8 && catLabels.some((l) => l.length > 3)));
   const padB = longLabels ? G.padBL : PAD.b;
   const H = longLabels ? G.HL : G.H;
 
