@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Review, Run } from './api';
+import AgentActionLog from './AgentActionLog';
 import EvidencePanel from './EvidencePanel';
 import { boldSpans, fmtDelta, fmtGini } from './format';
 import type { AgentAsk, SavedChartEvidence } from './chartWorkspace';
@@ -78,6 +79,7 @@ export default function ReviewView({
         <div><span>Holdout</span><strong>{fmtDelta(review.holdoutDelta)}</strong></div>
         <div><span>Guardrails</span><strong>{review.guardrailRows.length} / {review.guardrailRows.length}</strong></div>
         <div><span>Ledger</span><strong>{review.ledgerRows.length} / {run.counts.spawned}</strong></div>
+        <div><span>Agent actions</span><strong>{run.actions.length} · {run.actions.filter((action) => action.kind === 'refuse').length} refused</strong></div>
       </section>
 
       <div className="review-grid">
@@ -207,6 +209,8 @@ export default function ReviewView({
           ))}
         </div>
       </section>
+
+      <AgentActionLog actions={run.actions} review />
 
       <section className="approval-gate" aria-label="Human approval">
         <div>
