@@ -555,3 +555,47 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
   .selection-readout { flex-direction: column; gap: 5px }
   .chart-actions button { flex: 1 1 46% }
 }
+
+/* Agent record: the run's action-level trail, console and review */
+.agent-record {
+  margin-top: 16px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  background: var(--bg); padding: 16px;
+}
+.agent-record summary { cursor: pointer; list-style: none }
+.agent-record summary::-webkit-details-marker { display: none }
+.agent-record summary .workspace-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+.agent-record-empty { color: var(--fg-subtle); font-size: 15px; padding: 12px 0 4px }
+.agent-record-list { list-style: none; margin-top: 10px }
+.agent-record-list li + li { border-top: 1px solid var(--border-muted) }
+.act-row { display: grid; grid-template-columns: 28px 52px 1fr; align-items: start; gap: 10px; padding: 10px 0 }
+.act-seq { color: var(--fg-subtle); font-family: var(--mono); font-size: 12.5px; padding-top: 3px }
+.act-actor {
+  display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: var(--r-full);
+  color: var(--fg-muted); font-family: var(--mono); font-size: 11.5px; letter-spacing: .05em; padding: 3px 0;
+}
+.act-actor.human { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); color: var(--warn) }
+.act-body { display: grid; gap: 4px; min-width: 0 }
+.act-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px }
+.act-head b { font-size: 14.5px; font-weight: 600 }
+.act-target { color: var(--fg); font-family: var(--mono); font-size: 13.5px }
+.act-target button {
+  border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; padding: 0;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.act-status { color: var(--fg-subtle); font-family: var(--mono); font-size: 12.5px; font-style: normal; margin-left: auto; white-space: nowrap }
+.act-status.s-refuse, .act-status.s-revert { color: var(--warn) }
+.act-status.s-human { color: var(--fg); font-weight: 600 }
+.act-detail { color: var(--fg-muted); font-size: 14.5px; line-height: 1.45 }
+.act-diff { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px; font-size: 14px }
+.act-diff del { color: var(--fg-subtle); text-decoration: line-through }
+.act-diff i { color: var(--fg-subtle); font-style: normal }
+.act-diff ins { color: var(--fg); font-weight: 550; text-decoration: none }
+.act-refusal {
+  border-left: 2px solid var(--warn); color: var(--warn); font-size: 13.5px; line-height: 1.4;
+  margin-top: 2px; padding-left: 8px;
+}
+.agent-record-note { color: var(--fg-subtle); font-size: 13.5px; margin-top: 10px }
+@media (max-width: 760px) {
+  .act-row { grid-template-columns: 24px 44px 1fr; gap: 7px }
+  .act-status { margin-left: 0; width: 100% }
+}

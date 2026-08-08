@@ -96,6 +96,20 @@ export interface RailState {
   note: string | null;
 }
 
+export interface AgentAction {
+  seq: number;
+  actor: 'agent' | 'human';
+  kind: 'read' | 'change' | 'fit' | 'refuse' | 'revert' | 'handoff' | 'approve';
+  target: string;
+  detail: string;
+  beforeState: string | null;
+  afterState: string | null;
+  reversible: boolean;
+  refusalReason: string | null;
+  experimentCode: string | null;
+  atMs: number;
+}
+
 export interface Run {
   id: string;
   goal: string;
@@ -115,6 +129,7 @@ export interface Run {
   reviewId: string | null;
   reviewStatus: string | null;
   baseModelVersion: number;
+  actions: AgentAction[];
 }
 
 export interface GuardrailRow {
@@ -188,6 +203,10 @@ const RUN_FIELDS = `
   experiments {
     code name hypothesis wave status progress gini deltaGini devianceChangePct
     aicDelta foldsPass budgetUsed verdictTag verdictText glossText lineage
+  }
+  actions {
+    seq actor kind target detail beforeState afterState reversible
+    refusalReason experimentCode atMs
   }
 `;
 

@@ -13,6 +13,7 @@ import {
   type Review,
   type Run,
 } from './api';
+import AgentActionLog from './AgentActionLog';
 import AskPanel from './AskPanel';
 import ContextStrip from './ContextStrip';
 import EvidencePanel from './EvidencePanel';
@@ -267,6 +268,9 @@ export default function App() {
       await approveReview(review.id);
       const nextReview = await fetchReview(run.id);
       if (nextReview) setReview(nextReview);
+      // The approval appended the run's one human action; refresh the record
+      const latest = await fetchLatestRun();
+      if (latest && latest.id === run.id) setRun(latest);
       setAnnouncement('Approved. New version created with the run ledger attached.');
       requestAnimationFrame(() => document.getElementById('rvStamp')?.focus());
     } catch (caught) {
@@ -439,6 +443,8 @@ export default function App() {
               )}
             </section>
           </div>
+
+          <AgentActionLog actions={run?.actions ?? []} onSelectExperiment={chooseExperiment} />
 
         </main>
       ) : run && review ? (
