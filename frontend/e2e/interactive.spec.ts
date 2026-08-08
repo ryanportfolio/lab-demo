@@ -353,6 +353,18 @@ test('a chart inside the palette expands above it and Escape unwinds in order', 
     timeout: 30_000,
   });
 
+  // a segments chart has no exposure series, but its scrutiny point — the
+  // factor furthest from the book average — is still one press away, named
+  // in its own words
+  const segments = page
+    .locator('.ask-row.ai .chart-workspace[data-kind="segment_effects"]')
+    .first();
+  const pin = segments.locator('.pin-weakest');
+  await expect(pin).toContainText('Pin largest contribution');
+  await pin.click();
+  await expect(segments.locator('.chart-selection')).toBeVisible();
+  await segments.locator('.chart-actions button', { hasText: 'Clear' }).click();
+
   await page.locator('.ask-row.ai .chart .expand').first().click();
   await expect(page.locator('.chart-full')).toBeVisible();
   await page.keyboard.press('ArrowRight');

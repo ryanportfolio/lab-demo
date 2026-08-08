@@ -264,12 +264,28 @@ export function weakestSelection(chart: EvidenceChart): ChartSelection | null {
     return null;
   }
   if (chart.kind === 'territory' || chart.kind === 'folds') return null;
+  if (chart.kind === 'segment_effects') {
+    // No exposure series here; the scrutiny point is the factor pulling the
+    // segment furthest from the book average, the same one the weakness
+    // sentence names
+    const effect = chart.series.find((series) => !isSecondarySeries(series));
+    if (!effect?.points.length) return null;
+    const largest = effect.points.reduce((max, point) =>
+      Math.abs(point.y - 1) > Math.abs(max.y - 1) ? point : max,
+    );
+    return { start: largest.x, end: largest.x };
+  }
   const weight = chart.series.find(isSecondarySeries);
   if (weight?.points.length) {
     const thinnest = weight.points.reduce((min, point) => (point.y < min.y ? point : min));
     return { start: thinnest.x, end: thinnest.x };
   }
   return null;
+}
+
+/** What pressing the weak-slice button pins, in the chart's own words */
+export function weakActionLabel(chart: EvidenceChart): string {
+  return chart.kind === 'segment_effects' ? 'Pin largest contribution' : 'Pin weakest slice';
 }
 
 export function parseSelection(value: string | null): ChartSelection | null {

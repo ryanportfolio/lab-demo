@@ -21,6 +21,7 @@ import {
   normalizeSelection,
   selectionLabel,
   selectionValues,
+  weakActionLabel,
   weakestSelection,
   weakPoint,
   type ChartContract,
@@ -963,7 +964,7 @@ export default function Chart({
                 className="pin-weakest"
                 onClick={() => setSelection(weakSelection)}
               >
-                Pin weakest slice · {selectionLabel(chart, weakSelection)}
+                {weakActionLabel(chart)} · {selectionLabel(chart, weakSelection)}
               </button>
               <div className="selection-values">
                 {weakValues.map((value) => <span key={value}>{value}</span>)}
