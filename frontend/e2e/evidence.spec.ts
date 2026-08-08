@@ -87,13 +87,13 @@ test('the context expert answers from artifacts and cites them', async ({
   expect(text).not.toContain('—');
   await page.screenshot({ path: `${OUT}/ask-answer-light.png`, fullPage: true });
 
-  // an answer is not a dead end: the question list is one click back
-  await page.locator('.ask-back').click();
-  await expect(page.locator('.ask-sugg button').first()).toBeVisible();
-  await page.locator('.ask-sugg button').first().click();
-  await expect(page.locator('.ask-row.ai .bubble')).toBeVisible({
-    timeout: 30_000,
-  });
+  // an answer is not a dead end, and asking again does not erase it: the
+  // unasked questions wait under the transcript
+  const followups = page.locator('.ask-followups .ask-sugg button');
+  await expect(followups.first()).toBeVisible();
+  await followups.first().click();
+  await expect(page.locator('.ask-turn')).toHaveCount(2, { timeout: 30_000 });
+  await expect(page.locator('.ask-row.ai .bubble').first()).toBeVisible();
 
   // a citation takes the reader to the card it was read from
   await page.locator('.cites button').first().click();

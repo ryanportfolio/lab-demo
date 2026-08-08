@@ -36,6 +36,70 @@ test('every evidence chart states its question and visible weak point', async ({
   }
 });
 
+test('empty slot previews the weakest slice and one press pins it', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  const chart = page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"]');
+  const weak = chart.locator('.chart-selection-weak');
+  await expect(weak).toBeVisible();
+  // the preview carries the weak point's own numbers, not just instructions
+  await expect(weak.locator('.selection-values')).toContainText('Earned exposure');
+  // and it names the same slice the weakness sentence talks about
+  const weakness = await chart.locator('.chart-weakness').innerText();
+  const button = weak.locator('.pin-weakest');
+  const label = (await button.innerText()).replace('Pin weakest slice · ', '').trim();
+  expect(weakness).toContain(label.replace(/^age /, ''));
+
+  await button.click();
+  await expect(chart.locator('.chart-selection')).toBeVisible();
+  await expect(chart.locator('.selection-label')).toContainText(label);
+  await expect(page).toHaveURL(/sel=/);
+  await expect(page.locator('.exact-values tr.is-selected')).toHaveCount(1);
+
+  // clearing returns the preview, so the affordance never disappears
+  await chart.locator('.chart-actions button', { hasText: 'Clear' }).click();
+  await expect(weak).toBeVisible();
+});
+
+test('the refusal evidence pins its worst region in its own words', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+  await page.locator('.ledger-row', { hasText: 'EXP-06' }).click();
+  await expect(page.locator('.selected-evidence .evidence-head')).toContainText('EXP-06');
+
+  const chart = page.locator('.selected-evidence .chart-workspace[data-kind="missingness"]');
+  const pin = chart.locator('.pin-weakest');
+  await expect(pin).toContainText('Pin worst region');
+  await pin.click();
+  await expect(chart.locator('.chart-selection')).toBeVisible();
+  await expect(page).toHaveURL(/sel=/);
+});
+
+test('the full view carries the weak point and answers a pin on the spot', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  const chart = page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"]');
+  await chart.locator('.expand').click();
+  const full = page.locator('.chart-full');
+  await expect(full).toBeVisible();
+  await expect(full.locator('.chart-weakness')).toContainText('Thinnest evidence');
+  await expect(full.locator('.chart-selection-weak')).toBeVisible();
+
+  // pinning inside the full view reads back inside the full view
+  await full.locator('svg').first().focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(full.locator('.chart-selection')).toBeVisible();
+  await expect(full.locator('.selection-values')).toContainText('Earned exposure');
+
+  await page.keyboard.press('Escape');
+  await expect(full).toBeHidden();
+  // the card behind shows the same selection: one state, two views
+  await expect(chart.locator('.chart-selection')).toBeVisible();
+});
+
 test('keyboard pin and ordered range drive chart, table, and URL together', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);
@@ -217,10 +281,19 @@ test('comparison is semantic and guardrails appear only where valid', async ({ p
   await page.locator('.ledger-row', { hasText: 'EXP-03' }).click();
   await expect(page.locator('.selected-evidence .evidence-head')).toContainText('EXP-03');
   const territory = page.locator('.selected-evidence .chart-workspace[data-kind="territory"]');
-  await territory.locator('.chart-mode button', { hasText: 'Change' }).click();
+  // territory answers "how far from filed", so it OPENS on the change view
+  // with the tolerance band and the breach that killed the experiment
+  await expect(territory).toHaveAttribute('data-mode', 'change');
   await expect(territory.locator('.guardrail-line')).toHaveCount(2);
   await expect(territory.locator('.chart-weakness')).toContainText('5%');
   await expect(territory.locator('.guardrail-breach').first()).toBeVisible();
+
+  // departing from the default is what the URL records
+  await territory.locator('.chart-mode button', { hasText: 'Level' }).click();
+  await expect(territory).toHaveAttribute('data-mode', 'level');
+  await expect(page).toHaveURL(/mode=level/);
+  await territory.locator('.chart-mode button', { hasText: 'Change' }).click();
+  await expect(page).not.toHaveURL(/mode=/);
 });
 
 test('selection can ask with context, copy a link, and enter human review', async ({ page }) => {
@@ -238,17 +311,21 @@ test('selection can ask with context, copy a link, and enter human review', asyn
 
   await chart.locator('button', { hasText: 'Ask about selection' }).click();
   await expect(page.locator('.ask')).toBeVisible();
+  // the context rides in a chip; the editable question stays human-sized
+  const chip = page.locator('.ask-chip');
+  await expect(chip).toContainText('EXP-07');
+  await expect(chip).toContainText('earned car year');
   const question = page.locator('.ask-compose textarea');
-  await expect(question).toHaveValue(/EXP-07/);
-  await expect(question).toHaveValue(/earned car year/i);
-  const questionBox = await question.evaluate((field) => ({
-    clientHeight: field.clientHeight,
-    clientWidth: field.clientWidth,
-    scrollWidth: field.scrollWidth,
-  }));
-  expect(questionBox.clientHeight).toBeGreaterThan(40);
-  expect(questionBox.scrollWidth).toBeLessThanOrEqual(questionBox.clientWidth + 1);
+  await expect(question).toHaveValue(/Explain/);
+  await expect(question).not.toHaveValue(/run \d/);
   await expect(page.locator('.ask-note')).toContainText('cannot fit, merge, or approve');
+
+  // sending routes on the carried context and echoes it under the question
+  await page.locator('.ask-send').click();
+  await expect(page.locator('.ask-row.ai').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.ask-row.you .ask-chip-echo')).toContainText('EXP-07');
+  await expect(page.locator('.ask-row.ai .steps')).toContainText('matchQuestion');
+  await expect(chip).toBeHidden();
   await page.locator('.ask-esc').click();
 
   await chart.locator('button', { hasText: 'Save to review' }).click();

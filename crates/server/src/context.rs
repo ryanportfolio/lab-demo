@@ -237,6 +237,12 @@ fn classify(q: &str) -> Intent {
     if has(q, &["interaction", "old cars", "older cars", "old vehicle"]) {
         return Intent::Interaction;
     }
+    // "Driver age relativity" names the age artifact even though territory
+    // tables also speak in relativities: the named dimension wins over the
+    // shared vocabulary, so a chart-carried ask lands on its own chart
+    if has(q, &["driver age", "age curve", "age shape", "spline", "u-shape"]) {
+        return Intent::AgeCurve;
+    }
     if has(
         q,
         &[
@@ -780,5 +786,20 @@ mod tests {
     #[test]
     fn unmatched_questions_do_not_guess() {
         assert!(classify("what is the weather in texas") == Intent::Unknown);
+    }
+
+    #[test]
+    fn a_chart_carried_age_ask_beats_the_relativity_keyword() {
+        let q = "explain 89 in exp-07's driver age relativity. use the level view";
+        assert!(
+            classify(q) == Intent::AgeCurve,
+            "the age chart's own ask must land on the age answer, not territory"
+        );
+    }
+
+    #[test]
+    fn territory_asks_still_reach_territory() {
+        let q = "explain t-103 in exp-03's filed against blended relativity";
+        assert!(classify(q) == Intent::Territory);
     }
 }

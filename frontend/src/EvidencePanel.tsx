@@ -14,6 +14,8 @@ import {
   parseSelection,
   selectionForChart,
   updateEvidenceUrl,
+  weakestSelection,
+  type AgentAsk,
   type ChartMode,
   type ChartSelection,
   type SavedChartEvidence,
@@ -184,14 +186,20 @@ export default function EvidencePanel({
   focused = false,
   onAsk,
   onSave,
+  weakFocus,
 }: {
   runId: string;
   code: string;
   plain: boolean;
   experiment?: Experiment;
   focused?: boolean;
-  onAsk?: (question: string) => void;
+  onAsk?: (ask: AgentAsk) => void;
   onSave?: (evidence: SavedChartEvidence) => void;
+  /**
+   * A request to jump to the chart the weak-point prose talks about and pin
+   * its thinnest slice. The text picks the chart; the nonce fires the jump.
+   */
+  weakFocus?: { text: string; nonce: number };
 }) {
   const [evidence, setEvidence] = useState<Evidence | null>(null);
   const [shownExperiment, setShownExperiment] = useState<Experiment | undefined>(experiment);
@@ -271,15 +279,48 @@ export default function EvidencePanel({
     ? displayChart(activeChart, contractFor(activeChart), mode)
     : undefined;
 
+  // Jump to the weak point's own chart. The chart is picked by matching the
+  // weak-point prose against chart words, not by position, so the same button
+  // stays honest if a different experiment wins a future run. Word overlap is
+  // scored because one stray shared word (say "relativity") must not beat the
+  // chart the sentence is actually about.
+  const appliedWeakFocus = useRef(0);
+  useEffect(() => {
+    if (!weakFocus || weakFocus.nonce === appliedWeakFocus.current || !charts.length) return;
+    appliedWeakFocus.current = weakFocus.nonce;
+    const prose = weakFocus.text.toLowerCase();
+    const score = (chart: EvidenceChart) =>
+      Array.from(new Set(`${chart.title} ${chart.xLabel}`.toLowerCase().split(/\W+/)))
+        .filter((word) => word.length > 4)
+        .filter((word) => prose.includes(word)).length;
+    const focusable = charts.filter((chart) => weakestSelection(chart));
+    if (!focusable.length) return;
+    const target = focusable.reduce((best, chart) => (score(chart) > score(best) ? chart : best));
+    const pinned = weakestSelection(target)!;
+    resolve(() => {
+      setActiveKey(chartKey(target));
+      setMode(contractFor(target).defaultMode);
+      setSelection(pinned);
+    });
+    updateEvidenceUrl({ exp: shownCode, chart: target.kind, mode: null, selection: pinned });
+  }, [weakFocus, charts, shownCode, resolve]);
+
   useEffect(() => {
     if (!charts.length || activeKey) return;
     const params = new URLSearchParams(location.search);
     const requestedKind = params.get('exp') === shownCode ? params.get('chart') : null;
     const requested = charts.find((chart) => chart.kind === requestedKind) ?? charts[0];
     const contract = contractFor(requested);
+    const requestedMode = params.get('mode');
     setActiveKey(chartKey(requested));
+    setMode(
+      requestedKind && (requestedMode === 'change' || requestedMode === 'level')
+        ? requestedMode === 'change' && contract.comparison
+          ? 'change'
+          : 'level'
+        : contract.defaultMode,
+    );
     if (requestedKind) {
-      setMode(params.get('mode') === 'change' && contract.comparison ? 'change' : 'level');
       setSelection(selectionForChart(requested, parseSelection(params.get('sel')), contract.range));
     }
   }, [activeKey, charts, shownCode]);
@@ -375,7 +416,7 @@ export default function EvidencePanel({
                     resolve(() => {
                       setActiveKey(key);
                       setSelection(null);
-                      setMode('level');
+                      setMode(contractFor(chart).defaultMode);
                     });
                     updateEvidenceUrl({
                       exp: shownCode,
@@ -402,11 +443,21 @@ export default function EvidencePanel({
                 mode={mode}
                 onSelectionChange={(next) => {
                   setSelection(next);
-                  updateEvidenceUrl({ exp: shownCode, chart: activeChart.kind, mode, selection: next });
+                  updateEvidenceUrl({
+                    exp: shownCode,
+                    chart: activeChart.kind,
+                    mode: mode === contractFor(activeChart).defaultMode ? null : mode,
+                    selection: next,
+                  });
                 }}
                 onModeChange={(next) => {
                   setMode(next);
-                  updateEvidenceUrl({ exp: shownCode, chart: activeChart.kind, mode: next, selection });
+                  updateEvidenceUrl({
+                    exp: shownCode,
+                    chart: activeChart.kind,
+                    mode: next === contractFor(activeChart).defaultMode ? null : next,
+                    selection,
+                  });
                 }}
                 context={
                   onAsk && onSave
