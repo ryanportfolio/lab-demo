@@ -242,10 +242,19 @@ test('comparison is semantic and guardrails appear only where valid', async ({ p
   await page.locator('.ledger-row', { hasText: 'EXP-03' }).click();
   await expect(page.locator('.selected-evidence .evidence-head')).toContainText('EXP-03');
   const territory = page.locator('.selected-evidence .chart-workspace[data-kind="territory"]');
-  await territory.locator('.chart-mode button', { hasText: 'Change' }).click();
+  // territory answers "how far from filed", so it OPENS on the change view
+  // with the tolerance band and the breach that killed the experiment
+  await expect(territory).toHaveAttribute('data-mode', 'change');
   await expect(territory.locator('.guardrail-line')).toHaveCount(2);
   await expect(territory.locator('.chart-weakness')).toContainText('5%');
   await expect(territory.locator('.guardrail-breach').first()).toBeVisible();
+
+  // departing from the default is what the URL records
+  await territory.locator('.chart-mode button', { hasText: 'Level' }).click();
+  await expect(territory).toHaveAttribute('data-mode', 'level');
+  await expect(page).toHaveURL(/mode=level/);
+  await territory.locator('.chart-mode button', { hasText: 'Change' }).click();
+  await expect(page).not.toHaveURL(/mode=/);
 });
 
 test('selection can ask with context, copy a link, and enter human review', async ({ page }) => {

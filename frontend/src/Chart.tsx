@@ -726,7 +726,7 @@ export default function Chart({
 }) {
   const contract = useMemo(() => contractFor(chart), [chart]);
   const [localSelection, setLocalSelection] = useState<ChartSelection | null>(null);
-  const [localMode, setLocalMode] = useState<ChartMode>('level');
+  const [localMode, setLocalMode] = useState<ChartMode>(() => contract.defaultMode);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [expanded, setExpanded] = useState(false);
   const [actionStatus, setActionStatus] = useState('');

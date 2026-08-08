@@ -26,6 +26,12 @@ export interface ChartContract {
   range: boolean;
   comparison?: Comparison;
   guardrail?: ChartGuardrail;
+  /**
+   * The view a chart opens on. Territory answers "how far from filed" — that
+   * is the change view with the tolerance band, so it opens there. Everything
+   * else opens on level.
+   */
+  defaultMode: ChartMode;
 }
 
 export interface ChartWorkspaceContext {
@@ -115,6 +121,7 @@ export function contractFor(chart: EvidenceChart): ChartContract {
     question: QUESTIONS[chart.kind] ?? `What decision does ${chart.title.toLowerCase()} support?`,
     range: chart.kind === 'age_curve' || chart.kind === 'lift',
     comparison: hasComparison ? comparison : undefined,
+    defaultMode: chart.kind === 'territory' && hasComparison ? 'change' : 'level',
     guardrail:
       chart.kind === 'territory'
         ? { low: -5, high: 5, label: 'Filed tolerance ±5%', applies: 'change' }
@@ -309,7 +316,8 @@ export function updateEvidenceUrl(updates: {
   };
   if ('exp' in updates) set('exp', updates.exp);
   if ('chart' in updates) set('chart', updates.chart);
-  if ('mode' in updates) set('mode', updates.mode === 'change' ? 'change' : null);
+  // null means "the chart's own default": the URL only records departures
+  if ('mode' in updates) set('mode', updates.mode ?? null);
   if ('selection' in updates) {
     set('sel', updates.selection ? serializeSelection(updates.selection) : null);
   }

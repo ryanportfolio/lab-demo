@@ -298,7 +298,7 @@ export default function EvidencePanel({
     const pinned = weakestSelection(target)!;
     resolve(() => {
       setActiveKey(chartKey(target));
-      setMode('level');
+      setMode(contractFor(target).defaultMode);
       setSelection(pinned);
     });
     updateEvidenceUrl({ exp: shownCode, chart: target.kind, mode: null, selection: pinned });
@@ -310,9 +310,16 @@ export default function EvidencePanel({
     const requestedKind = params.get('exp') === shownCode ? params.get('chart') : null;
     const requested = charts.find((chart) => chart.kind === requestedKind) ?? charts[0];
     const contract = contractFor(requested);
+    const requestedMode = params.get('mode');
     setActiveKey(chartKey(requested));
+    setMode(
+      requestedKind && (requestedMode === 'change' || requestedMode === 'level')
+        ? requestedMode === 'change' && contract.comparison
+          ? 'change'
+          : 'level'
+        : contract.defaultMode,
+    );
     if (requestedKind) {
-      setMode(params.get('mode') === 'change' && contract.comparison ? 'change' : 'level');
       setSelection(selectionForChart(requested, parseSelection(params.get('sel')), contract.range));
     }
   }, [activeKey, charts, shownCode]);
@@ -408,7 +415,7 @@ export default function EvidencePanel({
                     resolve(() => {
                       setActiveKey(key);
                       setSelection(null);
-                      setMode('level');
+                      setMode(contractFor(chart).defaultMode);
                     });
                     updateEvidenceUrl({
                       exp: shownCode,
@@ -435,11 +442,21 @@ export default function EvidencePanel({
                 mode={mode}
                 onSelectionChange={(next) => {
                   setSelection(next);
-                  updateEvidenceUrl({ exp: shownCode, chart: activeChart.kind, mode, selection: next });
+                  updateEvidenceUrl({
+                    exp: shownCode,
+                    chart: activeChart.kind,
+                    mode: mode === contractFor(activeChart).defaultMode ? null : mode,
+                    selection: next,
+                  });
                 }}
                 onModeChange={(next) => {
                   setMode(next);
-                  updateEvidenceUrl({ exp: shownCode, chart: activeChart.kind, mode: next, selection });
+                  updateEvidenceUrl({
+                    exp: shownCode,
+                    chart: activeChart.kind,
+                    mode: next === contractFor(activeChart).defaultMode ? null : next,
+                    selection,
+                  });
                 }}
                 context={
                   onAsk && onSave
