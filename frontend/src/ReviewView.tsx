@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Review, Run } from './api';
 import EvidencePanel from './EvidencePanel';
 import { boldSpans, fmtDelta, fmtGini } from './format';
-import type { SavedChartEvidence } from './chartWorkspace';
+import type { AgentAsk, SavedChartEvidence } from './chartWorkspace';
 
 interface Props {
   run: Run;
@@ -13,7 +13,7 @@ interface Props {
   approving: boolean;
   error: string | null;
   savedEvidence: SavedChartEvidence[];
-  onAsk: (question: string) => void;
+  onAsk: (ask: AgentAsk) => void;
   onSave: (evidence: SavedChartEvidence) => void;
 }
 

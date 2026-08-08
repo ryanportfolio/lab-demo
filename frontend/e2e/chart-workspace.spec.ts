@@ -296,17 +296,21 @@ test('selection can ask with context, copy a link, and enter human review', asyn
 
   await chart.locator('button', { hasText: 'Ask about selection' }).click();
   await expect(page.locator('.ask')).toBeVisible();
+  // the context rides in a chip; the editable question stays human-sized
+  const chip = page.locator('.ask-chip');
+  await expect(chip).toContainText('EXP-07');
+  await expect(chip).toContainText('earned car year');
   const question = page.locator('.ask-compose textarea');
-  await expect(question).toHaveValue(/EXP-07/);
-  await expect(question).toHaveValue(/earned car year/i);
-  const questionBox = await question.evaluate((field) => ({
-    clientHeight: field.clientHeight,
-    clientWidth: field.clientWidth,
-    scrollWidth: field.scrollWidth,
-  }));
-  expect(questionBox.clientHeight).toBeGreaterThan(40);
-  expect(questionBox.scrollWidth).toBeLessThanOrEqual(questionBox.clientWidth + 1);
+  await expect(question).toHaveValue(/Explain/);
+  await expect(question).not.toHaveValue(/run \d/);
   await expect(page.locator('.ask-note')).toContainText('cannot fit, merge, or approve');
+
+  // sending routes on the carried context and echoes it under the question
+  await page.locator('.ask-send').click();
+  await expect(page.locator('.ask-row.ai').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.ask-row.you .ask-chip-echo')).toContainText('EXP-07');
+  await expect(page.locator('.ask-row.ai .steps')).toContainText('matchQuestion');
+  await expect(chip).toBeHidden();
   await page.locator('.ask-esc').click();
 
   await chart.locator('button', { hasText: 'Save to review' }).click();

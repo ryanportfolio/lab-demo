@@ -40,8 +40,19 @@ export interface ChartWorkspaceContext {
   target: string;
   denominator: string;
   model: string;
-  onAsk: (question: string) => void;
+  onAsk: (ask: AgentAsk) => void;
   onSave: (evidence: SavedChartEvidence) => void;
+}
+
+/**
+ * An ask carried from a chart selection. The user reads and edits `question`;
+ * `context` is the chip naming what rides along; `send` is the full composed
+ * text the context expert actually receives when the question is unedited.
+ */
+export interface AgentAsk {
+  question: string;
+  context: string;
+  send: string;
 }
 
 export interface SavedChartEvidence {
@@ -347,6 +358,26 @@ export function buildAgentQuestion(
   mode: ChartMode,
 ): string {
   return `Explain ${selectionLabel(chart, selection)} in ${context.code}'s ${chart.title}. Use ${mode === 'change' ? 'the change comparison' : 'the level view'}, ${context.target} per ${context.denominator}, model ${context.model}, run ${context.runId}, and this chart's exact values and exposure. Call out weak evidence and what should be checked next.`;
+}
+
+export function buildAgentAsk(
+  chart: EvidenceChart,
+  context: ChartWorkspaceContext,
+  selection: ChartSelection,
+  mode: ChartMode,
+): AgentAsk {
+  return {
+    question: `Explain ${selectionLabel(chart, selection)} in ${chart.title.toLowerCase()}. What is weak here and what should be checked next?`,
+    context: [
+      context.code,
+      chart.title,
+      selectionLabel(chart, selection),
+      mode === 'change' ? 'change view' : 'level view',
+      `${context.target} / ${context.denominator}`,
+      `run ${context.runId}`,
+    ].join(' · '),
+    send: buildAgentQuestion(chart, context, selection, mode),
+  };
 }
 
 export function makeSavedEvidence(

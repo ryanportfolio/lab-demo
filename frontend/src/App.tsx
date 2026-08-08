@@ -22,6 +22,7 @@ import ReviewView from './ReviewView';
 import { fmtDelta, fmtGini } from './format';
 import {
   updateEvidenceUrl,
+  type AgentAsk,
   type SavedChartEvidence,
 } from './chartWorkspace';
 
@@ -69,7 +70,7 @@ export default function App() {
   const [nowMs, setNowMs] = useState(Date.now());
   const [announcement, setAnnouncement] = useState('');
   const [askOpen, setAskOpen] = useState(false);
-  const [askDraft, setAskDraft] = useState('');
+  const [askSeed, setAskSeed] = useState<AgentAsk | null>(null);
   const [savedEvidence, setSavedEvidence] = useState<SavedChartEvidence[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('plab-saved-evidence') ?? '[]');
@@ -194,7 +195,7 @@ export default function App() {
         if (document.body.classList.contains('chartfull')) return;
         event.preventDefault();
         setAskOpen((open) => {
-          if (!open) setAskDraft('');
+          if (!open) setAskSeed(null);
           return !open;
         });
       }
@@ -211,8 +212,8 @@ export default function App() {
     }
   }, [savedEvidence]);
 
-  const askFromEvidence = useCallback((question: string) => {
-    setAskDraft(question);
+  const askFromEvidence = useCallback((ask: AgentAsk) => {
+    setAskSeed(ask);
     setAskOpen(true);
   }, []);
 
@@ -324,7 +325,7 @@ export default function App() {
           <button
             className="askbtn"
             onClick={() => {
-              setAskDraft('');
+              setAskSeed(null);
               setAskOpen(true);
             }}
             disabled={!run || !complete}
@@ -474,7 +475,7 @@ export default function App() {
         open={askOpen}
         onClose={() => setAskOpen(false)}
         onCite={revealExperiment}
-        initialQuestion={askDraft}
+        seed={askSeed}
       />
     </>
   );

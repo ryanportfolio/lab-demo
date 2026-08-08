@@ -9,6 +9,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Chart from './Chart';
 import { ask, fetchSuggestedQuestions, type Answer } from './api';
+import type { AgentAsk } from './chartWorkspace';
+
+/** An answer plus what the user actually typed and the context that rode along */
+type ShownAnswer = Answer & { display?: string; chip?: string };
 
 export default function AskPanel({
   runId,
@@ -17,7 +21,7 @@ export default function AskPanel({
   open,
   onClose,
   onCite,
-  initialQuestion = '',
+  seed = null,
 }: {
   runId: string | null;
   /** the run has finished, so its verdicts and ledger are settled */
@@ -26,11 +30,13 @@ export default function AskPanel({
   open: boolean;
   onClose: () => void;
   onCite: (code: string) => void;
-  initialQuestion?: string;
+  /** an ask carried in from a chart selection */
+  seed?: AgentAsk | null;
 }) {
   const [q, setQ] = useState('');
+  const [chip, setChip] = useState<AgentAsk | null>(null);
   const [suggested, setSuggested] = useState<string[]>([]);
-  const [answers, setAnswers] = useState<Answer[]>([]);
+  const [answers, setAnswers] = useState<ShownAnswer[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -42,9 +48,14 @@ export default function AskPanel({
 
   useEffect(() => {
     if (!open) return;
-    if (initialQuestion) setQ(initialQuestion);
+    if (seed) {
+      setQ(seed.question);
+      setChip(seed);
+    } else {
+      setChip(null);
+    }
     requestAnimationFrame(() => input.current?.focus());
-  }, [initialQuestion, open]);
+  }, [seed, open]);
 
   useEffect(() => {
     const field = input.current;
@@ -84,10 +95,23 @@ export default function AskPanel({
     if (!runId || !ready || !question.trim() || busy) return;
     setBusy(true);
     setError(null);
+    // The chip's context always travels with the question. Unedited, the
+    // full composed ask goes as-is; edited, the context is appended so a
+    // vague follow-up still lands on the right artifact.
+    const carried = chip;
+    const wire = carried
+      ? question.trim() === carried.question
+        ? carried.send
+        : `${question.trim()} Context: ${carried.context}.`
+      : question.trim();
     try {
-      const a = await ask(runId, question.trim());
-      setAnswers((prev) => [...prev, a]);
+      const a = await ask(runId, wire);
+      setAnswers((prev) => [
+        ...prev,
+        { ...a, display: question.trim(), chip: carried?.context },
+      ]);
       setQ('');
+      setChip(null);
       requestAnimationFrame(() =>
         body.current?.scrollTo({ top: body.current.scrollHeight }),
       );
@@ -157,7 +181,10 @@ export default function AskPanel({
             <div className="ask-turn" key={i}>
               <div className="ask-row you">
                 <span className="who">You</span>
-                <div className="bubble">{a.question}</div>
+                <div className="bubble">
+                  {a.display ?? a.question}
+                  {a.chip && <span className="ask-chip-echo">{a.chip}</span>}
+                </div>
               </div>
               <div className="ask-row ai">
                 <span className="who">AI</span>
@@ -204,6 +231,19 @@ export default function AskPanel({
         </div>
 
         <div className="ask-foot">
+          {chip && (
+            <div className="ask-chip" aria-label="Question context">
+              <span>Asking about</span>
+              <b>{chip.context}</b>
+              <button
+                type="button"
+                aria-label="Drop this context"
+                onClick={() => setChip(null)}
+              >
+                ×
+              </button>
+            </div>
+          )}
           <div className="ask-compose">
             <textarea
               ref={input}

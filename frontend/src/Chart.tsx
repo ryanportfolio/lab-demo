@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { EvidenceChart, EvidenceSeries } from './api';
 import {
-  buildAgentQuestion,
+  buildAgentAsk,
   contractFor,
   displayChart,
   isSecondarySeries,
@@ -878,7 +878,7 @@ export default function Chart({
             <>
               <button
                 type="button"
-                onClick={() => context.onAsk(buildAgentQuestion(chart, context, selection, mode))}
+                onClick={() => context.onAsk(buildAgentAsk(chart, context, selection, mode))}
               >
                 Ask about selection
               </button>

@@ -15,6 +15,7 @@ import {
   selectionForChart,
   updateEvidenceUrl,
   weakestSelection,
+  type AgentAsk,
   type ChartMode,
   type ChartSelection,
   type SavedChartEvidence,
@@ -192,7 +193,7 @@ export default function EvidencePanel({
   plain: boolean;
   experiment?: Experiment;
   focused?: boolean;
-  onAsk?: (question: string) => void;
+  onAsk?: (ask: AgentAsk) => void;
   onSave?: (evidence: SavedChartEvidence) => void;
   /**
    * A request to jump to the chart the weak-point prose talks about and pin
