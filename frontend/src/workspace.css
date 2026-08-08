@@ -274,6 +274,10 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .pin-weakest { min-height: 38px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg); color: var(--fg-muted); cursor: pointer; padding: 6px 10px; font: inherit; font-family: var(--mono); font-size: 13px }
 .pin-weakest:hover, .pin-weakest:focus-visible { border-color: var(--brand); color: var(--fg); outline: none }
 .empty-hint { color: var(--fg-subtle); font-size: 11px }
+.chart-full-diagnostics { margin-top: 10px }
+.chart-full-diagnostics .chart-weakness { min-height: 0; border-block: 0; border-top: 1px solid var(--border-muted); padding: 8px 0 6px }
+.chart-full-diagnostics .chart-selection-slot { min-height: 0; padding-top: 0 }
+.chart-full-diagnostics .chart-selection-empty, .chart-full-diagnostics .chart-selection { min-height: 72px }
 .chart-selection { min-height: 106px; border-left: 3px solid var(--brand); background: var(--bg-subtle); padding: 9px 11px }
 .selection-readout { display: flex; align-items: flex-start; gap: 14px }
 .selection-label { flex: 0 0 auto; color: var(--fg); font-family: var(--mono); font-size: 16px; font-weight: 650 }

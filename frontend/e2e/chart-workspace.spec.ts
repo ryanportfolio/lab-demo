@@ -62,6 +62,30 @@ test('empty slot previews the weakest slice and one press pins it', async ({ pag
   await expect(weak).toBeVisible();
 });
 
+test('the full view carries the weak point and answers a pin on the spot', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  const chart = page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"]');
+  await chart.locator('.expand').click();
+  const full = page.locator('.chart-full');
+  await expect(full).toBeVisible();
+  await expect(full.locator('.chart-weakness')).toContainText('Thinnest evidence');
+  await expect(full.locator('.chart-selection-weak')).toBeVisible();
+
+  // pinning inside the full view reads back inside the full view
+  await full.locator('svg').first().focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(full.locator('.chart-selection')).toBeVisible();
+  await expect(full.locator('.selection-values')).toContainText('Earned exposure');
+
+  await page.keyboard.press('Escape');
+  await expect(full).toBeHidden();
+  // the card behind shows the same selection: one state, two views
+  await expect(chart.locator('.chart-selection')).toBeVisible();
+});
+
 test('keyboard pin and ordered range drive chart, table, and URL together', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);
