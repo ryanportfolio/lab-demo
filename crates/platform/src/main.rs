@@ -68,6 +68,15 @@ fn main() {
                 );
             }
         }
+        RunEvent::Action { action } => {
+            println!(
+                "[{:6.2}s] agent {} · {} — {}",
+                t0.elapsed().as_secs_f64(),
+                action.kind.as_str(),
+                action.target,
+                action.detail
+            );
+        }
         RunEvent::Finished => {
             println!("[{:6.2}s] run finished", t0.elapsed().as_secs_f64());
         }

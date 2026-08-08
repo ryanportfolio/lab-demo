@@ -168,6 +168,23 @@ pub struct RunCounts {
     pub scrapped: i32,
 }
 
+/// One row of the run's action record: what the agent (or, for the final
+/// approval, the human) did, previewable and attributable.
+#[derive(SimpleObject, Clone)]
+pub struct AgentAction {
+    pub seq: i32,
+    pub actor: String,
+    pub kind: String,
+    pub target: String,
+    pub detail: String,
+    pub before_state: Option<String>,
+    pub after_state: Option<String>,
+    pub reversible: bool,
+    pub refusal_reason: Option<String>,
+    pub experiment_code: Option<String>,
+    pub at_ms: f64,
+}
+
 #[derive(SimpleObject)]
 pub struct Run {
     pub id: ID,
@@ -188,6 +205,7 @@ pub struct Run {
     pub review_id: Option<ID>,
     pub review_status: Option<String>,
     pub base_model_version: i32,
+    pub actions: Vec<AgentAction>,
 }
 
 #[derive(SimpleObject)]
@@ -592,6 +610,43 @@ async fn fetch_run(pool: &PgPool, id: i64) -> Result<Option<Run>> {
             .fetch_optional(pool)
             .await?;
 
+    let action_rows: Vec<(
+        i32,
+        String,
+        String,
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        bool,
+        Option<String>,
+        Option<String>,
+        f64,
+    )> = sqlx::query_as(
+        "SELECT seq, actor, kind, target, detail, before_state, after_state, reversible, refusal_reason, experiment_code, (EXTRACT(EPOCH FROM at) * 1000)::float8 FROM agent_actions WHERE run_id = $1 ORDER BY seq",
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await?;
+    let actions = action_rows
+        .into_iter()
+        .map(
+            |(seq, actor, kind, target, detail, before_state, after_state, reversible, refusal_reason, experiment_code, at_ms)| AgentAction {
+                seq,
+                actor,
+                kind,
+                target,
+                detail,
+                before_state,
+                after_state,
+                reversible,
+                refusal_reason,
+                experiment_code,
+                at_ms,
+            },
+        )
+        .collect();
+
     let outcome_ref = outcome.as_ref();
     Ok(Some(Run {
         id: ID(id.to_string()),
@@ -616,6 +671,7 @@ async fn fetch_run(pool: &PgPool, id: i64) -> Result<Option<Run>> {
         review_id: review.as_ref().map(|(rid, _)| ID(rid.to_string())),
         review_status: review.map(|(_, s)| s),
         base_model_version,
+        actions,
     }))
 }
 

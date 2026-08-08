@@ -99,8 +99,9 @@ async fn drive_run(pool: &PgPool, run_id: i64, config: RunConfig) -> Result<(), 
         execute(&rows, config, &mut sink)
     });
 
+    let mut action_seq: i32 = 0;
     while let Some(ev) = rx.recv().await {
-        persist_event(pool, run_id, &ev).await?;
+        persist_event(pool, run_id, &ev, &mut action_seq).await?;
     }
     let outcome = exec
         .await
@@ -109,8 +110,32 @@ async fn drive_run(pool: &PgPool, run_id: i64, config: RunConfig) -> Result<(), 
     finish_run(pool, run_id, &outcome).await
 }
 
-async fn persist_event(pool: &PgPool, run_id: i64, ev: &RunEvent) -> Result<(), String> {
+async fn persist_event(
+    pool: &PgPool,
+    run_id: i64,
+    ev: &RunEvent,
+    action_seq: &mut i32,
+) -> Result<(), String> {
     match ev {
+        RunEvent::Action { action } => {
+            *action_seq += 1;
+            sqlx::query(
+                "INSERT INTO agent_actions (run_id, seq, actor, kind, target, detail, before_state, after_state, reversible, refusal_reason, experiment_code) VALUES ($1, $2, 'agent', $3, $4, $5, $6, $7, $8, $9, $10)",
+            )
+            .bind(run_id)
+            .bind(*action_seq)
+            .bind(action.kind.as_str())
+            .bind(&action.target)
+            .bind(&action.detail)
+            .bind(&action.before)
+            .bind(&action.after)
+            .bind(action.reversible)
+            .bind(&action.refusal_reason)
+            .bind(&action.experiment_code)
+            .execute(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        }
         RunEvent::Spawned {
             code,
             name,
@@ -607,6 +632,19 @@ pub async fn approve_review(
     .bind(actor)
     .bind(v13_id)
     .bind(review_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+    // The run's one irreversible action, appended to the same record the
+    // agent's actions live in, attributed to the human
+    sqlx::query(
+        "INSERT INTO agent_actions (run_id, seq, actor, kind, target, detail, reversible) SELECT $1, COALESCE(MAX(seq), 0) + 1, 'human', 'approve', $2, $3, false FROM agent_actions WHERE run_id = $1",
+    )
+    .bind(run_id)
+    .bind(format!("Model version v{new_version}"))
+    .bind(format!(
+        "Approved {winner_code} and created v{new_version}. The run's only irreversible action, and only a human can take it."
+    ))
     .execute(&mut *tx)
     .await
     .map_err(|e| e.to_string())?;
