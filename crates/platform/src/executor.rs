@@ -61,7 +61,126 @@ pub enum RunEvent {
     Landed {
         record: ExperimentRecord,
     },
+    Action {
+        action: AgentAction,
+    },
     Finished,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActionKind {
+    Read,
+    Change,
+    Fit,
+    Refuse,
+    Revert,
+    Handoff,
+}
+
+impl ActionKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ActionKind::Read => "read",
+            ActionKind::Change => "change",
+            ActionKind::Fit => "fit",
+            ActionKind::Refuse => "refuse",
+            ActionKind::Revert => "revert",
+            ActionKind::Handoff => "handoff",
+        }
+    }
+}
+
+/// One attributable step of the modeling agent's work, streamed out as it
+/// happens so the record is a byproduct of the run, never a later
+/// reconstruction.
+#[derive(Debug, Clone)]
+pub struct AgentAction {
+    pub kind: ActionKind,
+    pub target: String,
+    pub detail: String,
+    pub before: Option<String>,
+    pub after: Option<String>,
+    pub reversible: bool,
+    pub refusal_reason: Option<String>,
+    pub experiment_code: Option<String>,
+}
+
+/// What each archetype changes in the model specification, as
+/// (target, before, after) — the preview a reader sees on the change action.
+pub fn spec_change(archetype: Archetype) -> (&'static str, &'static str, &'static str) {
+    match archetype {
+        Archetype::SplineAge => ("Driver age term", "5 coarse bands", "natural cubic spline"),
+        Archetype::InteractionAgeVehicle => {
+            ("Driver age × vehicle age", "absent", "interaction term")
+        }
+        Archetype::CredibilityTerritory => (
+            "Territory relativities",
+            "2023 filed table",
+            "credibility blend toward recent experience",
+        ),
+        Archetype::CappedAccidents => ("Prior accidents", "absent", "count capped at 3"),
+        Archetype::NegBinomialFamily => ("Error family", "Poisson", "negative binomial"),
+        Archetype::MileageBands => ("Annual mileage", "absent", "banded factor with imputation"),
+        Archetype::ComboSplineAccidents => (
+            "Age spline + capped accidents",
+            "two separate candidates",
+            "one combined specification",
+        ),
+    }
+}
+
+/// Refusals and reverts a landed experiment leaves in the action record.
+pub fn actions_after_landing(record: &ExperimentRecord) -> Vec<AgentAction> {
+    let code = record.plan.code.to_string();
+    let mut out = Vec::new();
+    if let Some(rails) = &record.rails {
+        let mut reasons = Vec::new();
+        if !rails.budget_ok {
+            reasons.push(format!(
+                "factor budget {} of {} exceeded",
+                rails.budget_used, rails.budget_limit
+            ));
+        }
+        if !rails.territory_ok {
+            reasons.push(format!(
+                "territory movement {:.1}% in {} beyond the filed {:.0}% tolerance",
+                rails.territory_movement_pct, rails.territory_worst_zone, rails.territory_limit_pct
+            ));
+        }
+        if !rails.folds_ok {
+            reasons.push(format!(
+                "lift held in only {} of {} folds",
+                rails.folds_held, rails.folds_required
+            ));
+        }
+        if !reasons.is_empty() {
+            out.push(AgentAction {
+                kind: ActionKind::Refuse,
+                target: format!("{code} promotion"),
+                detail: "A guardrail stops promotion. The agent cannot carry this change forward."
+                    .into(),
+                before: None,
+                after: None,
+                reversible: true,
+                refusal_reason: Some(reasons.join("; ")),
+                experiment_code: Some(code.clone()),
+            });
+        }
+    }
+    if record.disposition == Disposition::Scrapped {
+        out.push(AgentAction {
+            kind: ActionKind::Revert,
+            target: format!("{code} specification"),
+            detail: "Change not carried. The run branch keeps v12 plus surviving candidates only."
+                .into(),
+            before: None,
+            after: None,
+            reversible: true,
+            refusal_reason: None,
+            experiment_code: Some(code),
+        });
+    }
+    out
 }
 
 #[derive(Debug, Clone)]
@@ -603,4 +722,78 @@ pub fn fmt_thousands(n: usize) -> String {
         out.push(c);
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn record_with(rails: Option<GuardrailOutcome>, disposition: Disposition) -> ExperimentRecord {
+        let plan = agent::Playbook::base_plans()
+            .into_iter()
+            .find(|p| p.code == "EXP-03")
+            .unwrap();
+        ExperimentRecord {
+            plan,
+            fit: None,
+            rails,
+            verdict: Verdict {
+                disposition,
+                expert_text: String::new(),
+                gloss_text: String::new(),
+                lineage: None,
+            },
+            disposition,
+            evidence: None,
+        }
+    }
+
+    fn failing_territory_rails() -> GuardrailOutcome {
+        GuardrailOutcome {
+            budget_used: 0,
+            budget_limit: 2,
+            budget_ok: true,
+            territory_movement_pct: 4.1,
+            territory_worst_zone: "Z4".into(),
+            territory_direct: true,
+            territory_limit_pct: 3.0,
+            territory_ok: false,
+            folds_required: 4,
+            folds_held: 5,
+            folds_ok: true,
+        }
+    }
+
+    #[test]
+    fn scrapped_rail_failure_yields_refuse_then_revert() {
+        let r = record_with(Some(failing_territory_rails()), Disposition::Scrapped);
+        let acts = actions_after_landing(&r);
+        assert_eq!(acts.len(), 2);
+        assert_eq!(acts[0].kind, ActionKind::Refuse);
+        assert!(acts[0]
+            .refusal_reason
+            .as_deref()
+            .unwrap()
+            .contains("territory"));
+        assert_eq!(acts[1].kind, ActionKind::Revert);
+        assert!(acts.iter().all(|a| a.reversible));
+    }
+
+    #[test]
+    fn clean_candidate_yields_no_actions() {
+        let mut rails = failing_territory_rails();
+        rails.territory_ok = true;
+        let r = record_with(Some(rails), Disposition::Candidate);
+        assert!(actions_after_landing(&r).is_empty());
+    }
+
+    #[test]
+    fn spec_change_covers_every_archetype() {
+        for p in agent::Playbook::base_plans() {
+            let (target, before, after) = spec_change(p.archetype);
+            assert!(!target.is_empty() && !before.is_empty() && !after.is_empty());
+        }
+        let (target, _, _) = spec_change(Archetype::ComboSplineAccidents);
+        assert!(!target.is_empty());
+    }
 }
