@@ -62,6 +62,20 @@ test('empty slot previews the weakest slice and one press pins it', async ({ pag
   await expect(weak).toBeVisible();
 });
 
+test('the refusal evidence pins its worst region in its own words', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+  await page.locator('.ledger-row', { hasText: 'EXP-06' }).click();
+  await expect(page.locator('.selected-evidence .evidence-head')).toContainText('EXP-06');
+
+  const chart = page.locator('.selected-evidence .chart-workspace[data-kind="missingness"]');
+  const pin = chart.locator('.pin-weakest');
+  await expect(pin).toContainText('Pin worst region');
+  await pin.click();
+  await expect(chart.locator('.chart-selection')).toBeVisible();
+  await expect(page).toHaveURL(/sel=/);
+});
+
 test('the full view carries the weak point and answers a pin on the spot', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);

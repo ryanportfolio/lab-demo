@@ -275,6 +275,14 @@ export function weakestSelection(chart: EvidenceChart): ChartSelection | null {
     return null;
   }
   if (chart.kind === 'territory' || chart.kind === 'folds') return null;
+  if (chart.kind === 'missingness') {
+    // The chart's own question is "where is mileage missing most": the pin
+    // answers it with the worst region
+    const share = chart.series.find((series) => !isSecondarySeries(series));
+    if (!share?.points.length) return null;
+    const worst = share.points.reduce((max, point) => (point.y > max.y ? point : max));
+    return { start: worst.x, end: worst.x };
+  }
   if (chart.kind === 'segment_effects') {
     // No exposure series here; the scrutiny point is the factor pulling the
     // segment furthest from the book average, the same one the weakness
@@ -296,7 +304,9 @@ export function weakestSelection(chart: EvidenceChart): ChartSelection | null {
 
 /** What pressing the weak-slice button pins, in the chart's own words */
 export function weakActionLabel(chart: EvidenceChart): string {
-  return chart.kind === 'segment_effects' ? 'Pin largest contribution' : 'Pin weakest slice';
+  if (chart.kind === 'segment_effects') return 'Pin largest contribution';
+  if (chart.kind === 'missingness') return 'Pin worst region';
+  return 'Pin weakest slice';
 }
 
 export function parseSelection(value: string | null): ChartSelection | null {
