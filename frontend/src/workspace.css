@@ -561,9 +561,14 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
   margin-top: 16px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
   background: var(--bg); padding: 16px;
 }
-.agent-record summary { cursor: pointer; list-style: none }
-.agent-record summary::-webkit-details-marker { display: none }
-.agent-record summary .workspace-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+.agent-record > .workspace-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+.record-toggle {
+  display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: transparent; color: var(--fg-muted); cursor: pointer; font-family: var(--mono); font-size: 13px;
+  padding: 7px 11px; transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.record-toggle:hover { border-color: var(--fg-subtle); color: var(--fg) }
+.record-toggle i { font-style: normal; font-size: 11px }
 .agent-record-empty { color: var(--fg-subtle); font-size: 15px; padding: 12px 0 4px }
 .agent-record-list { list-style: none; margin-top: 10px }
 .agent-record-list li + li { border-top: 1px solid var(--border-muted) }

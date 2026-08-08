@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { AgentAction } from './api';
 
 interface Props {
@@ -25,26 +26,33 @@ const statusText = (action: AgentAction) => {
 };
 
 export default function AgentActionLog({ actions, onSelectExperiment, review }: Props) {
+  const [open, setOpen] = useState(!!review);
   const refused = actions.filter((action) => action.kind === 'refuse').length;
   const reverted = actions.filter((action) => action.kind === 'revert').length;
 
   return (
     <section className="agent-record" aria-labelledby="agent-record-heading">
-      <details open={review || undefined}>
-        <summary>
-          <span className="workspace-heading">
-            <span>
-              <span className="eyebrow">Bounded delegation</span>
-              <h2 id="agent-record-heading">Agent record</h2>
-            </span>
-            <span className="section-count">
-              {actions.length === 0
-                ? 'no record'
-                : `${actions.length} actions · ${refused} refused · ${reverted} reverted`}
-            </span>
-          </span>
-        </summary>
-        {actions.length === 0 ? (
+      <div className="workspace-heading">
+        <div>
+          <span className="eyebrow">Bounded delegation</span>
+          <h2 id="agent-record-heading">Agent record</h2>
+        </div>
+        <button
+          type="button"
+          className="record-toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {actions.length === 0
+            ? 'No record'
+            : open
+              ? 'Hide actions'
+              : `View ${actions.length} actions · ${refused} refused · ${reverted} reverted`}
+          <i aria-hidden="true">{open ? '▴' : '▾'}</i>
+        </button>
+      </div>
+      {open &&
+        (actions.length === 0 ? (
           <p className="agent-record-empty">
             No action record. This run predates action capture; replay the run to record one.
           </p>
@@ -67,8 +75,9 @@ export default function AgentActionLog({ actions, onSelectExperiment, review }: 
                         <button
                           type="button"
                           onClick={() => onSelectExperiment(action.experimentCode!)}
+                          title={`Open ${action.experimentCode} in the evidence panel`}
                         >
-                          {action.target}
+                          {action.target} ↗
                         </button>
                       ) : (
                         action.target
@@ -95,14 +104,13 @@ export default function AgentActionLog({ actions, onSelectExperiment, review }: 
               </li>
             ))}
           </ol>
-        )}
-        {review && actions.length > 0 && (
-          <p className="agent-record-note">
-            The record above is the run's own trail, kept so this decision stays reconstructable
-            at sign-off.
-          </p>
-        )}
-      </details>
+        ))}
+      {review && open && actions.length > 0 && (
+        <p className="agent-record-note">
+          The record above is the run's own trail, kept so this decision stays reconstructable
+          at sign-off.
+        </p>
+      )}
     </section>
   );
 }

@@ -21,13 +21,19 @@ test('a run leaves an agent record that survives into review and approval', asyn
   const record = page.locator('.agent-record');
   await expect(record).toBeVisible();
 
+  // The collapsed record announces itself as expandable
+  const toggle = record.locator('.record-toggle');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
   // Runs from before action capture show an honest empty state; replay to
-  // record a fresh run rather than fabricating history for old ones
-  await record.locator('summary').click();
-  if (await record.locator('.agent-record-empty').isVisible()) {
+  // record a fresh run rather than fabricating history for old ones. The
+  // panel stays open across the replay (component state, not DOM toggling).
+  await expect(record.locator('.agent-record-empty, .act-row').first()).toBeVisible();
+  if ((await record.locator('.agent-record-empty').count()) > 0) {
     await page.locator('.replay').click();
     await ready(page);
-    await record.locator('summary').click();
   }
 
   // The trail is action-level, not a one-line summary
