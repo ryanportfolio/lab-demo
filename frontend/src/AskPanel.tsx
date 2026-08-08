@@ -124,6 +124,11 @@ export default function AskPanel({
 
   if (!open) return null;
 
+  // A question already answered leaves the follow-up list; the transcript
+  // above is its record
+  const asked = new Set(answers.map((a) => a.display ?? a.question));
+  const remaining = suggested.filter((s) => !asked.has(s));
+
   return (
     <div className="ask-scrim" onMouseDown={onClose}>
       <div
@@ -169,12 +174,6 @@ export default function AskPanel({
                 ))}
               </div>
             </div>
-          )}
-
-          {answers.length > 0 && (
-            <button className="ask-back" onClick={() => setAnswers([])}>
-              Back to the questions
-            </button>
           )}
 
           {answers.map((a, i) => (
@@ -228,6 +227,19 @@ export default function AskPanel({
 
           {busy && <div className="ask-busy">Reading the run</div>}
           {error && <div className="ask-error">{error}</div>}
+
+          {answers.length > 0 && !busy && remaining.length > 0 && (
+            <div className="ask-followups">
+              <span>Keep going</span>
+              <div className="ask-sugg">
+                {remaining.map((s) => (
+                  <button key={s} onClick={() => send(s)} disabled={busy || !ready}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="ask-foot">
@@ -261,10 +273,7 @@ export default function AskPanel({
               onKeyDown={(e) => {
                 if (e.key !== 'Enter' || e.shiftKey) return;
                 e.preventDefault();
-                // Enter on an empty box goes back to the question list, so a
-                // reader is never stuck on one answer
                 if (q.trim()) send(q);
-                else setAnswers([]);
               }}
             />
             <button

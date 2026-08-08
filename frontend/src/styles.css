@@ -299,9 +299,9 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-sugg button:hover:not(:disabled) { border-color: var(--fg-subtle) }
 .ask-sugg button:disabled, .ask-compose textarea:disabled { opacity: .5; cursor: default }
 .ask-sugg button:focus-visible, .cites button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
-.ask-back { align-self: flex-start; font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg-muted); cursor: pointer }
-.ask-back:hover { color: var(--fg); border-color: var(--fg-subtle) }
-.ask-back:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
+.ask-followups { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-muted); padding-top: 12px }
+.ask-followups > span { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--fg-subtle) }
+.ask-followups .ask-sugg { margin-top: 0 }
 .ask-turn { display: flex; flex-direction: column; gap: 10px }
 .ask-row { display: flex; gap: 10px; align-items: flex-start }
 .ask-row .who { flex: none; width: 26px; height: 26px; border-radius: var(--r-full); background: var(--chipbg); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; color: var(--fg-muted) }
