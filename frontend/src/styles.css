@@ -334,6 +334,13 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
   .charts { grid-template-columns: 1fr }
 }
 
+/* A narrow screen wraps the ask context instead of truncating it: which
+   slice and which run are facts, not decoration */
+@media (max-width: 700px) {
+  .ask-chip { flex-wrap: wrap }
+  .ask-chip b { white-space: normal; overflow: visible; text-overflow: clip }
+}
+
 /* Interactive layer: every drawn point answers with its number */
 .chart { position: relative }
 .chart svg[data-expandable] { cursor: zoom-in }
