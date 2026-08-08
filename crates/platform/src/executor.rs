@@ -227,10 +227,37 @@ pub fn execute(
         .iter()
         .filter(|r| matches!(r.period.as_str(), "2023H1" | "2023H2"))
         .collect();
+    sink(RunEvent::Action {
+        action: AgentAction {
+            kind: ActionKind::Read,
+            target: "Policy dataset".into(),
+            detail: format!(
+                "Profiled {} policy rows; Bodily Injury claim counts with earned exposure as the target.",
+                fmt_thousands(rows.len())
+            ),
+            before: None,
+            after: None,
+            reversible: true,
+            refusal_reason: None,
+            experiment_code: None,
+        },
+    });
 
     // v12's filed territory table, frozen everywhere below
     let filed_rel = filing::filed_relativities(&filing_rows, config.filing_k)?;
     let filed_log: Vec<f64> = filed_rel.iter().map(|r| r.ln()).collect();
+    sink(RunEvent::Action {
+        action: AgentAction {
+            kind: ActionKind::Read,
+            target: "v12 filed territory relativities".into(),
+            detail: "Recomputed the 2023 filing table from its own procedure. The table stays frozen for every experiment except EXP-03's blend.".into(),
+            before: None,
+            after: None,
+            reversible: true,
+            refusal_reason: None,
+            experiment_code: None,
+        },
+    });
 
     // Baseline v12 on train
     let v12 = ModelSpec::v12();
@@ -246,6 +273,22 @@ pub fn execute(
         train_rows: train.len(),
     };
     let mu12: Vec<f64> = f12.mu.clone();
+    sink(RunEvent::Action {
+        action: AgentAction {
+            kind: ActionKind::Fit,
+            target: "Baseline v12 on train".into(),
+            detail: format!(
+                "Refit the model in force on {} train rows. Baseline Gini {:.4}; every experiment is judged against this fit.",
+                fmt_thousands(train.len()),
+                baseline_gini
+            ),
+            before: None,
+            after: None,
+            reversible: true,
+            refusal_reason: None,
+            experiment_code: None,
+        },
+    });
 
     // Why young drivers sit where they do on the model in force. Read from
     // v12's own coefficients, before any experiment touches anything.
@@ -283,6 +326,18 @@ pub fn execute(
         fold_fit_rows.push(fit_rows);
         fold_val_rows.push(val_rows);
     }
+    sink(RunEvent::Action {
+        action: AgentAction {
+            kind: ActionKind::Fit,
+            target: format!("{}-fold baseline cross-validation", plab_core::N_FOLDS),
+            detail: "Fit the baseline once per fold so every experiment's fold deltas compare against the same held-out scores.".into(),
+            before: None,
+            after: None,
+            reversible: true,
+            refusal_reason: None,
+            experiment_code: None,
+        },
+    });
 
     // The playbook's proposals, waves one and two
     let plans = agent::Playbook::base_plans();
@@ -400,12 +455,39 @@ pub fn execute(
             records[wi].verdict.disposition = Disposition::Winner;
         }
         records[wi].disposition = Disposition::Winner;
+        sink(RunEvent::Action {
+            action: AgentAction {
+                kind: ActionKind::Change,
+                target: "Run winner".into(),
+                detail: format!(
+                    "Promoted the best candidate whose guardrails all held, then confirmed the gain on the 2025H2 holdout ({:+.4} Gini).",
+                    holdout_delta.unwrap_or(0.0)
+                ),
+                before: Some("no winner".into()),
+                after: Some(records[wi].plan.code.to_string()),
+                reversible: true,
+                refusal_reason: None,
+                experiment_code: Some(records[wi].plan.code.to_string()),
+            },
+        });
 
         review = Some(agent::review_summary(
             train_delta.unwrap(),
             holdout_delta.unwrap(),
             profile.acc3_exposure_pct,
         ));
+        sink(RunEvent::Action {
+            action: AgentAction {
+                kind: ActionKind::Handoff,
+                target: "Human review".into(),
+                detail: "Wrote the review summary and requested human review. The agent cannot approve; creating a model version is the human's action alone.".into(),
+                before: None,
+                after: None,
+                reversible: true,
+                refusal_reason: None,
+                experiment_code: Some(records[wi].plan.code.to_string()),
+            },
+        });
     }
 
     sink(RunEvent::Finished);
@@ -516,6 +598,18 @@ fn run_one(
                 charts: evidence::missingness_charts(train),
             }),
         };
+        sink(RunEvent::Action {
+            action: AgentAction {
+                kind: ActionKind::Refuse,
+                target: format!("{code} fit"),
+                detail: "Declined to fit on the platform's data profile. The refusal keeps its artifact: the missingness evidence below.".into(),
+                before: None,
+                after: None,
+                reversible: true,
+                refusal_reason: Some(record.verdict.expert_text.clone()),
+                experiment_code: Some(code.clone()),
+            },
+        });
         records.push(record.clone());
         sink(RunEvent::Landed { record });
         return Ok(());
@@ -525,6 +619,21 @@ fn run_one(
         code: code.clone(),
         stage: fitting_stage(plan.archetype).to_string(),
     });
+    {
+        let (target, before, after) = spec_change(plan.archetype);
+        sink(RunEvent::Action {
+            action: AgentAction {
+                kind: ActionKind::Change,
+                target: target.to_string(),
+                detail: format!("{code} changes the specification on the run branch only; v12 itself is untouched."),
+                before: Some(before.to_string()),
+                after: Some(after.to_string()),
+                reversible: true,
+                refusal_reason: None,
+                experiment_code: Some(code.clone()),
+            },
+        });
+    }
 
     let spec = spec_for(plan.archetype);
     let is_nb = plan.archetype == Archetype::NegBinomialFamily;
@@ -697,6 +806,24 @@ fn run_one(
         charts,
     };
 
+    sink(RunEvent::Action {
+        action: AgentAction {
+            kind: ActionKind::Fit,
+            target: format!("{code} GLM fit and fold CV"),
+            detail: format!(
+                "Train Gini {:.4} ({:+.4} vs baseline), scored across {} folds.",
+                summary.gini,
+                summary.delta_gini,
+                summary.fold_deltas.len()
+            ),
+            before: None,
+            after: None,
+            reversible: true,
+            refusal_reason: None,
+            experiment_code: Some(code.clone()),
+        },
+    });
+
     let verdict = agent::verdict_fitted(plan, &summary, &rails);
     let disposition = verdict.disposition;
     let record = ExperimentRecord {
@@ -707,6 +834,9 @@ fn run_one(
         disposition,
         evidence: Some(evidence),
     };
+    for action in actions_after_landing(&record) {
+        sink(RunEvent::Action { action });
+    }
     records.push(record.clone());
     sink(RunEvent::Landed { record });
     Ok(())
