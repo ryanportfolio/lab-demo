@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { EvidenceChart, EvidenceSeries } from './api';
 import {
-  buildAgentQuestion,
+  buildAgentAsk,
   contractFor,
   displayChart,
   isSecondarySeries,
@@ -21,6 +21,8 @@ import {
   normalizeSelection,
   selectionLabel,
   selectionValues,
+  weakActionLabel,
+  weakestSelection,
   weakPoint,
   type ChartContract,
   type ChartMode,
@@ -725,7 +727,7 @@ export default function Chart({
 }) {
   const contract = useMemo(() => contractFor(chart), [chart]);
   const [localSelection, setLocalSelection] = useState<ChartSelection | null>(null);
-  const [localMode, setLocalMode] = useState<ChartMode>('level');
+  const [localMode, setLocalMode] = useState<ChartMode>(() => contract.defaultMode);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [expanded, setExpanded] = useState(false);
   const [actionStatus, setActionStatus] = useState('');
@@ -749,6 +751,14 @@ export default function Chart({
   };
   const selectedValues = selection ? selectionValues(shown, selection) : [];
   const weakness = weakPoint(chart, contract);
+  // With nothing pinned, the slot leads with the weak point's own numbers
+  // instead of usage instructions: the thinnest slice is the first thing a
+  // reviewer will want to interrogate, so it is one press away
+  const weakSelection = useMemo(() => weakestSelection(chart), [chart]);
+  const weakValues = useMemo(
+    () => (weakSelection ? selectionValues(shown, weakSelection) : []),
+    [shown, weakSelection],
+  );
 
   useEffect(() => setHidden(new Set()), [mode, chart.kind]);
 
@@ -852,6 +862,68 @@ export default function Chart({
     </ul>
   );
 
+  // One slot, two homes: the card's diagnostics column and the full view.
+  // Only the card instance announces changes, so a pin is spoken once.
+  const selectionSlot = (live: boolean) =>
+    selection ? (
+      <div className="chart-selection" aria-live={live ? 'polite' : undefined}>
+        <div className="selection-readout">
+          <span className="selection-label">{selectionLabel(chart, selection)}</span>
+          <div className="selection-values">
+            {selectedValues.map((value) => <span key={value}>{value}</span>)}
+          </div>
+        </div>
+        <div className="chart-actions">
+          {context && (
+            <>
+              <button
+                type="button"
+                onClick={() => context.onAsk(buildAgentAsk(chart, context, selection, mode))}
+              >
+                Ask about selection
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  context.onSave(makeSavedEvidence(chart, context, selection, mode));
+                  setActionStatus('Saved to human review');
+                }}
+              >
+                Save to review
+              </button>
+              <button type="button" onClick={copyLink}>Copy evidence link</button>
+            </>
+          )}
+          <button type="button" onClick={() => setSelection(null)}>Clear</button>
+        </div>
+        <span className="chart-action-status" role={live ? 'status' : undefined}>
+          {actionStatus}
+        </span>
+      </div>
+    ) : weakSelection ? (
+      <div className="chart-selection-empty chart-selection-weak">
+        <button
+          type="button"
+          className="pin-weakest"
+          onClick={() => setSelection(weakSelection)}
+        >
+          {weakActionLabel(chart)} · {selectionLabel(chart, weakSelection)}
+        </button>
+        <div className="selection-values">
+          {weakValues.map((value) => <span key={value}>{value}</span>)}
+        </div>
+        <span className="empty-hint">
+          Hover previews · click or Enter pins
+          {contract.range ? ' · drag or Shift plus arrow selects a range' : ''}
+        </span>
+      </div>
+    ) : (
+      <div className="chart-selection-empty">
+        Hover previews · click or Enter pins
+        {contract.range ? ' · drag or Shift plus arrow selects a range' : ''}
+      </div>
+    );
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(location.href);
@@ -914,45 +986,7 @@ export default function Chart({
             : `${chart.xLabel} / ${shown.yLabel}`}
         </div>
         <div className="chart-selection-slot">
-          {selection ? (
-            <div className="chart-selection" aria-live="polite">
-            <div className="selection-readout">
-              <span className="selection-label">{selectionLabel(chart, selection)}</span>
-              <div className="selection-values">
-                {selectedValues.map((value) => <span key={value}>{value}</span>)}
-              </div>
-            </div>
-            <div className="chart-actions">
-              {context && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => context.onAsk(buildAgentQuestion(chart, context, selection, mode))}
-                  >
-                    Ask about selection
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      context.onSave(makeSavedEvidence(chart, context, selection, mode));
-                      setActionStatus('Saved to human review');
-                    }}
-                  >
-                    Save to review
-                  </button>
-                  <button type="button" onClick={copyLink}>Copy evidence link</button>
-                </>
-              )}
-              <button type="button" onClick={() => setSelection(null)}>Clear</button>
-            </div>
-            <span className="chart-action-status" role="status">{actionStatus}</span>
-            </div>
-          ) : (
-            <div className="chart-selection-empty">
-              Hover previews · click or Enter pins
-              {contract.range ? ' · drag or Shift plus arrow selects a range' : ''}
-            </div>
-          )}
+          {selectionSlot(true)}
         </div>
         <details className="chart-notes">
           <summary>Method notes</summary>
@@ -994,6 +1028,10 @@ export default function Chart({
                 autoFocus
               />
               {legend}
+              <div className="chart-full-diagnostics">
+                <div className="chart-weakness"><b>Weakest</b>{weakness}</div>
+                <div className="chart-selection-slot">{selectionSlot(false)}</div>
+              </div>
               {notes}
               {plain && <div className="gloss">{chart.gloss}</div>}
               <span className="chart-hint">

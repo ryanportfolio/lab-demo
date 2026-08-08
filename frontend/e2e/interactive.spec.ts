@@ -353,6 +353,18 @@ test('a chart inside the palette expands above it and Escape unwinds in order', 
     timeout: 30_000,
   });
 
+  // a segments chart has no exposure series, but its scrutiny point — the
+  // factor furthest from the book average — is still one press away, named
+  // in its own words
+  const segments = page
+    .locator('.ask-row.ai .chart-workspace[data-kind="segment_effects"]')
+    .first();
+  const pin = segments.locator('.pin-weakest');
+  await expect(pin).toContainText('Pin largest contribution');
+  await pin.click();
+  await expect(segments.locator('.chart-selection')).toBeVisible();
+  await segments.locator('.chart-actions button', { hasText: 'Clear' }).click();
+
   await page.locator('.ask-row.ai .chart .expand').first().click();
   await expect(page.locator('.chart-full')).toBeVisible();
   await page.keyboard.press('ArrowRight');
@@ -388,4 +400,29 @@ test('the review draws the model diff from the winner artifacts', async ({
   await expect(diff.locator('.chart', { hasText: 'Actual frequency by risk decile' })).toBeVisible();
   await expect(diff.locator('.chart')).toHaveCount(1);
   await page.screenshot({ path: `${OUT}/review-diff-light.png`, fullPage: true });
+});
+
+test('the weak point opens its own chart with the sparse slice pinned', async ({
+  page,
+}) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+  await page.evaluate(() => {
+    location.hash = 'review';
+  });
+  await expect(page.locator('.review-head')).toBeVisible({ timeout: 30_000 });
+
+  const weakPoint = page.locator('.weak-point');
+  await expect(weakPoint).toContainText('exposure');
+  await weakPoint.locator('.weak-open').click();
+
+  // the prose names prior accidents, so the jump lands on that chart —
+  // not the age curve, even though both mention a relativity
+  const evidence = page.locator('.review-proof .evidence');
+  const chart = evidence.locator('.chart-workspace[data-kind="accidents"]');
+  await expect(chart).toBeVisible();
+  await expect(chart.locator('.chart-selection')).toBeVisible();
+  await expect(chart.locator('.selection-values')).toContainText('exposure');
+  await expect(page).toHaveURL(/chart=accidents/);
+  await expect(page).toHaveURL(/sel=/);
 });

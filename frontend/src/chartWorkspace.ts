@@ -26,6 +26,12 @@ export interface ChartContract {
   range: boolean;
   comparison?: Comparison;
   guardrail?: ChartGuardrail;
+  /**
+   * The view a chart opens on. Territory answers "how far from filed" — that
+   * is the change view with the tolerance band, so it opens there. Everything
+   * else opens on level.
+   */
+  defaultMode: ChartMode;
 }
 
 export interface ChartWorkspaceContext {
@@ -34,8 +40,19 @@ export interface ChartWorkspaceContext {
   target: string;
   denominator: string;
   model: string;
-  onAsk: (question: string) => void;
+  onAsk: (ask: AgentAsk) => void;
   onSave: (evidence: SavedChartEvidence) => void;
+}
+
+/**
+ * An ask carried from a chart selection. The user reads and edits `question`;
+ * `context` is the chip naming what rides along; `send` is the full composed
+ * text the context expert actually receives when the question is unedited.
+ */
+export interface AgentAsk {
+  question: string;
+  context: string;
+  send: string;
 }
 
 export interface SavedChartEvidence {
@@ -115,6 +132,7 @@ export function contractFor(chart: EvidenceChart): ChartContract {
     question: QUESTIONS[chart.kind] ?? `What decision does ${chart.title.toLowerCase()} support?`,
     range: chart.kind === 'age_curve' || chart.kind === 'lift',
     comparison: hasComparison ? comparison : undefined,
+    defaultMode: chart.kind === 'territory' && hasComparison ? 'change' : 'level',
     guardrail:
       chart.kind === 'territory'
         ? { low: -5, high: 5, label: 'Filed tolerance ±5%', applies: 'change' }
@@ -235,6 +253,62 @@ export function weakPoint(chart: EvidenceChart, contract: ChartContract): string
   return chart.notes[1] ?? chart.notes[0] ?? `${contract.question} Exact evidence available.`;
 }
 
+/**
+ * The x the weak-point sentence talks about, as a pinnable selection. Charts
+ * whose weakness is not tied to one x (territory, folds) return null and the
+ * empty slot keeps its plain instructions.
+ */
+export function weakestSelection(chart: EvidenceChart): ChartSelection | null {
+  if (chart.kind === 'lift') {
+    const actual = chart.series.find((series) => series.label === 'Actual, this model');
+    const predicted = chart.series.find((series) => series.label === 'Predicted');
+    if (actual && predicted) {
+      const gaps = actual.points.flatMap((point) => {
+        const expected = predicted.points.find((item) => Math.abs(item.x - point.x) < 1e-9);
+        return expected ? [{ x: point.x, gap: Math.abs(point.y - expected.y) }] : [];
+      });
+      if (gaps.length) {
+        const largest = gaps.reduce((max, item) => (item.gap > max.gap ? item : max));
+        return { start: largest.x, end: largest.x };
+      }
+    }
+    return null;
+  }
+  if (chart.kind === 'territory' || chart.kind === 'folds') return null;
+  if (chart.kind === 'missingness') {
+    // The chart's own question is "where is mileage missing most": the pin
+    // answers it with the worst region
+    const share = chart.series.find((series) => !isSecondarySeries(series));
+    if (!share?.points.length) return null;
+    const worst = share.points.reduce((max, point) => (point.y > max.y ? point : max));
+    return { start: worst.x, end: worst.x };
+  }
+  if (chart.kind === 'segment_effects') {
+    // No exposure series here; the scrutiny point is the factor pulling the
+    // segment furthest from the book average, the same one the weakness
+    // sentence names
+    const effect = chart.series.find((series) => !isSecondarySeries(series));
+    if (!effect?.points.length) return null;
+    const largest = effect.points.reduce((max, point) =>
+      Math.abs(point.y - 1) > Math.abs(max.y - 1) ? point : max,
+    );
+    return { start: largest.x, end: largest.x };
+  }
+  const weight = chart.series.find(isSecondarySeries);
+  if (weight?.points.length) {
+    const thinnest = weight.points.reduce((min, point) => (point.y < min.y ? point : min));
+    return { start: thinnest.x, end: thinnest.x };
+  }
+  return null;
+}
+
+/** What pressing the weak-slice button pins, in the chart's own words */
+export function weakActionLabel(chart: EvidenceChart): string {
+  if (chart.kind === 'segment_effects') return 'Pin largest contribution';
+  if (chart.kind === 'missingness') return 'Pin worst region';
+  return 'Pin weakest slice';
+}
+
 export function parseSelection(value: string | null): ChartSelection | null {
   if (!value) return null;
   const [rawStart, rawEnd = rawStart] = value.split(':');
@@ -279,7 +353,8 @@ export function updateEvidenceUrl(updates: {
   };
   if ('exp' in updates) set('exp', updates.exp);
   if ('chart' in updates) set('chart', updates.chart);
-  if ('mode' in updates) set('mode', updates.mode === 'change' ? 'change' : null);
+  // null means "the chart's own default": the URL only records departures
+  if ('mode' in updates) set('mode', updates.mode ?? null);
   if ('selection' in updates) {
     set('sel', updates.selection ? serializeSelection(updates.selection) : null);
   }
@@ -293,6 +368,26 @@ export function buildAgentQuestion(
   mode: ChartMode,
 ): string {
   return `Explain ${selectionLabel(chart, selection)} in ${context.code}'s ${chart.title}. Use ${mode === 'change' ? 'the change comparison' : 'the level view'}, ${context.target} per ${context.denominator}, model ${context.model}, run ${context.runId}, and this chart's exact values and exposure. Call out weak evidence and what should be checked next.`;
+}
+
+export function buildAgentAsk(
+  chart: EvidenceChart,
+  context: ChartWorkspaceContext,
+  selection: ChartSelection,
+  mode: ChartMode,
+): AgentAsk {
+  return {
+    question: `Explain ${selectionLabel(chart, selection)} in ${chart.title.toLowerCase()}. What is weak here and what should be checked next?`,
+    context: [
+      context.code,
+      chart.title,
+      selectionLabel(chart, selection),
+      mode === 'change' ? 'change view' : 'level view',
+      `${context.target} / ${context.denominator}`,
+      `run ${context.runId}`,
+    ].join(' · '),
+    send: buildAgentQuestion(chart, context, selection, mode),
+  };
 }
 
 export function makeSavedEvidence(

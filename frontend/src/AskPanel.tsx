@@ -9,6 +9,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Chart from './Chart';
 import { ask, fetchSuggestedQuestions, type Answer } from './api';
+import type { AgentAsk } from './chartWorkspace';
+
+/** An answer plus what the user actually typed and the context that rode along */
+type ShownAnswer = Answer & { display?: string; chip?: string };
 
 export default function AskPanel({
   runId,
@@ -17,7 +21,7 @@ export default function AskPanel({
   open,
   onClose,
   onCite,
-  initialQuestion = '',
+  seed = null,
 }: {
   runId: string | null;
   /** the run has finished, so its verdicts and ledger are settled */
@@ -26,11 +30,13 @@ export default function AskPanel({
   open: boolean;
   onClose: () => void;
   onCite: (code: string) => void;
-  initialQuestion?: string;
+  /** an ask carried in from a chart selection */
+  seed?: AgentAsk | null;
 }) {
   const [q, setQ] = useState('');
+  const [chip, setChip] = useState<AgentAsk | null>(null);
   const [suggested, setSuggested] = useState<string[]>([]);
-  const [answers, setAnswers] = useState<Answer[]>([]);
+  const [answers, setAnswers] = useState<ShownAnswer[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -42,9 +48,14 @@ export default function AskPanel({
 
   useEffect(() => {
     if (!open) return;
-    if (initialQuestion) setQ(initialQuestion);
+    if (seed) {
+      setQ(seed.question);
+      setChip(seed);
+    } else {
+      setChip(null);
+    }
     requestAnimationFrame(() => input.current?.focus());
-  }, [initialQuestion, open]);
+  }, [seed, open]);
 
   useEffect(() => {
     const field = input.current;
@@ -84,10 +95,23 @@ export default function AskPanel({
     if (!runId || !ready || !question.trim() || busy) return;
     setBusy(true);
     setError(null);
+    // The chip's context always travels with the question. Unedited, the
+    // full composed ask goes as-is; edited, the context is appended so a
+    // vague follow-up still lands on the right artifact.
+    const carried = chip;
+    const wire = carried
+      ? question.trim() === carried.question
+        ? carried.send
+        : `${question.trim()} Context: ${carried.context}.`
+      : question.trim();
     try {
-      const a = await ask(runId, question.trim());
-      setAnswers((prev) => [...prev, a]);
+      const a = await ask(runId, wire);
+      setAnswers((prev) => [
+        ...prev,
+        { ...a, display: question.trim(), chip: carried?.context },
+      ]);
       setQ('');
+      setChip(null);
       requestAnimationFrame(() =>
         body.current?.scrollTo({ top: body.current.scrollHeight }),
       );
@@ -99,6 +123,11 @@ export default function AskPanel({
   }
 
   if (!open) return null;
+
+  // A question already answered leaves the follow-up list; the transcript
+  // above is its record
+  const asked = new Set(answers.map((a) => a.display ?? a.question));
+  const remaining = suggested.filter((s) => !asked.has(s));
 
   return (
     <div className="ask-scrim" onMouseDown={onClose}>
@@ -147,17 +176,14 @@ export default function AskPanel({
             </div>
           )}
 
-          {answers.length > 0 && (
-            <button className="ask-back" onClick={() => setAnswers([])}>
-              Back to the questions
-            </button>
-          )}
-
           {answers.map((a, i) => (
             <div className="ask-turn" key={i}>
               <div className="ask-row you">
                 <span className="who">You</span>
-                <div className="bubble">{a.question}</div>
+                <div className="bubble">
+                  {a.display ?? a.question}
+                  {a.chip && <span className="ask-chip-echo">{a.chip}</span>}
+                </div>
               </div>
               <div className="ask-row ai">
                 <span className="who">AI</span>
@@ -201,9 +227,35 @@ export default function AskPanel({
 
           {busy && <div className="ask-busy">Reading the run</div>}
           {error && <div className="ask-error">{error}</div>}
+
+          {answers.length > 0 && !busy && remaining.length > 0 && (
+            <div className="ask-followups">
+              <span>Keep going</span>
+              <div className="ask-sugg">
+                {remaining.map((s) => (
+                  <button key={s} onClick={() => send(s)} disabled={busy || !ready}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="ask-foot">
+          {chip && (
+            <div className="ask-chip" aria-label="Question context">
+              <span>Asking about</span>
+              <b>{chip.context}</b>
+              <button
+                type="button"
+                aria-label="Drop this context"
+                onClick={() => setChip(null)}
+              >
+                ×
+              </button>
+            </div>
+          )}
           <div className="ask-compose">
             <textarea
               ref={input}
@@ -221,10 +273,7 @@ export default function AskPanel({
               onKeyDown={(e) => {
                 if (e.key !== 'Enter' || e.shiftKey) return;
                 e.preventDefault();
-                // Enter on an empty box goes back to the question list, so a
-                // reader is never stuck on one answer
                 if (q.trim()) send(q);
-                else setAnswers([]);
               }}
             />
             <button

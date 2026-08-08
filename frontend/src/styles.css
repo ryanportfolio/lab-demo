@@ -296,9 +296,9 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-sugg button:hover:not(:disabled) { border-color: var(--fg-subtle) }
 .ask-sugg button:disabled, .ask-compose textarea:disabled { opacity: .5; cursor: default }
 .ask-sugg button:focus-visible, .cites button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
-.ask-back { align-self: flex-start; font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg-muted); cursor: pointer }
-.ask-back:hover { color: var(--fg); border-color: var(--fg-subtle) }
-.ask-back:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
+.ask-followups { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-muted); padding-top: 12px }
+.ask-followups > span { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--fg-subtle) }
+.ask-followups .ask-sugg { margin-top: 0 }
 .ask-turn { display: flex; flex-direction: column; gap: 10px }
 .ask-row { display: flex; gap: 10px; align-items: flex-start }
 .ask-row .who { flex: none; width: 26px; height: 26px; border-radius: var(--r-full); background: var(--chipbg); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; color: var(--fg-muted) }
@@ -317,12 +317,25 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-error { color: var(--bad) }
 .ask-foot { display: flex; flex-direction: column; gap: 7px; padding: 12px 14px; border-top: 1px solid var(--border-muted) }
 .ask-note { font-size: 11.5px; color: var(--fg-subtle) }
+.ask-chip { display: flex; align-items: baseline; gap: 7px; min-width: 0; border: 1px solid var(--border); border-left: 3px solid var(--brand); border-radius: var(--r-sm); background: var(--bg); padding: 6px 9px; font-size: 12px }
+.ask-chip span { flex: none; color: var(--fg-subtle) }
+.ask-chip b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--fg-muted) }
+.ask-chip button { flex: none; align-self: center; min-width: 24px; min-height: 24px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--fg-subtle); font-size: 15px; line-height: 1; cursor: pointer }
+.ask-chip button:hover, .ask-chip button:focus-visible { color: var(--fg); outline: none; background: var(--chipbg) }
+.ask-chip-echo { display: block; margin-top: 5px; font-family: var(--mono); font-size: 11.5px; color: var(--fg-subtle) }
 
 @media (max-width: 960px) {
   .layout { grid-template-columns: 1fr }
   .rail { border-left: 0; border-top: 1px solid var(--border-muted) }
   .grid { grid-template-columns: 1fr }
   .charts { grid-template-columns: 1fr }
+}
+
+/* A narrow screen wraps the ask context instead of truncating it: which
+   slice and which run are facts, not decoration */
+@media (max-width: 700px) {
+  .ask-chip { flex-wrap: wrap }
+  .ask-chip b { white-space: normal; overflow: visible; text-overflow: clip }
 }
 
 /* Interactive layer: every drawn point answers with its number */
