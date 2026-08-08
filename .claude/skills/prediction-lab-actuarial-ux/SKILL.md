@@ -14,7 +14,7 @@ Design a living actuarial working paper, not a generic ML dashboard. Preserve de
 
 1. Read `references/product-context.md` and `references/actuarial-ux-wisdom.md`. Recheck Prediction Lab's official site and changelog when current product state affects the work.
    - If the scope includes a chart, diagnostic, visual evidence, or chart interaction, **REQUIRED SUB-SKILL:** Use `designing-actuarial-chart-workspaces` before design or implementation.
-2. Frame the actuarial decision: user, target, exposure, baseline, active slice, guardrails, reviewer, and consequence. Classify the gate as exploration, model-candidate review, filing, or deployment. Apply only governance required at that stage. Label assumptions. Begin design only when the decision and risk are concrete.
+2. Frame the actuarial decision: user, target, exposure, baseline, active slice, guardrails, reviewer, consequence, and computation class (P&C predictive fit, nested-stochastic projection, reserving). Classify the gate as exploration, model-candidate review, filing, or deployment. Apply only governance required at that stage. Label assumptions. Platform capabilities the design assumes but the product has not evidenced are named dependencies, not features. Begin design only when the decision and risk are concrete.
 3. Map the workflow around four surfaces:
 
 | Surface | Must answer |

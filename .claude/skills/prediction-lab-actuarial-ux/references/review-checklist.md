@@ -17,6 +17,8 @@
 - Does each claim point to a real fit, chart, table, source, or diagnostic?
 - Are exact values available without an export?
 - Are filters, targets, partitions, method, run, and data version attached to the artifact?
+- Does an exported or shared artifact reveal its as-of version and whether it has been superseded?
+- Could this decision be reconstructed from platform records alone, months later?
 - Is the weakest or least credible result prominent?
 
 ## Experiments and AI
@@ -30,6 +32,8 @@
 
 - Is this exploration, model-candidate review, filing, or deployment, and is every control appropriate to that stage?
 - Does review show the material before/after model or dataset diff?
+- Could the reviewer sign off without opening the previous version's file?
+- If the surface replaces spreadsheet formula review: can formula-auditing stakeholders still trace how a number was computed, and has the replacement been validated with them?
 - Are business impact and guardrail outcomes connected to evidence?
 - Can the reviewer ask a follow-up without leaving the decision package?
 - Does approval record an intentional human judgment about the weak point?

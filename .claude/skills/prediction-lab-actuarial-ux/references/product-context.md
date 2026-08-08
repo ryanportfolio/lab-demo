@@ -27,6 +27,8 @@ Source: [ITC talk](https://vimeo.com/1131288047), transcript supplied by the pro
 
 ## Current product direction
 
+Release notes are first-party claims, not inspected behavior; publicly viewable founder demos are the main partial verification channel. The evidenced surface is P&C predictive modeling — nested-stochastic life projection and reserving are unevidenced, so a design assuming them carries a named dependency.
+
 Recent official releases reinforce the same principles:
 
 - AI agents can traverse the modeling pipeline, inspect artifacts, ingest data, set filters and partitions, fit models, and read results without raw queries.

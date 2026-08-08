@@ -22,7 +22,7 @@ These workarounds reveal unmet needs:
 
 - **Copying as version control:** duplicated files or models preserve safety because history and branching are weak.
 - **Screenshots as collaboration:** the product cannot carry an evidence-backed state into discussion.
-- **Excel as escape hatch:** exact values, ad hoc comparison, or review formatting are easier outside the product.
+- **Excel as escape hatch:** exact values, ad hoc comparison, or review formatting are easier outside the product — and formula-visible review is itself valued by audit stakeholders, so the exit is partly a feature.
 - **Context evaporation:** target, exposure, filters, partitions, dataset version, and baseline disappear while navigating.
 - **Question suppression:** users stop asking useful follow-ups because each rerun or diagnostic is too costly.
 - **Reviewer reconstruction:** approval time is spent rebuilding provenance instead of judging the weak point.
@@ -48,3 +48,4 @@ These workarounds reveal unmet needs:
 - One accent should carry one meaning, usually current selection.
 - Preserve familiar actuarial language and artifacts; modernize the workflow around them.
 - Put the weak point beside the win. Trust comes from visible limits, not confident copy.
+- A surface that replaces formula-level review is validated with the stakeholders who audit via formulas today; value diffs do not automatically replace logic inspection.
