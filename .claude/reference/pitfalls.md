@@ -46,3 +46,35 @@ Prevention protocol (run every time before trusting a preview):
    the edited sources.
 4. Staleness persists after 1–2 → hard reload, unregister service workers, or
    use a fresh browser profile.
+
+### 2026-08-08: sqlx migration version collision took the live site down
+
+Symptom: after deploy, Railway serves "Application failed to respond"; runtime
+logs show the server panicking at boot with `run migrations: VersionMismatch(2)`.
+
+Cause: a new migration was added as `0002_agent_actions.sql`, but version 2 was
+already taken by `0002_evidence.sql` — invisible to a `CREATE TABLE` grep
+because it is an `ALTER TABLE`. sqlx refuses to boot when two source migrations
+share a version (or a version's checksum differs from what the deployed
+`_sqlx_migrations` table recorded).
+
+Rule: before adding a migration, `ls crates/server/migrations/` and take the
+next unused number. Never infer the next version from a content grep. Fix for a
+collision: renumber the new file (e.g. 0003) — never edit an already-applied
+migration.
+
+### 2026-08-08: railway up from a half-deleted worktree uploads an empty app
+
+Symptom: build fails fast with Railpack "no language detected" (it analyzed an
+essentially empty `./`), and a config-less upload also loses the Dockerfile
+builder setting.
+
+Cause: `railway up` uploads whatever is on disk. The deploy worktree had been
+gutted by a partially-failed `rm -rf` (the directory was "busy"), and a later
+`git checkout <sha>` only restored the commit-diff files, not the whole tree.
+On Windows, a Bash shell whose *cwd* is inside the worktree — including a
+background Monitor's shell — is what holds it busy.
+
+Rule: `cd` out of the worktree (and stop monitors rooted in it) before
+`rm -rf`; recreate with `git worktree add`; verify `Dockerfile` (or
+`railway.json`) exists in the worktree before `railway up`.
