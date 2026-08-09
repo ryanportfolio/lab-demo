@@ -21,6 +21,7 @@ import EvidencePanel from './EvidencePanel';
 import ExperimentLedger from './ExperimentLedger';
 import Frontier from './Frontier';
 import ReviewView from './ReviewView';
+import RunHistory from './RunHistory';
 import { fmtDelta, fmtGini } from './format';
 import {
   updateEvidenceUrl,
@@ -338,13 +339,16 @@ export default function App() {
         </div>
         <nav className="crumb" aria-label="Breadcrumb">
           Models<span>›</span>Bodily Injury Frequency<span>›</span>
-          <b>
-            {view === 'review'
-              ? `Review${review ? ` v${review.nextVersion}` : ''}`
-              : run
-                ? `Run ${run.id}`
-                : 'Run pending'}
-          </b>
+          <RunHistory
+            label={
+              view === 'review'
+                ? `Review${review ? ` v${review.nextVersion}` : ''}`
+                : run
+                  ? `Run ${run.id}`
+                  : 'Run pending'
+            }
+            currentId={run?.id ?? null}
+          />
         </nav>
         <div className="tb-right">
           <span className="branch-readout">{run?.branchName ?? 'run pending'}</span>

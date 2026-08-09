@@ -263,6 +263,20 @@ pub struct Review {
     pub replaced_by_version: Option<i32>,
 }
 
+/// One row of the run index: enough to find a run and know its fate.
+#[derive(SimpleObject)]
+pub struct RunSummary {
+    pub id: ID,
+    pub status: String,
+    pub started_at_ms: f64,
+    pub winner_code: Option<String>,
+    pub holdout_delta: Option<f64>,
+    pub review_status: Option<String>,
+    /// true when this run's approved version is the one currently in force
+    pub in_force: bool,
+    pub next_version: i32,
+}
+
 pub struct QueryRoot;
 
 #[Object]
@@ -340,6 +354,31 @@ impl QueryRoot {
     /// Questions the console offers, each one landing on a real artifact.
     async fn suggested_questions(&self) -> Vec<String> {
         crate::context::SUGGESTED.iter().map(|s| s.to_string()).collect()
+    }
+
+    async fn runs(&self, ctx: &Context<'_>) -> Result<Vec<RunSummary>> {
+        let pool = ctx.data::<PgPool>()?;
+        let rows: Vec<(i64, String, f64, Option<String>, Option<f64>, Option<String>, bool, i32)> =
+            sqlx::query_as(
+                "SELECT r.id, r.status, (EXTRACT(EPOCH FROM r.started_at) * 1000)::float8, r.outcome->>'winner_code', (r.outcome->>'holdout_delta')::float8, rv.status, COALESCE(mv.status = 'active', false), bmv.version + 1 FROM runs r JOIN model_versions bmv ON bmv.id = r.base_model_id LEFT JOIN reviews rv ON rv.run_id = r.id LEFT JOIN model_versions mv ON mv.id = rv.result_version ORDER BY r.id DESC LIMIT 40",
+            )
+            .fetch_all(pool)
+            .await?;
+        Ok(rows
+            .into_iter()
+            .map(
+                |(id, status, started_at_ms, winner_code, holdout_delta, review_status, in_force, next_version)| RunSummary {
+                    id: ID(id.to_string()),
+                    status,
+                    started_at_ms,
+                    winner_code,
+                    holdout_delta,
+                    review_status,
+                    in_force,
+                    next_version,
+                },
+            )
+            .collect())
     }
 
     async fn run(&self, ctx: &Context<'_>, id: ID) -> Result<Option<Run>> {

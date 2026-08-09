@@ -79,5 +79,12 @@ test('a replaced approval keeps its frozen decision-time record', async ({ page 
   // Desktop measure: the frozen record keeps a readable width
   const box = (await frozen.boundingBox())!;
   expect(box.width).toBeLessThanOrEqual(900);
+
+  // The breadcrumb's run segment opens the run index; the run in force is marked
+  await page.locator('.run-history > button').click();
+  const rows = page.locator('.run-history-pop a');
+  await expect(rows.first()).toBeVisible({ timeout: 20_000 });
+  expect(await rows.count()).toBeGreaterThanOrEqual(2);
+  await expect(page.locator('.run-history-pop')).toContainText('in force');
   await page.screenshot({ path: `${OUT}/superseded-review.png`, fullPage: false });
 });
