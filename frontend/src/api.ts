@@ -173,6 +173,8 @@ export interface Review {
   resultStatus: 'active' | 'superseded' | 'retired' | null;
   approvedAtMs: number | null;
   package: ApprovedPackage | null;
+  replacedByRun: string | null;
+  replacedByVersion: number | null;
 }
 
 export interface ActiveModel {
@@ -230,7 +232,7 @@ const REVIEW_FIELDS = `
   guardrailRows { what how }
   ledgerRows { code disp why }
   trainDelta holdoutDelta approvedBy resultVersion baseVersion nextVersion
-  resultStatus approvedAtMs
+  resultStatus approvedAtMs replacedByRun replacedByVersion
   package {
     winnerCode baseVersion newVersion trainDelta holdoutDelta
     guardrailsHeld actionsTotal actionsRefused weakestPoint

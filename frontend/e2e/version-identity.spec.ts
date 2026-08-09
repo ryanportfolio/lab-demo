@@ -67,9 +67,10 @@ test('a replaced approval keeps its frozen decision-time record', async ({ page 
   // The first review announces its fate and renders what was signed
   await page.goto(`/?run=${firstRun}&view=review&theme=light`);
   await expect(page.locator('.review-version .status.superseded')).toContainText(
-    /Retired by a later replay|Superseded/,
+    /No longer in force/,
     { timeout: 30_000 },
   );
+  await expect(page.locator('.as-approved-why')).toContainText('replaced by');
   const frozen = page.locator('.as-approved');
   await expect(frozen).toContainText('frozen at sign-off');
   await expect(frozen).toContainText('agent actions');
