@@ -52,10 +52,14 @@ jobs:
 
       - name: Boot server against a fresh database
         # Migrations run from zero here - a version collision or a broken
-        # migration fails this step, not the production deploy
+        # migration fails this step, not the production deploy.
+        # Release, matching the deploy artifact: the smoke's 7-experiment run
+        # is ~42 GLM fits on 100k rows - seconds in release, 4-5 minutes in
+        # debug, which sat inside the smoke's 276s poll budget only on a fast
+        # runner (the one green run took 232s; every later run timed out).
         run: |
-          cargo build -p plab-server
-          STATIC_DIR=frontend/dist PORT=8080 ./target/debug/server &
+          cargo build --release -p plab-server
+          STATIC_DIR=frontend/dist PORT=8080 ./target/release/server &
           ready=
           for i in $(seq 1 90); do
             if curl -sf -o /dev/null -X POST http://localhost:8080/graphql \
