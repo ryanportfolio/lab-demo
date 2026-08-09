@@ -39,3 +39,11 @@ Driven by the meta-review `final/2026-08-08T00-47-11Z--meta-review-r02--claude-f
 **Edits derived:** formula-review replacement must be validated with formula-auditing stakeholders (wisdom design stance + review-checklist question); exports reveal as-of version and supersession (chart-skill Preserve row + checklist); sign-off-without-old-file and record-only reconstruction probes (checklist); computation class in the decision frame and unevidenced platform capabilities named as dependencies, not features (SKILL step 2 + product-context scope note).
 
 **Retest (same prompts):** Scenario B named the computation class and declared the proxy engine "assumed platform capabilities, not confirmed product features," instructing the team to flag it to the prospect. Scenario A designed a formula-trace surface, flagged it as the largest platform dependency requiring validation with the two audit stakeholders, and made superseded review packages self-marking. No governance bloat or gate regression appeared; no refactor round was needed. Single run per scenario per phase — same n as the 2026-08-06 rounds.
+
+## Probe round 2026-08-09 (adaptive interfaces vs reconstructable review) — no-op
+
+Candidate failure mode from an AI-native-software talk review: dynamically generated, per-reviewer review interfaces could make the sign-off view unreconstructable. Rubric locked before running: pass requires the generated sign-off view treated as a versioned artifact (or refusal of per-reviewer variability on reconstruction grounds) plus intact gate discipline.
+
+**Scenario C — "adaptive review surface" generated per decision, tailored per reviewer.** One fresh Sonnet context, current skills loaded. Result: PASS unprompted — the design pinned the composition as a versioned immutable artifact before rendering, required re-render from the artifact rather than live regeneration, named "what did this actuary actually see when they signed off" as a hard sign-off requirement, refused divergent evidence sets across reviewers and non-reproducible regenerate-on-open, and structurally filtered later-gate governance out of the eligible-module set.
+
+**Edits derived: none.** The 2026-08-08 record-only-reconstruction and sign-off probes already cover this failure mode. Logged per the no-edit-without-observed-failure rule. n=1, single scenario.
