@@ -38,7 +38,7 @@ Use one linked selection across plot, table, diagnostics, citations, and review.
 | Range selection | Use for ordered continuous, distribution, geography, or time questions, not unrelated categories. |
 | Comparison | Allow only when definitions, populations, periods, and denominators match. |
 | Exposure and credibility | Put available weight, sparsity, uncertainty, or instability beside estimates. |
-| Guardrails | Overlay only real thresholds governing this decision; show distance and breach direction. |
+| Guardrails | Overlay only real thresholds governing this decision; show distance and breach direction. Filing and stated goal constraints are real; invented model-quality pass marks (a ΔGini or lift zero-crossing, a closeness cutoff) are not. Render standard error, spread, and exposure context instead, and never color a value pass/fail on a bare point estimate. |
 | Drill-down | Require a real hierarchy or supported slice. Preserve parent selection and reset. |
 | Ask from selection | Send selection, model, data, filters, run, method, and artifact. Show what the agent read; it cannot approve. |
 | Preserve | Carry selection, comparison, filters, table state, provenance, and weak point in the link or review. Label local-only state. Exports carry version identity and reveal when superseded. |

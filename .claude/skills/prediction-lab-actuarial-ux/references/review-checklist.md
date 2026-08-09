@@ -10,6 +10,7 @@
 
 - Are measures expressed in insurance terms before generic ML terms?
 - Are denominators, exposure, time windows, partitions, and credibility visible where they change interpretation?
+- Do metric differences (Gini, lift, A/E) carry the uncertainty that decides whether they are signal (standard error, fold spread, exposure) rather than being graded by an invented pass mark or zero-crossing? Actuarial acceptance criteria are deliberately judgment-based; a small delta below its standard error is noise and must be readable as noise.
 - Do diagnostics lead to a decision, not just describe a model?
 
 ## Evidence and provenance
