@@ -1,6 +1,6 @@
 # Prediction Lab product context
 
-Last verified: 2026-08-06. Treat release details as time-sensitive and recheck official sources before making current-state claims.
+Last verified: 2026-08-09, per the adjudicated meta-review `final/2026-08-09T21-00-37Z--meta-review-r03--claude-fable-5/`. Treat release details as time-sensitive and recheck official sources before making current-state claims.
 
 ## Product promise
 
@@ -23,11 +23,11 @@ The talk describes three complementary roles:
 2. **Context expert:** assembles fit output, diagnostics, data context, and visualization so meaningful follow-up questions become cheap.
 3. **Modeling agent:** performs bounded modeling tasks and experiments while collaborating with users through the same versioned, permissioned platform.
 
-Source: [ITC talk](https://vimeo.com/1131288047), transcript supplied by the project owner.
+Source: [ITC talk](https://vimeo.com/1131288047), transcript supplied by the project owner; captions and key frames are archived in the research campaign and were verified against the recording (meta-review-r03). The recording is unindexed — no blind web search surfaced it. The talk also contains the only public statement of Prediction Lab agent governance: granular per-user and per-AI permissions ("create a model" yes, "deploy to production" optionally no) plus branch-isolated agent work — claimed on stage, not documented elsewhere, and no permission UI shown.
 
 ## Current product direction
 
-Release notes are first-party claims, not inspected behavior; publicly viewable founder demos are the main partial verification channel. The evidenced surface is P&C predictive modeling — nested-stochastic life projection and reserving are unevidenced, so a design assuming them carries a named dependency.
+Release notes are first-party claims, not inspected behavior; the single verified public demo recording (the ITC talk above) is the main partial verification channel — there is no wider pool of publicly viewable founder demos. No independent customer outcomes, case studies, or reviews were found as of 2026-08-09 (two runtimes, two dates; strong absence within the search window). The evidenced surface is P&C predictive modeling — nested-stochastic life projection and reserving are unevidenced, so a design assuming them carries a named dependency.
 
 Recent official releases reinforce the same principles:
 
