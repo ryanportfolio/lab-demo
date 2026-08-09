@@ -49,6 +49,7 @@ export default function ReviewView({
   const weakPoint = review.paragraphs.find((paragraph) => /exposure/i.test(paragraph));
   const weakValue = weakPoint?.match(/(\d+(?:\.\d+)?)%/)?.[1];
   const relevantSaved = savedEvidence.filter((item) => item.runId === run.id);
+  const otherSaved = savedEvidence.filter((item) => item.runId !== run.id);
 
   useEffect(() => setAcknowledged(false), [review.id]);
 
@@ -187,6 +188,7 @@ export default function ReviewView({
             focused
             onAsk={onAsk}
             onSave={onSave}
+            baseVersion={run.baseModelVersion}
             weakFocus={{
               text: weakPoint ?? 'sparse tail exposure',
               nonce: weakFocusNonce,
@@ -195,14 +197,17 @@ export default function ReviewView({
         </section>
       </div>
 
-      {relevantSaved.length > 0 && (
+      {(relevantSaved.length > 0 || otherSaved.length > 0) && (
         <section className="saved-evidence" aria-labelledby="saved-evidence-heading">
           <div className="workspace-heading">
             <div>
               <span className="eyebrow">Local prototype evidence</span>
               <h2 id="saved-evidence-heading">Carried into review</h2>
             </div>
-            <span className="section-count">{relevantSaved.length} saved</span>
+            <span className="section-count">
+              {relevantSaved.length} from this run
+              {otherSaved.length > 0 ? ` · ${otherSaved.length} superseded` : ''}
+            </span>
           </div>
           <div className="saved-evidence-list">
             {relevantSaved.map((item) => (
@@ -211,6 +216,14 @@ export default function ReviewView({
                 <strong>{item.selection}</strong>
                 <span>{item.values.join(' · ')}</span>
                 <small>{item.weakPoint}</small>
+              </a>
+            ))}
+            {otherSaved.map((item) => (
+              <a className="saved-evidence-row superseded-card" href={item.url} key={item.id}>
+                <span><b>{item.code}</b>{item.title}</span>
+                <strong>run {item.runId} · on v{item.baseVersion ?? '?'}</strong>
+                <span>{item.values.join(' · ')}</span>
+                <small>Superseded · saved from a different run than this review</small>
               </a>
             ))}
           </div>

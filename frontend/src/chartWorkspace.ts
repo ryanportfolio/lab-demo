@@ -40,6 +40,8 @@ export interface ChartWorkspaceContext {
   target: string;
   denominator: string;
   model: string;
+  /** version of the model this run branched from */
+  baseVersion: number;
   onAsk: (ask: AgentAsk) => void;
   onSave: (evidence: SavedChartEvidence) => void;
 }
@@ -58,6 +60,9 @@ export interface AgentAsk {
 export interface SavedChartEvidence {
   id: string;
   runId: string;
+  /** version of the model the run branched from; absent on cards saved
+   * before version stamping existed */
+  baseVersion?: number;
   code: string;
   chartKind: string;
   title: string;
@@ -401,6 +406,7 @@ export function makeSavedEvidence(
   return {
     id: `${context.runId}:${context.code}:${chart.kind}:${serializeSelection(selection)}:${mode}`,
     runId: context.runId,
+    baseVersion: context.baseVersion,
     code: context.code,
     chartKind: chart.kind,
     title: chart.title,
@@ -409,7 +415,7 @@ export function makeSavedEvidence(
     mode,
     values: selectionValues(shown, selection),
     weakPoint: weakPoint(chart, contract),
-    source: `${context.code} · run ${context.runId} · ${context.target} / ${context.denominator}`,
+    source: `${context.code} · run ${context.runId} · on v${context.baseVersion} · ${context.target} / ${context.denominator}`,
     url: location.href,
     savedAt: new Date().toISOString(),
   };

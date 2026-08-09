@@ -443,6 +443,7 @@ export default function App() {
                   focused
                   onAsk={askFromEvidence}
                   onSave={saveEvidence}
+                  baseVersion={run.baseModelVersion}
                 />
               ) : (
                 <div className="evidence-empty" aria-busy={running}>
