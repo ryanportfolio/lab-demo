@@ -242,6 +242,14 @@ export async function fetchLatestRun(): Promise<Run | null> {
   return d.latestRun;
 }
 
+export async function fetchRun(id: string): Promise<Run | null> {
+  const d = await gql<{ run: Run | null }>(
+    `query($id: ID!) { run(id: $id) { ${RUN_FIELDS} } }`,
+    { id },
+  );
+  return d.run;
+}
+
 export async function startRun(): Promise<Run> {
   const d = await gql<{ startRun: Run }>(`mutation { startRun { ${RUN_FIELDS} } }`);
   return d.startRun;
