@@ -813,7 +813,7 @@ fn rail_states(cfg: &serde_json::Value, exps: &[ExpRow], run_status: &str) -> Ve
     ]
 }
 
-async fn fetch_review_by_run(pool: &PgPool, run_id: i64) -> Result<Option<Review>> {
+pub(crate) async fn fetch_review_by_run(pool: &PgPool, run_id: i64) -> Result<Option<Review>> {
     let row: Option<(
         i64,
         String,

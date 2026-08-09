@@ -87,4 +87,26 @@ test('a replaced approval keeps its frozen decision-time record', async ({ page 
   expect(await rows.count()).toBeGreaterThanOrEqual(2);
   await expect(page.locator('.run-history-pop')).toContainText('in force');
   await page.screenshot({ path: `${OUT}/superseded-review.png`, fullPage: false });
+  await page.keyboard.press('Escape');
+
+  // FR-3: the record travels. A standalone document served from database rows
+  // alone — no SPA, no JavaScript — reachable from the review it documents
+  await expect(page.locator('.as-approved .record-link')).toBeVisible();
+  const resp = await page.request.get(`/record/${firstRun}`);
+  expect(resp.status()).toBe(200);
+  const html = await resp.text();
+  expect(html).toContain('assembled from platform records');
+  expect(html).toContain('No longer in force.');
+  expect(html).toContain('replaced by run');
+  expect(html).toContain('Frozen inside the approval transaction');
+  expect(html).toContain('Agent action record');
+  expect(html).toContain('irreversible');
+  expect(html).not.toContain('<script');
+
+  // A run with no approved review gets an honest 404, not an empty shell
+  const missing = await page.request.get('/record/999999');
+  expect(missing.status()).toBe(404);
+
+  await page.goto(`/record/${firstRun}`);
+  await page.screenshot({ path: `${OUT}/decision-record.png`, fullPage: true });
 });

@@ -309,6 +309,7 @@ export function weakestSelection(chart: EvidenceChart): ChartSelection | null {
 
 /** What pressing the weak-slice button pins, in the chart's own words */
 export function weakActionLabel(chart: EvidenceChart): string {
+  if (chart.kind === 'lift') return 'Pin largest gap';
   if (chart.kind === 'segment_effects') return 'Pin largest contribution';
   if (chart.kind === 'missingness') return 'Pin worst region';
   return 'Pin weakest slice';

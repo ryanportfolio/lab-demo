@@ -3,6 +3,7 @@
 //! one, and hiding a button is not the mechanism.
 
 mod context;
+mod record;
 mod runsvc;
 mod schema;
 mod seed;
@@ -14,7 +15,7 @@ use axum::{
     http::{header, HeaderMap, Method, StatusCode},
     response::{Html, IntoResponse, Response},
     routing::get,
-    Router,
+    Extension, Router,
 };
 use schema::{AppSchema, MutationRoot, QueryRoot, Role};
 use sqlx::postgres::PgPoolOptions;
@@ -61,7 +62,11 @@ async fn main() {
             "/graphql",
             get(graphiql).post(graphql_handler).options(preflight),
         )
+        // The reconstruction pack: a decision record served straight from
+        // database rows, independent of the SPA
+        .route("/record/{run_id}", get(record::record_handler))
         .fallback(static_handler)
+        .layer(Extension(pool.clone()))
         .with_state(schema);
 
     let port: u16 = std::env::var("PORT")
