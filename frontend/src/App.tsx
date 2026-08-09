@@ -134,10 +134,30 @@ export default function App() {
   }, [running]);
 
   useEffect(() => {
-    if (!run || !run.reviewId || review?.runId === run.id) return;
-    fetchReview(run.id)
-      .then((nextReview) => nextReview && setReview(nextReview))
-      .catch((caught) => setError(String(caught)));
+    if (!run) return;
+    // Never hold a review from a different run: a stale pair would render a
+    // hybrid view and let an approval target the wrong review
+    if (review && review.runId !== run.id) {
+      setReview(null);
+      return;
+    }
+    if (review?.runId === run.id) return;
+    // The run row turns complete a beat before the agent's review row exists,
+    // so a completed run without a review is retried, not treated as final
+    if (!run.reviewId && run.status !== 'complete') return;
+    let cancelled = false;
+    const attempt = () =>
+      fetchReview(run.id)
+        .then((nextReview) => {
+          if (!cancelled && nextReview && nextReview.runId === run.id) setReview(nextReview);
+        })
+        .catch((caught) => setError(String(caught)));
+    attempt();
+    const interval = setInterval(attempt, 700);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [run, review]);
 
   useEffect(() => {
@@ -270,7 +290,7 @@ export default function App() {
   }, []);
 
   const onApprove = useCallback(async () => {
-    if (!review || !run) return;
+    if (!review || !run || review.runId !== run.id) return;
     setApproving(true);
     setApproveError(null);
     try {
@@ -457,7 +477,7 @@ export default function App() {
           <AgentActionLog actions={run?.actions ?? []} onSelectExperiment={chooseExperiment} />
 
         </main>
-      ) : run && review ? (
+      ) : run && review && review.runId === run.id ? (
         <ReviewView
           run={run}
           review={review}
