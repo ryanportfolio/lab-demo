@@ -73,7 +73,9 @@ export default function ReviewView({
           </b>
           {approved && review.resultStatus && review.resultStatus !== 'active' && (
             <b className="status superseded">
-              {review.resultStatus === 'retired' ? 'Retired by a later replay' : 'Superseded'}
+              {review.replacedByRun
+                ? `No longer in force · replaced by run ${review.replacedByRun}`
+                : 'No longer in force'}
             </b>
           )}
         </div>
@@ -82,6 +84,24 @@ export default function ReviewView({
       {approved && review.resultStatus && review.resultStatus !== 'active' && (
         <section className="as-approved" aria-label="Decision as approved">
           <span className="eyebrow">As approved · frozen at sign-off</span>
+          <p className="as-approved-why">
+            {review.replacedByRun ? (
+              <>
+                The v{review.nextVersion} this approval created was later replaced by{' '}
+                <a href={`/?run=${review.replacedByRun}&view=review`}>
+                  run {review.replacedByRun}
+                </a>
+                's approval of its own v{review.replacedByVersion ?? review.nextVersion}. The
+                winner below still won this run; only the resulting version was replaced. This
+                record is kept exactly as it was signed.
+              </>
+            ) : (
+              <>
+                The v{review.nextVersion} this approval created is no longer the version in
+                force. This record is kept exactly as it was signed.
+              </>
+            )}
+          </p>
           {review.package ? (
             <p>
               {review.package.winnerCode} created v{review.package.newVersion} from v

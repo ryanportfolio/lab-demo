@@ -612,6 +612,8 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
   margin: 14px 0 0; max-width: 880px; padding: 12px 14px;
 }
 .as-approved p { color: var(--fg-muted); font-size: 14.5px; line-height: 1.5; margin: 6px 0 0 }
+.as-approved-why { color: var(--fg) }
+.as-approved-why a { color: inherit; text-underline-offset: 3px }
 .saved-evidence-row.superseded-card { opacity: .62 }
 .saved-evidence-row.superseded-card small { color: var(--warn) }
 @media (max-width: 760px) {

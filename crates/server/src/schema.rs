@@ -258,6 +258,9 @@ pub struct Review {
     pub result_status: Option<String>,
     pub approved_at_ms: Option<f64>,
     pub package: Option<ApprovedPackage>,
+    /// When not active: the run whose approval now holds the lineage
+    pub replaced_by_run: Option<ID>,
+    pub replaced_by_version: Option<i32>,
 }
 
 pub struct QueryRoot;
@@ -808,6 +811,23 @@ async fn fetch_review_by_run(pool: &PgPool, run_id: i64) -> Result<Option<Review
         None => None,
     };
     let result_status = crate::runsvc::result_status(&r.2, &version_status).map(String::from);
+    // For a non-active approval, name what actually took its place so the
+    // review can say "replaced by run N's vM" instead of leaking mechanics
+    let mut replaced_by_run: Option<ID> = None;
+    let mut replaced_by_version: Option<i32> = None;
+    if matches!(result_status.as_deref(), Some("retired") | Some("superseded")) {
+        let active: Option<(i32, Option<i64>)> = sqlx::query_as(
+            "SELECT version, created_by_run FROM model_versions WHERE name = $1 AND status = 'active' AND created_by_run IS NOT NULL AND created_by_run != $2",
+        )
+        .bind(crate::runsvc::MODEL_NAME)
+        .bind(run_id)
+        .fetch_optional(pool)
+        .await?;
+        if let Some((v, by_run)) = active {
+            replaced_by_version = Some(v);
+            replaced_by_run = by_run.map(|id| ID(id.to_string()));
+        }
+    }
     let package = r.11.as_ref().map(|p| ApprovedPackage {
         winner_code: p["winner_code"].as_str().unwrap_or_default().to_string(),
         base_version: p["base_version"].as_i64().unwrap_or_default() as i32,
@@ -877,5 +897,7 @@ async fn fetch_review_by_run(pool: &PgPool, run_id: i64) -> Result<Option<Review
         result_status,
         approved_at_ms: r.12,
         package,
+        replaced_by_run,
+        replaced_by_version,
     }))
 }
