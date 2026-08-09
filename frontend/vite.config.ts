@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       proxy: {
         '/graphql': env.PLAB_API_TARGET ?? 'http://127.0.0.1:8080',
+        '/record': env.PLAB_API_TARGET ?? 'http://127.0.0.1:8080',
       },
     },
   };

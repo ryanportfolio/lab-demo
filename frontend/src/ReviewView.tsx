@@ -120,6 +120,15 @@ export default function ReviewView({
               tables below remain.
             </p>
           )}
+          <a
+            className="record-link"
+            href={`/record/${run.id}`}
+            target="_blank"
+            rel="noopener"
+            title="Standalone copy of this decision, served from the platform's records — printable, works without this app"
+          >
+            Decision record — standalone copy ↗
+          </a>
         </section>
       )}
 
@@ -286,7 +295,18 @@ export default function ReviewView({
           <span>The agent can request review. It cannot approve.</span>
         </div>
         {approved ? (
-          <span className="stamp" tabIndex={-1} id="rvStamp">Approved · v{review.nextVersion}</span>
+          <div className="approval-done">
+            <span className="stamp" tabIndex={-1} id="rvStamp">Approved · v{review.nextVersion}</span>
+            <a
+              className="record-link"
+              href={`/record/${run.id}`}
+              target="_blank"
+              rel="noopener"
+              title="Standalone copy of this decision, served from the platform's records — printable, works without this app"
+            >
+              Decision record ↗
+            </a>
+          </div>
         ) : (
           <div className="approval-actions">
             <label>

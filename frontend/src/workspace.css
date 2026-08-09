@@ -615,6 +615,17 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 .as-approved-why { color: var(--fg) }
 .as-approved-why a { color: inherit; text-underline-offset: 3px }
 
+/* The reconstruction pack: a bordered mono affordance, same family as
+   .record-toggle, so it reads as pressable and not as body copy */
+.approval-done { display: flex; align-items: center; gap: 18px }
+.record-link {
+  display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  color: var(--fg-muted); font-family: var(--mono); font-size: 13px; padding: 7px 11px; text-decoration: none;
+  transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.record-link:hover { border-color: var(--fg-subtle); color: var(--fg) }
+.as-approved .record-link { margin-top: 12px }
+
 /* Run history: the breadcrumb's current-run segment opens the run index.
    The crumb's ellipsis overflow would clip the popover, so it stays visible;
    the crumb text is short and the narrow layout hides the crumb entirely. */
