@@ -1,0 +1,72 @@
+# CI smoke against a real Postgres. Exists because the two live outages this
+# project has had were both DB-boundary bugs invisible to unit tests: a
+# migration version collision that panicked the server at boot, and an
+# int4/int8 decode mismatch that only failed when the query ran against a
+# real database. Booting from a zero-state database and running the approve
+# flow end to end catches both classes before deploy.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: plab
+          POSTGRES_PASSWORD: plab
+          POSTGRES_DB: plab
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U plab"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://plab:plab@localhost:5432/plab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Unit tests
+        run: cargo test --workspace
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend typecheck and build
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npx vite build
+
+      - name: Boot server against a fresh database
+        # Migrations run from zero here - a version collision or a broken
+        # migration fails this step, not the production deploy
+        run: |
+          cargo build -p plab-server
+          STATIC_DIR=frontend/dist PORT=8080 ./target/debug/server &
+          ready=
+          for i in $(seq 1 90); do
+            if curl -sf -o /dev/null -X POST http://localhost:8080/graphql \
+              -H 'content-type: application/json' \
+              -d '{"query":"{ activeModel { version } }"}'; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ -z "$ready" ]; then echo "server never became ready"; exit 1; fi
+
+      - name: Approve-flow smoke
+        run: bash scripts/ci-smoke.sh http://localhost:8080
