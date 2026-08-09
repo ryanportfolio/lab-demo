@@ -648,6 +648,114 @@ pub async fn approve_review(
     .execute(&mut *tx)
     .await
     .map_err(|e| e.to_string())?;
+    // Freeze the decision-time package so a superseded or retired review
+    // still renders exactly what was signed
+    let (guardrails_held, summary): (i64, serde_json::Value) = sqlx::query_as(
+        "SELECT jsonb_array_length(guardrail_rows), summary FROM reviews WHERE id = $1",
+    )
+    .bind(review_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+    let (actions_total, actions_refused): (i64, i64) = sqlx::query_as(
+        "SELECT COUNT(*), COUNT(*) FILTER (WHERE kind = 'refuse') FROM agent_actions WHERE run_id = $1",
+    )
+    .bind(run_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+    let weakest = summary["paragraphs"]
+        .as_array()
+        .and_then(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str())
+                .find(|p| p.to_lowercase().contains("exposure"))
+        })
+        .unwrap_or("");
+    sqlx::query("UPDATE reviews SET approved_package = $1 WHERE id = $2")
+        .bind(approved_package(
+            &winner_code,
+            base_version,
+            new_version,
+            train_delta,
+            holdout_delta,
+            guardrails_held,
+            actions_total,
+            actions_refused,
+            weakest,
+        ))
+        .bind(review_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
     tx.commit().await.map_err(|e| e.to_string())?;
     Ok(v13_id)
+}
+
+/// The decision-time snapshot: what the reviewer approved, frozen so a
+/// superseded review still renders exactly the package that was signed.
+#[allow(clippy::too_many_arguments)]
+pub fn approved_package(
+    winner_code: &str,
+    base_version: i32,
+    new_version: i32,
+    train_delta: f64,
+    holdout_delta: f64,
+    guardrails_held: i64,
+    actions_total: i64,
+    actions_refused: i64,
+    weakest_point: &str,
+) -> serde_json::Value {
+    json!({
+        "winner_code": winner_code,
+        "base_version": base_version,
+        "new_version": new_version,
+        "train_delta": train_delta,
+        "holdout_delta": holdout_delta,
+        "guardrails_held": guardrails_held,
+        "actions_total": actions_total,
+        "actions_refused": actions_refused,
+        "weakest_point": weakest_point,
+    })
+}
+
+/// active | superseded | retired (approved but its version row was replaced
+/// by a replay's merge); None while the review is still open.
+pub fn result_status(review_status: &str, version_status: &Option<String>) -> Option<&'static str> {
+    if review_status != "approved" {
+        return None;
+    }
+    match version_status.as_deref() {
+        Some("active") => Some("active"),
+        Some(_) => Some("superseded"),
+        None => Some("retired"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn approved_package_freezes_the_decision_view() {
+        let p = approved_package("EXP-07", 12, 13, 0.0132, 0.0110, 3, 26, 4, "9.8% of exposure");
+        assert_eq!(p["winner_code"], "EXP-07");
+        assert_eq!(p["base_version"], 12);
+        assert_eq!(p["new_version"], 13);
+        assert_eq!(p["guardrails_held"], 3);
+        assert_eq!(p["actions_total"], 26);
+        assert_eq!(p["actions_refused"], 4);
+        assert_eq!(p["weakest_point"], "9.8% of exposure");
+    }
+
+    #[test]
+    fn result_status_reflects_version_table_state() {
+        assert_eq!(result_status("open", &None), None);
+        assert_eq!(result_status("approved", &None), Some("retired"));
+        assert_eq!(result_status("approved", &Some("active".into())), Some("active"));
+        assert_eq!(
+            result_status("approved", &Some("superseded".into())),
+            Some("superseded")
+        );
+    }
 }
