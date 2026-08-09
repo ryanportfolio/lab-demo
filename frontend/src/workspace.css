@@ -615,7 +615,10 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 .as-approved-why { color: var(--fg) }
 .as-approved-why a { color: inherit; text-underline-offset: 3px }
 
-/* Run history: the breadcrumb's current-run segment opens the run index */
+/* Run history: the breadcrumb's current-run segment opens the run index.
+   The crumb's ellipsis overflow would clip the popover, so it stays visible;
+   the crumb text is short and the narrow layout hides the crumb entirely. */
+.crumb { overflow: visible; text-overflow: clip }
 .run-history { position: relative; display: inline-flex }
 .run-history > button {
   display: inline-flex; align-items: center; gap: 5px; border: 0; border-bottom: 1px dashed var(--fg-subtle);
