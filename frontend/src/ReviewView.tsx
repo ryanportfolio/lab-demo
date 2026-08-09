@@ -70,8 +70,37 @@ export default function ReviewView({
           <b className={`status${approved ? ' approved' : ''}`}>
             {approved ? 'Approved' : 'Pending'}
           </b>
+          {approved && review.resultStatus && review.resultStatus !== 'active' && (
+            <b className="status superseded">
+              {review.resultStatus === 'retired' ? 'Retired by a later replay' : 'Superseded'}
+            </b>
+          )}
         </div>
       </header>
+
+      {approved && review.resultStatus && review.resultStatus !== 'active' && (
+        <section className="as-approved" aria-label="Decision as approved">
+          <span className="eyebrow">As approved · frozen at sign-off</span>
+          {review.package ? (
+            <p>
+              {review.package.winnerCode} created v{review.package.newVersion} from v
+              {review.package.baseVersion} ({fmtDelta(review.package.trainDelta)} train,{' '}
+              {fmtDelta(review.package.holdoutDelta)} holdout) with{' '}
+              {review.package.guardrailsHeld} guardrails held and{' '}
+              {review.package.actionsTotal} agent actions ({review.package.actionsRefused}{' '}
+              refused). Weakest point at sign-off: {review.package.weakestPoint}
+              {review.approvedAtMs
+                ? ` · approved ${new Date(review.approvedAtMs).toLocaleDateString()}`
+                : ''}
+            </p>
+          ) : (
+            <p>
+              This approval was recorded before decision-time snapshots existed; only the live
+              tables below remain.
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="review-metrics" aria-label="Decision metrics">
         <div><span>Gini</span><strong>{fmtGini(run.baselineGini ?? 0)} → {fmtGini(winner?.gini ?? 0)}</strong></div>
@@ -80,6 +109,7 @@ export default function ReviewView({
         <div><span>Guardrails</span><strong>{review.guardrailRows.length} / {review.guardrailRows.length}</strong></div>
         <div><span>Ledger</span><strong>{review.ledgerRows.length} / {run.counts.spawned}</strong></div>
         <div><span>Agent actions</span><strong>{run.actions.length} · {run.actions.filter((action) => action.kind === 'refuse').length} refused</strong></div>
+        <div><span>Question → decision</span><strong>{run.elapsedMs != null ? `${(run.elapsedMs / 1000).toFixed(1)}s run` : '—'}</strong></div>
       </section>
 
       <div className="review-grid">
