@@ -49,6 +49,7 @@ export default function ReviewView({
   const weakPoint = review.paragraphs.find((paragraph) => /exposure/i.test(paragraph));
   const weakValue = weakPoint?.match(/(\d+(?:\.\d+)?)%/)?.[1];
   const relevantSaved = savedEvidence.filter((item) => item.runId === run.id);
+  const otherSaved = savedEvidence.filter((item) => item.runId !== run.id);
 
   useEffect(() => setAcknowledged(false), [review.id]);
 
@@ -70,8 +71,37 @@ export default function ReviewView({
           <b className={`status${approved ? ' approved' : ''}`}>
             {approved ? 'Approved' : 'Pending'}
           </b>
+          {approved && review.resultStatus && review.resultStatus !== 'active' && (
+            <b className="status superseded">
+              {review.resultStatus === 'retired' ? 'Retired by a later replay' : 'Superseded'}
+            </b>
+          )}
         </div>
       </header>
+
+      {approved && review.resultStatus && review.resultStatus !== 'active' && (
+        <section className="as-approved" aria-label="Decision as approved">
+          <span className="eyebrow">As approved · frozen at sign-off</span>
+          {review.package ? (
+            <p>
+              {review.package.winnerCode} created v{review.package.newVersion} from v
+              {review.package.baseVersion} ({fmtDelta(review.package.trainDelta)} train,{' '}
+              {fmtDelta(review.package.holdoutDelta)} holdout) with{' '}
+              {review.package.guardrailsHeld} guardrails held and{' '}
+              {review.package.actionsTotal} agent actions ({review.package.actionsRefused}{' '}
+              refused). Weakest point at sign-off: {review.package.weakestPoint}
+              {review.approvedAtMs
+                ? ` · approved ${new Date(review.approvedAtMs).toLocaleDateString()}`
+                : ''}
+            </p>
+          ) : (
+            <p>
+              This approval was recorded before decision-time snapshots existed; only the live
+              tables below remain.
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="review-metrics" aria-label="Decision metrics">
         <div><span>Gini</span><strong>{fmtGini(run.baselineGini ?? 0)} → {fmtGini(winner?.gini ?? 0)}</strong></div>
@@ -80,6 +110,7 @@ export default function ReviewView({
         <div><span>Guardrails</span><strong>{review.guardrailRows.length} / {review.guardrailRows.length}</strong></div>
         <div><span>Ledger</span><strong>{review.ledgerRows.length} / {run.counts.spawned}</strong></div>
         <div><span>Agent actions</span><strong>{run.actions.length} · {run.actions.filter((action) => action.kind === 'refuse').length} refused</strong></div>
+        <div><span>Question → decision</span><strong>{run.elapsedMs != null ? `${(run.elapsedMs / 1000).toFixed(1)}s run` : '—'}</strong></div>
       </section>
 
       <div className="review-grid">
@@ -157,6 +188,7 @@ export default function ReviewView({
             focused
             onAsk={onAsk}
             onSave={onSave}
+            baseVersion={run.baseModelVersion}
             weakFocus={{
               text: weakPoint ?? 'sparse tail exposure',
               nonce: weakFocusNonce,
@@ -165,14 +197,17 @@ export default function ReviewView({
         </section>
       </div>
 
-      {relevantSaved.length > 0 && (
+      {(relevantSaved.length > 0 || otherSaved.length > 0) && (
         <section className="saved-evidence" aria-labelledby="saved-evidence-heading">
           <div className="workspace-heading">
             <div>
               <span className="eyebrow">Local prototype evidence</span>
               <h2 id="saved-evidence-heading">Carried into review</h2>
             </div>
-            <span className="section-count">{relevantSaved.length} saved</span>
+            <span className="section-count">
+              {relevantSaved.length} from this run
+              {otherSaved.length > 0 ? ` · ${otherSaved.length} superseded` : ''}
+            </span>
           </div>
           <div className="saved-evidence-list">
             {relevantSaved.map((item) => (
@@ -181,6 +216,14 @@ export default function ReviewView({
                 <strong>{item.selection}</strong>
                 <span>{item.values.join(' · ')}</span>
                 <small>{item.weakPoint}</small>
+              </a>
+            ))}
+            {otherSaved.map((item) => (
+              <a className="saved-evidence-row superseded-card" href={item.url} key={item.id}>
+                <span><b>{item.code}</b>{item.title}</span>
+                <strong>run {item.runId} · on v{item.baseVersion ?? '?'}</strong>
+                <span>{item.values.join(' · ')}</span>
+                <small>Superseded · saved from a different run than this review</small>
               </a>
             ))}
           </div>

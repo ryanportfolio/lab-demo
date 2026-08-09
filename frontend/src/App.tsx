@@ -8,6 +8,7 @@ import {
   fetchDatasetSummary,
   fetchLatestRun,
   fetchReview,
+  fetchRun,
   startRun,
   type DatasetSummary,
   type Review,
@@ -82,6 +83,9 @@ export default function App() {
   const landedSeen = useRef<Set<string>>(new Set());
   const starting = useRef(false);
   const userSelected = useRef(!!params.get('exp'));
+  // A ?run= url pins the view to that run (e.g. inspecting a superseded
+  // review); Replay clears the pin and returns to the live latest run
+  const requestedRun = useRef<string | null>(params.get('run'));
 
   const running = run?.status === 'running';
   const complete = run?.status === 'complete';
@@ -90,12 +94,14 @@ export default function App() {
     (async () => {
       try {
         const [latest, summary] = await Promise.all([
-          fetchLatestRun(),
+          requestedRun.current ? fetchRun(requestedRun.current) : fetchLatestRun(),
           fetchDatasetSummary(),
         ]);
         setDataset(summary);
         if (latest) {
           setRun(latest);
+        } else if (requestedRun.current) {
+          setError(`Run ${requestedRun.current} does not exist on this server.`);
         } else if (!starting.current) {
           starting.current = true;
           setRun(await startRun());
@@ -110,7 +116,9 @@ export default function App() {
     if (!running) return;
     const interval = setInterval(async () => {
       try {
-        const latest = await fetchLatestRun();
+        const latest = requestedRun.current
+          ? await fetchRun(requestedRun.current)
+          : await fetchLatestRun();
         if (latest) setRun(latest);
       } catch (caught) {
         setError(String(caught));
@@ -252,6 +260,7 @@ export default function App() {
       setSelectedCode(null);
       userSelected.current = false;
       landedSeen.current.clear();
+      requestedRun.current = null;
       setViewState('console');
       updateEvidenceUrl({ exp: null, chart: null, mode: null, selection: null });
       setRun(await startRun());
@@ -269,8 +278,8 @@ export default function App() {
       const nextReview = await fetchReview(run.id);
       if (nextReview) setReview(nextReview);
       // The approval appended the run's one human action; refresh the record
-      const latest = await fetchLatestRun();
-      if (latest && latest.id === run.id) setRun(latest);
+      const refreshed = await fetchRun(run.id);
+      if (refreshed) setRun(refreshed);
       setAnnouncement('Approved. New version created with the run ledger attached.');
       requestAnimationFrame(() => document.getElementById('rvStamp')?.focus());
     } catch (caught) {
@@ -434,6 +443,7 @@ export default function App() {
                   focused
                   onAsk={askFromEvidence}
                   onSave={saveEvidence}
+                  baseVersion={run.baseModelVersion}
                 />
               ) : (
                 <div className="evidence-empty" aria-busy={running}>

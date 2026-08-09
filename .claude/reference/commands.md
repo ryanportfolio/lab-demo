@@ -34,4 +34,11 @@ Localhost targets need no proxy.
 
 ## Deploy
 
-Railway auto-deploys `main` → https://web-production-563b7.up.railway.app
+No GitHub auto-deploy. Deploys are manual via the Railway CLI from a clean
+checkout of the target commit (a `.tmp/` worktree):
+
+- `railway link --project plab-experiments`
+- `railway up --service web --detach`
+- Verify the worktree is complete (`Dockerfile` present) before `railway up` —
+  an incomplete upload builds an empty app (pitfalls.md 2026-08-08).
+- Live URL: https://web-production-563b7.up.railway.app

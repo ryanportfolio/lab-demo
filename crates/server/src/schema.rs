@@ -221,6 +221,21 @@ pub struct LedgerRow {
     pub why: String,
 }
 
+/// The decision-time snapshot frozen at sign-off; renders what the reviewer
+/// approved even after the resulting version is superseded or retired.
+#[derive(SimpleObject, Clone)]
+pub struct ApprovedPackage {
+    pub winner_code: String,
+    pub base_version: i32,
+    pub new_version: i32,
+    pub train_delta: f64,
+    pub holdout_delta: f64,
+    pub guardrails_held: i32,
+    pub actions_total: i32,
+    pub actions_refused: i32,
+    pub weakest_point: String,
+}
+
 #[derive(SimpleObject)]
 pub struct Review {
     pub id: ID,
@@ -239,6 +254,10 @@ pub struct Review {
     pub base_version: i32,
     /// The version approving this review will create (or did create)
     pub next_version: i32,
+    /// active | superseded | retired; None while the review is open
+    pub result_status: Option<String>,
+    pub approved_at_ms: Option<f64>,
+    pub package: Option<ApprovedPackage>,
 }
 
 pub struct QueryRoot;
@@ -765,25 +784,41 @@ async fn fetch_review_by_run(pool: &PgPool, run_id: i64) -> Result<Option<Review
         f64,
         Option<String>,
         Option<i64>,
+        Option<serde_json::Value>,
+        Option<f64>,
     )> = sqlx::query_as(
-        "SELECT id, winner_code, status, opened_by, summary, guardrail_rows, ledger_rows, train_delta, holdout_delta, approved_by, result_version FROM reviews WHERE run_id = $1",
+        "SELECT id, winner_code, status, opened_by, summary, guardrail_rows, ledger_rows, train_delta, holdout_delta, approved_by, result_version, approved_package, (EXTRACT(EPOCH FROM approved_at) * 1000)::float8 FROM reviews WHERE run_id = $1",
     )
     .bind(run_id)
     .fetch_optional(pool)
     .await?;
     let Some(r) = row else { return Ok(None) };
 
+    let mut version_status: Option<String> = None;
     let result_version: Option<i32> = match r.10 {
         Some(vid) => {
-            let v: Option<(i32,)> =
-                sqlx::query_as("SELECT version FROM model_versions WHERE id = $1")
+            let v: Option<(i32, String)> =
+                sqlx::query_as("SELECT version, status FROM model_versions WHERE id = $1")
                     .bind(vid)
                     .fetch_optional(pool)
                     .await?;
-            v.map(|(v,)| v)
+            version_status = v.as_ref().map(|(_, s)| s.clone());
+            v.map(|(v, _)| v)
         }
         None => None,
     };
+    let result_status = crate::runsvc::result_status(&r.2, &version_status).map(String::from);
+    let package = r.11.as_ref().map(|p| ApprovedPackage {
+        winner_code: p["winner_code"].as_str().unwrap_or_default().to_string(),
+        base_version: p["base_version"].as_i64().unwrap_or_default() as i32,
+        new_version: p["new_version"].as_i64().unwrap_or_default() as i32,
+        train_delta: p["train_delta"].as_f64().unwrap_or_default(),
+        holdout_delta: p["holdout_delta"].as_f64().unwrap_or_default(),
+        guardrails_held: p["guardrails_held"].as_i64().unwrap_or_default() as i32,
+        actions_total: p["actions_total"].as_i64().unwrap_or_default() as i32,
+        actions_refused: p["actions_refused"].as_i64().unwrap_or_default() as i32,
+        weakest_point: p["weakest_point"].as_str().unwrap_or_default().to_string(),
+    });
     let base_version: (i32,) = sqlx::query_as(
         "SELECT mv.version FROM runs ru JOIN model_versions mv ON mv.id = ru.base_model_id WHERE ru.id = $1",
     )
@@ -839,5 +874,8 @@ async fn fetch_review_by_run(pool: &PgPool, run_id: i64) -> Result<Option<Review
         result_version,
         base_version: base_version.0,
         next_version,
+        result_status,
+        approved_at_ms: r.12,
+        package,
     }))
 }

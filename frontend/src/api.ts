@@ -142,6 +142,18 @@ export interface LedgerRow {
   why: string;
 }
 
+export interface ApprovedPackage {
+  winnerCode: string;
+  baseVersion: number;
+  newVersion: number;
+  trainDelta: number;
+  holdoutDelta: number;
+  guardrailsHeld: number;
+  actionsTotal: number;
+  actionsRefused: number;
+  weakestPoint: string;
+}
+
 export interface Review {
   id: string;
   runId: string;
@@ -158,6 +170,9 @@ export interface Review {
   resultVersion: number | null;
   baseVersion: number;
   nextVersion: number;
+  resultStatus: 'active' | 'superseded' | 'retired' | null;
+  approvedAtMs: number | null;
+  package: ApprovedPackage | null;
 }
 
 export interface ActiveModel {
@@ -215,11 +230,24 @@ const REVIEW_FIELDS = `
   guardrailRows { what how }
   ledgerRows { code disp why }
   trainDelta holdoutDelta approvedBy resultVersion baseVersion nextVersion
+  resultStatus approvedAtMs
+  package {
+    winnerCode baseVersion newVersion trainDelta holdoutDelta
+    guardrailsHeld actionsTotal actionsRefused weakestPoint
+  }
 `;
 
 export async function fetchLatestRun(): Promise<Run | null> {
   const d = await gql<{ latestRun: Run | null }>(`query { latestRun { ${RUN_FIELDS} } }`);
   return d.latestRun;
+}
+
+export async function fetchRun(id: string): Promise<Run | null> {
+  const d = await gql<{ run: Run | null }>(
+    `query($id: ID!) { run(id: $id) { ${RUN_FIELDS} } }`,
+    { id },
+  );
+  return d.run;
 }
 
 export async function startRun(): Promise<Run> {

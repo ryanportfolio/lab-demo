@@ -10,6 +10,13 @@ verdict, and the one winner earns a review a human has to sign.
 Synthetic data, real fits. Every number on screen comes out of a genuine
 Poisson GLM fit by the backend at run time.
 
+The measure this prototype optimizes is not fits per second. It is the time
+from an actuarial question to a decision a skeptical reviewer can trust, sign,
+and reconstruct months later — the run ledger, evidence, agent record, and
+frozen approval package all serve that one metric. The AI's job is to make
+human judgment scalable, never to substitute for it: approval stays a
+human-only, irreversible act.
+
 ## Research and design system
 
 This demo was not designed from generic ML-dashboard conventions. And it will be further refined and improved by a repeatable evidence-to-design system built around actuarial decisions.

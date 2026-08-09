@@ -186,6 +186,7 @@ export default function EvidencePanel({
   focused = false,
   onAsk,
   onSave,
+  baseVersion = 12,
   weakFocus,
 }: {
   runId: string;
@@ -195,6 +196,8 @@ export default function EvidencePanel({
   focused?: boolean;
   onAsk?: (ask: AgentAsk) => void;
   onSave?: (evidence: SavedChartEvidence) => void;
+  /** version of the model this run branched from, stamped on evidence context */
+  baseVersion?: number;
   /**
    * A request to jump to the chart the weak-point prose talks about and pin
    * its thinnest slice. The text picks the chart; the nonce fires the jump.
@@ -466,7 +469,8 @@ export default function EvidencePanel({
                         code: shownCode,
                         target: 'BI claims',
                         denominator: 'earned car year',
-                        model: 'v12 candidate comparison',
+                        model: `v${baseVersion} candidate comparison`,
+                        baseVersion,
                         onAsk,
                         onSave,
                       }

@@ -604,6 +604,16 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
   margin-top: 2px; padding-left: 8px;
 }
 .agent-record-note { color: var(--fg-subtle); font-size: 13.5px; margin-top: 10px }
+
+/* Version fate of an approved review, and the decision-time record */
+.review-version .status.superseded { background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn) }
+.as-approved {
+  border: 1px solid var(--border); border-left: 3px solid var(--warn); border-radius: var(--r-sm);
+  margin: 14px 0 0; max-width: 880px; padding: 12px 14px;
+}
+.as-approved p { color: var(--fg-muted); font-size: 14.5px; line-height: 1.5; margin: 6px 0 0 }
+.saved-evidence-row.superseded-card { opacity: .62 }
+.saved-evidence-row.superseded-card small { color: var(--warn) }
 @media (max-width: 760px) {
   .act-row { grid-template-columns: 24px 44px 1fr; gap: 7px }
   .act-status { margin-left: 0; width: 100% }
