@@ -244,6 +244,24 @@ export async function fetchLatestRun(): Promise<Run | null> {
   return d.latestRun;
 }
 
+export interface RunSummary {
+  id: string;
+  status: 'running' | 'complete' | 'failed';
+  startedAtMs: number;
+  winnerCode: string | null;
+  holdoutDelta: number | null;
+  reviewStatus: 'open' | 'approved' | null;
+  inForce: boolean;
+  nextVersion: number;
+}
+
+export async function fetchRuns(): Promise<RunSummary[]> {
+  const d = await gql<{ runs: RunSummary[] }>(
+    `query { runs { id status startedAtMs winnerCode holdoutDelta reviewStatus inForce nextVersion } }`,
+  );
+  return d.runs;
+}
+
 export async function fetchRun(id: string): Promise<Run | null> {
   const d = await gql<{ run: Run | null }>(
     `query($id: ID!) { run(id: $id) { ${RUN_FIELDS} } }`,
