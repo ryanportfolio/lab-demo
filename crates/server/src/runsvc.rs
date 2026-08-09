@@ -651,7 +651,7 @@ pub async fn approve_review(
     // Freeze the decision-time package so a superseded or retired review
     // still renders exactly what was signed
     let (guardrails_held, summary): (i64, serde_json::Value) = sqlx::query_as(
-        "SELECT jsonb_array_length(guardrail_rows), summary FROM reviews WHERE id = $1",
+        "SELECT jsonb_array_length(guardrail_rows)::bigint, summary FROM reviews WHERE id = $1",
     )
     .bind(review_id)
     .fetch_one(&mut *tx)
