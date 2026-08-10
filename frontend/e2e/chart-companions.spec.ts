@@ -3,13 +3,29 @@
 // backend's completed run; screenshots are artifacts, not assertions.
 
 import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 const AGE = '/?theme=light&noanim=1&exp=EXP-07&chart=age_curve';
 
+// The URL asks for an experiment and a chart; the rendered data-kind is the
+// app's answer, and only the answer can be trusted. The backend is shared and
+// other sessions mint runs constantly, so a run that has no EXP-07 puts some
+// other chart on screen and every locator below then waits out its full
+// timeout for marks that were never coming. Asserting the kind first turns two
+// minutes of silence into a four-second failure that names the cause.
+async function openChart(page: Page, url: string, kind: string) {
+  await page.goto(url);
+  // full=1 opens the studio; every other reading stays in the evidence card
+  const chart = page.locator(
+    url.includes('full=1') ? '.chart-full' : '.selected-evidence .chart-workspace',
+  );
+  await expect(chart).toBeVisible({ timeout: 90_000 });
+  await expect(chart).toHaveAttribute('data-kind', kind);
+  return chart;
+}
+
 test('the age curve carries a ±2 SE band that the toggle removes', async ({ page }) => {
-  await page.goto(AGE);
-  const card = page.locator('.selected-evidence .chart-workspace');
-  await expect(card).toBeVisible({ timeout: 90_000 });
+  const card = await openChart(page, AGE, 'age_curve');
 
   // band on by default, drawn behind the evidence marks
   await expect(card.locator('.chart-layer-uncertainty .se-band').first()).toBeVisible();
@@ -23,9 +39,7 @@ test('the age curve carries a ±2 SE band that the toggle removes', async ({ pag
 });
 
 test('the reference age is exact and the thin tail is not', async ({ page }) => {
-  await page.goto(AGE);
-  const card = page.locator('.selected-evidence .chart-workspace');
-  await expect(card).toBeVisible({ timeout: 90_000 });
+  await openChart(page, AGE, 'age_curve');
 
   // the value table is the precise surface: age 45 (the reference) shows no
   // interval, a thin-tail age shows its asymmetric range. It sits under the
@@ -40,9 +54,7 @@ test('the reference age is exact and the thin tail is not', async ({ page }) => 
 });
 
 test('a table row pins the chart selection and the URL follows', async ({ page }) => {
-  await page.goto(AGE);
-  const card = page.locator('.selected-evidence .chart-workspace');
-  await expect(card).toBeVisible({ timeout: 90_000 });
+  const card = await openChart(page, AGE, 'age_curve');
 
   const panel = page.locator('.selected-evidence');
   await panel.locator('.exact-values summary').click();
@@ -54,9 +66,7 @@ test('a table row pins the chart selection and the URL follows', async ({ page }
 
 test('the studio seats the value table where the reader puts it', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.goto(`${AGE}&full=1`);
-  const full = page.locator('.chart-full');
-  await expect(full).toBeVisible({ timeout: 90_000 });
+  const full = await openChart(page, `${AGE}&full=1`, 'age_curve');
 
   const pane = full.locator('.chart-table-pane');
   const plot = full.locator('.chart-full-body > svg');
@@ -86,16 +96,13 @@ test('the studio seats the value table where the reader puts it', async ({ page 
   await expect(plot).toBeVisible();
 
   // the placement persists across a reload
-  await page.goto(`${AGE}&full=1`);
-  await expect(page.locator('.chart-full')).toBeVisible({ timeout: 90_000 });
+  await openChart(page, `${AGE}&full=1`, 'age_curve');
   await expect(page.locator('.chart-full .chart-table-pane')).toHaveCount(0);
 });
 
 test('an evidence link carries the placement it was copied at', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.goto(`${AGE}&full=1&tbl=only`);
-  const full = page.locator('.chart-full');
-  await expect(full).toBeVisible({ timeout: 90_000 });
+  const full = await openChart(page, `${AGE}&full=1&tbl=only`, 'age_curve');
   await expect(full.locator('.chart-full-body > svg')).toHaveCount(0);
   await expect(full.locator('.chart-table-pane')).toBeVisible();
 });
@@ -105,9 +112,7 @@ test('pinning a late point marks its row without moving the table', async ({ pag
   // of a 73-row axis threw it a thousand pixels down under a reader who was
   // still looking at the chart
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.goto(`${AGE}&full=1&tbl=below`);
-  const full = page.locator('.chart-full');
-  await expect(full).toBeVisible({ timeout: 90_000 });
+  const full = await openChart(page, `${AGE}&full=1&tbl=below`, 'age_curve');
   const scroller = full.locator('.exact-scroll');
   await expect(scroller).toBeVisible();
 
@@ -139,9 +144,8 @@ test('pinning a late point marks its row without moving the table', async ({ pag
 
 test('the copy takes the whole table whatever is pinned', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(`${AGE}&sel=70:70`);
+  await openChart(page, `${AGE}&sel=70:70`, 'age_curve');
   const panel = page.locator('.selected-evidence');
-  await expect(panel.locator('.chart-workspace')).toBeVisible({ timeout: 90_000 });
   await panel.locator('.exact-values summary').click();
 
   // the button offers one thing and says one thing, pinned or not
@@ -160,16 +164,13 @@ test('the full view survives a reload with the studio open', async ({ page }) =>
   // the StrictMode double-mount regression: a ?full=1 load must keep the
   // studio open instead of silently closing it after the second effect run
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.goto(`${AGE}&full=1`);
-  await expect(page.locator('.chart-full')).toBeVisible({ timeout: 90_000 });
+  await openChart(page, `${AGE}&full=1`, 'age_curve');
   await page.waitForTimeout(400);
   await expect(page.locator('.chart-full')).toBeVisible();
 });
 
 test('the companion strip names version, window, and the CI method while bands are up', async ({ page }) => {
-  await page.goto(AGE);
-  const card = page.locator('.selected-evidence .chart-workspace');
-  await expect(card).toBeVisible({ timeout: 90_000 });
+  const card = await openChart(page, AGE, 'age_curve');
 
   const companion = card.locator('.chart-companion');
   await expect(companion).toContainText('v12');
@@ -183,9 +184,7 @@ test('the companion strip names version, window, and the CI method while bands a
 });
 
 test('the value grid sweeps a block of cells and the chart takes its rows', async ({ page }) => {
-  await page.goto(AGE);
-  const card = page.locator('.selected-evidence .chart-workspace');
-  await expect(card).toBeVisible({ timeout: 90_000 });
+  const card = await openChart(page, AGE, 'age_curve');
   const panel = page.locator('.selected-evidence');
   await panel.locator('.exact-values summary').click();
 
@@ -226,8 +225,7 @@ test('the value grid sweeps a block of cells and the chart takes its rows', asyn
   await expect(card.locator('.selection-label')).toContainText('50');
 
   // chart→table: a selection made on the plot lights those rows whole-width
-  await page.goto(`${AGE}&sel=60:62`);
-  await expect(page.locator('.selected-evidence .chart-workspace')).toBeVisible({ timeout: 90_000 });
+  await openChart(page, `${AGE}&sel=60:62`, 'age_curve');
   await panel.locator('.exact-values summary').click();
   await expect(cell(61, 0)).toHaveAttribute('data-in-range', '');
   await expect(cell(61, 2)).toHaveAttribute('data-in-range', '');
@@ -236,9 +234,8 @@ test('the value grid sweeps a block of cells and the chart takes its rows', asyn
 
 test('the value table leaves as tab-separated text and as a CSV file', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(AGE);
+  await openChart(page, AGE, 'age_curve');
   const panel = page.locator('.selected-evidence');
-  await expect(panel.locator('.chart-workspace')).toBeVisible({ timeout: 90_000 });
   await panel.locator('.exact-values summary').click();
 
   // copy: a spreadsheet paste leads with the provenance line, then the
@@ -283,8 +280,7 @@ test('the value table leaves as tab-separated text and as a CSV file', async ({ 
 });
 
 test('scroll surfaces wear the theme, not the operating system', async ({ page }) => {
-  await page.goto(AGE);
-  await expect(page.locator('.selected-evidence .chart-workspace')).toBeVisible({ timeout: 90_000 });
+  await openChart(page, AGE, 'age_curve');
   await page.locator('.exact-values summary').click();
 
   // the bar is drawn by the app: a thumb mixed from the theme's own ink, and
@@ -315,22 +311,21 @@ test('scroll surfaces wear the theme, not the operating system', async ({ page }
   expect(light.noArrows).toBe(true);
 
   // and it follows the theme, because it is mixed from that theme's text color
-  await page.goto('/?theme=dark&noanim=1&exp=EXP-07&chart=age_curve');
-  await expect(page.locator('.selected-evidence .chart-workspace')).toBeVisible({ timeout: 90_000 });
+  await openChart(page, '/?theme=dark&noanim=1&exp=EXP-07&chart=age_curve', 'age_curve');
   const dark = await read();
   expect(dark.thumb).not.toBe(light.thumb);
 });
 
 test('territory carries its exposure series with the filed dots', async ({ page }) => {
-  await page.goto('/?theme=light&noanim=1&exp=EXP-03&chart=territory');
-  const card = page.locator('.selected-evidence .chart-workspace');
-  await expect(card).toBeVisible({ timeout: 90_000 });
+  const card = await openChart(
+    page,
+    '/?theme=light&noanim=1&exp=EXP-03&chart=territory',
+    'territory',
+  );
   await expect(card.locator('.legend')).toContainText('Share of exposure');
 });
 
 test('a pinned banded point reads out its interval', async ({ page }) => {
-  await page.goto(`${AGE}&sel=80:80`);
-  const card = page.locator('.selected-evidence .chart-workspace');
-  await expect(card).toBeVisible({ timeout: 90_000 });
+  const card = await openChart(page, `${AGE}&sel=80:80`, 'age_curve');
   await expect(card.locator('.selection-values')).toContainText(' to ');
 });
