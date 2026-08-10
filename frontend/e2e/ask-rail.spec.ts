@@ -92,6 +92,35 @@ test('sessions persist on this browser and restore with the link', async ({ page
   await expect(rail.locator('.ask-row.you').first()).toBeVisible();
 });
 
+test('the sessions list closes on a click anywhere else', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  await page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"] .expand').click();
+  const rail = page.locator('.chart-studio-rail');
+  const list = rail.locator('.ask-sess-list');
+
+  await rail.locator('.ask-sess-toggle').click();
+  await expect(list).toBeVisible();
+
+  // outside the menu, still inside the rail (the open menu covers the top of
+  // the transcript, so this clicks the composer below it)
+  await rail.locator('textarea').click();
+  await expect(list).toBeHidden();
+
+  // and outside the rail entirely
+  await rail.locator('.ask-sess-toggle').click();
+  await expect(list).toBeVisible();
+  await page.locator('.chart-full').click({ position: { x: 8, y: 8 } });
+  await expect(list).toBeHidden();
+
+  // the toggle still closes it itself, not reopening on its own click
+  await rail.locator('.ask-sess-toggle').click();
+  await expect(list).toBeVisible();
+  await rail.locator('.ask-sess-toggle').click();
+  await expect(list).toBeHidden();
+});
+
 test('right-click on a selected slice is the ask shortcut, on the big chart and on answer charts', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);
@@ -103,7 +132,7 @@ test('right-click on a selected slice is the ask shortcut, on the big chart and 
   // the studio's big chart: pin the weakest slice, right-click, and the
   // composer is seeded with the question and its context chip
   await page.locator('.chart-full-diagnostics .pin-weakest').click();
-  await page.locator('.chart-full > svg').click({ button: 'right' });
+  await page.locator('.chart-full-body > svg').click({ button: 'right' });
   await expect(rail.locator('textarea')).toHaveValue(/Explain/);
   await expect(rail.locator('.ask-chip')).toContainText('EXP-07');
 

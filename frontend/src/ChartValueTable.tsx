@@ -4,7 +4,7 @@
 // first-class evidence: every number a mark encodes is readable, selectable,
 // and copyable here, never hover-only.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fmtVal } from './Chart';
 import type { EvidenceChart } from './api';
 import {
@@ -95,23 +95,162 @@ export default function ChartValueTable({
     }
   };
 
-  const deltaCell = (x: number) => {
+  const deltaValue = (x: number): number | null => {
     if (!showDelta) return null;
     const base = at(baseline!, x);
     const cand = at(candidate!, x);
-    if (!base || !cand) return <td />;
-    const value =
-      comparison!.change === 'percent'
-        ? base.y === 0
-          ? 0
-          : 100 * (cand.y / base.y - 1)
-        : cand.y - base.y;
+    if (!base || !cand) return null;
+    return comparison!.change === 'percent'
+      ? base.y === 0
+        ? 0
+        : 100 * (cand.y / base.y - 1)
+      : cand.y - base.y;
+  };
+
+  const deltaCell = (x: number) => {
+    if (!showDelta) return null;
+    const value = deltaValue(x);
+    if (value == null) return <td />;
     const text =
       comparison!.change === 'percent'
         ? `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
         : `${value >= 0 ? '+' : ''}${fmtVal(value)}`;
     return <td className="delta">{text}</td>;
   };
+
+  // Taking the numbers out is part of reading them. One shape serves both
+  // buttons: cells that stack two readings on screen (a value and its band, a
+  // count and its share) become their own columns, so a spreadsheet receives
+  // numbers to compute with rather than strings to unpick.
+  const banded = (series: EvidenceChart['series'][number]) =>
+    series.points.some((point) => point.se != null);
+  const round = (value: number) => Number(value.toFixed(6));
+
+  const exported = () => {
+    const header: (string | number)[] = [chart.xLabel];
+    primary.forEach((series) => {
+      header.push(series.label);
+      if (banded(series)) {
+        header.push(`${series.label} low (-2 SE)`, `${series.label} high (+2 SE)`);
+      }
+    });
+    if (showDelta) {
+      // the label often already says percent; only name the unit if it does not
+      header.push(
+        comparison!.change === 'percent' && !comparison!.label.includes('%')
+          ? `${comparison!.label} (%)`
+          : comparison!.label,
+      );
+    }
+    if (secondary) {
+      header.push(secondary.label);
+      if (secondary.label === 'Earned exposure') header.push('Share of exposure (%)');
+    }
+
+    const rows = xValues.map((x) => {
+      const cells: (string | number)[] = [labels.get(x) ?? round(x)];
+      primary.forEach((series) => {
+        const point = at(series, x);
+        cells.push(point ? round(point.y) : '');
+        if (banded(series)) {
+          cells.push(
+            point?.se != null ? round(point.y * Math.exp(-2 * point.se)) : '',
+            point?.se != null ? round(point.y * Math.exp(2 * point.se)) : '',
+          );
+        }
+      });
+      if (showDelta) {
+        const value = deltaValue(x);
+        cells.push(value == null ? '' : round(value));
+      }
+      if (secondary) {
+        const point = at(secondary, x);
+        cells.push(point ? round(point.y) : '');
+        if (secondary.label === 'Earned exposure') {
+          cells.push(
+            point && secondaryTotal > 0 ? round((100 * point.y) / secondaryTotal) : '',
+          );
+        }
+      }
+      return cells;
+    });
+
+    return [header, ...rows];
+  };
+
+  // Excel's paste target is tab-separated text; its file target is CSV
+  const asTsv = () => exported().map((row) => row.join('\t')).join('\r\n');
+  const asCsv = () =>
+    exported()
+      .map((row) =>
+        row
+          .map((cell) => {
+            const text = String(cell);
+            return /["\n\r,]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+          })
+          .join(','),
+      )
+      .join('\r\n');
+
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const clear = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(clear);
+  }, [copied]);
+
+  const copy = async () => {
+    const text = asTsv();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // clipboard permission or an insecure origin: the old path still works
+      const holder = document.createElement('textarea');
+      holder.value = text;
+      holder.setAttribute('readonly', '');
+      holder.style.position = 'fixed';
+      holder.style.opacity = '0';
+      document.body.appendChild(holder);
+      holder.select();
+      try {
+        document.execCommand('copy');
+      } catch {
+        /* nothing left to try; the button simply does not confirm */
+        document.body.removeChild(holder);
+        return;
+      }
+      document.body.removeChild(holder);
+    }
+    setCopied(true);
+  };
+
+  const download = () => {
+    const name = `${chart.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${mode}.csv`;
+    // the BOM is what makes Excel read the file as UTF-8
+    const blob = new Blob([`﻿${asCsv()}`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const tools = (
+    <div className="exact-tools">
+      <button type="button" className="exact-tool" data-done={copied || undefined} onClick={copy}>
+        {copied ? '✓ Copied' : 'Copy'}
+      </button>
+      <button type="button" className="exact-tool" onClick={download}>
+        Download CSV
+      </button>
+      <span className="sr" role="status">
+        {copied ? 'Table copied to the clipboard' : ''}
+      </span>
+    </div>
+  );
 
   const table = (
     <table>
@@ -192,14 +331,18 @@ export default function ChartValueTable({
 
   if (variant === 'pane') {
     return (
-      <div className="exact-scroll" role="region" aria-label="Exact values">
-        {table}
-      </div>
+      <>
+        {tools}
+        <div className="exact-scroll" role="region" aria-label="Exact values">
+          {table}
+        </div>
+      </>
     );
   }
   return (
     <details className="exact-values">
       <summary>Exact values</summary>
+      {tools}
       <div className="exact-scroll">{table}</div>
     </details>
   );

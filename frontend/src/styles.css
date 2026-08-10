@@ -98,6 +98,30 @@ html.gold {
 html.gold .folds i { background: #d8ca67 }
 html.gold .approval-actions .btn-primary:disabled { background: #d8c963; color: #857a3d }
 * { box-sizing: border-box; margin: 0; padding: 0 }
+
+/* Every scroll surface wears the theme, not the operating system: a system
+   scrollbar is the one piece of grey Windows chrome that survives a dark or
+   a paper theme, and it lands hardest where content scrolls inside a panel.
+   The thumb is mixed from the theme's own ink, so it follows all four. */
+:root {
+  --scroll-thumb: color-mix(in srgb, var(--fg) 24%, transparent);
+  --scroll-thumb-hover: color-mix(in srgb, var(--fg) 40%, transparent);
+}
+/* Chrome and Safari get the drawn bar: a rounded thumb inset in a bare
+   track, no stepper arrows. Firefox has no such pseudo-elements, so it takes
+   the standard properties instead — Chrome would otherwise let those win and
+   put the platform's arrows back. */
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent }
+}
+::-webkit-scrollbar { width: 11px; height: 11px }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent }
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb); background-clip: padding-box;
+  border: 3px solid transparent; border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); background-clip: padding-box }
+::-webkit-scrollbar-button { display: none }
 /* Digits align wherever they stack: measures, ids, deltas, table columns. */
 html { font-family: var(--sans); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums }
 body {
@@ -663,8 +687,3 @@ body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 .snav-foot { border-top: 1px solid var(--border-muted); padding: 8px 12px; font-size: 11px; color: var(--fg-subtle) }
 .snav :focus-visible { outline: 2px solid var(--ring); outline-offset: 1px }
 
-/* Scrollbars follow the theme on every studio scroll surface */
-.snav-list, .chart-scrim.studio .chart-full, .chart-studio-rail .ask-body, .ask-sess-list {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}

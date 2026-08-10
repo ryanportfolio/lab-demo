@@ -28,10 +28,12 @@ test('the reference age is exact and the thin tail is not', async ({ page }) => 
   await expect(card).toBeVisible({ timeout: 90_000 });
 
   // the value table is the precise surface: age 45 (the reference) shows no
-  // interval, a thin-tail age shows its asymmetric range
-  await card.locator('.exact-values summary').click();
-  const ref = card.locator('.exact-values tr[data-x="45"]');
-  const tail = card.locator('.exact-values tr[data-x="85"]');
+  // interval, a thin-tail age shows its asymmetric range. It sits under the
+  // chart card, beside it in the evidence panel, so the panel is the scope.
+  const panel = page.locator('.selected-evidence');
+  await panel.locator('.exact-values summary').click();
+  const ref = panel.locator('.exact-values tr[data-x="45"]');
+  const tail = panel.locator('.exact-values tr[data-x="85"]');
   await expect(ref).toBeVisible();
   await expect(ref.locator('td small')).toHaveCount(0);
   await expect(tail.locator('td small').first()).toContainText(' to ');
@@ -42,10 +44,11 @@ test('a table row pins the chart selection and the URL follows', async ({ page }
   const card = page.locator('.selected-evidence .chart-workspace');
   await expect(card).toBeVisible({ timeout: 90_000 });
 
-  await card.locator('.exact-values summary').click();
-  await card.locator('.exact-values tr[data-x="70"] th button').click();
+  const panel = page.locator('.selected-evidence');
+  await panel.locator('.exact-values summary').click();
+  await panel.locator('.exact-values tr[data-x="70"] th button').click();
   await expect(card.locator('.selection-band')).toBeVisible();
-  await expect(card.locator('.exact-values tr[data-x="70"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(panel.locator('.exact-values tr[data-x="70"]')).toHaveAttribute('aria-selected', 'true');
   await expect(page).toHaveURL(/sel=70(%3A|:)70/);
 });
 
@@ -96,6 +99,86 @@ test('the companion strip names version, window, and the CI method while bands a
   // the method line is owed exactly while the bands are on screen
   await card.locator('.se-toggle').click();
   await expect(companion).not.toContainText('±2 SE from the final fit weights');
+});
+
+test('the value table leaves as tab-separated text and as a CSV file', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto(AGE);
+  const panel = page.locator('.selected-evidence');
+  await expect(panel.locator('.chart-workspace')).toBeVisible({ timeout: 90_000 });
+  await panel.locator('.exact-values summary').click();
+
+  // copy: a spreadsheet paste is tab separated, headers first, and the
+  // stacked cells arrive as their own numeric columns
+  await panel.locator('.exact-tool', { hasText: 'Copy' }).click();
+  await expect(panel.locator('.exact-tool').first()).toContainText('Copied');
+  const pasted: string = await page.evaluate(() => navigator.clipboard.readText());
+  const lines = pasted.split('\r\n');
+  const header = lines[0].split('\t');
+  expect(header[0]).toMatch(/age/i);
+  expect(header.some((cell) => /low \(-2 SE\)$/.test(cell))).toBe(true);
+  expect(header.some((cell) => /high \(\+2 SE\)$/.test(cell))).toBe(true);
+  expect(header).toContain('Share of exposure (%)');
+  const row = lines.find((line) => line.startsWith('45\t'))!.split('\t');
+  expect(row).toHaveLength(header.length);
+  // every cell that carries a number carries only a number
+  row.slice(1).filter(Boolean).forEach((cell) => expect(Number.isNaN(Number(cell))).toBe(false));
+
+  // download: the same shape, comma separated, named for the chart
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    panel.locator('.exact-tool', { hasText: 'Download CSV' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/\.csv$/);
+  const stream = await download.createReadStream();
+  const csv = await new Promise<string>((resolve, reject) => {
+    let text = '';
+    stream.on('data', (chunk) => (text += chunk));
+    stream.on('end', () => resolve(text));
+    stream.on('error', reject);
+  });
+  expect(csv.charCodeAt(0)).toBe(0xfeff);
+  expect(csv.split('\r\n')[0].replace('﻿', '')).toBe(header.join(','));
+  expect(csv.split('\r\n')).toHaveLength(lines.length);
+});
+
+test('scroll surfaces wear the theme, not the operating system', async ({ page }) => {
+  await page.goto(AGE);
+  await expect(page.locator('.selected-evidence .chart-workspace')).toBeVisible({ timeout: 90_000 });
+  await page.locator('.exact-values summary').click();
+
+  // the bar is drawn by the app: a thumb mixed from the theme's own ink, and
+  // no platform stepper arrows
+  const read = () =>
+    page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      const rules = Array.from(document.styleSheets)
+        .flatMap((sheet) => {
+          try {
+            return Array.from(sheet.cssRules);
+          } catch {
+            return [];
+          }
+        })
+        .map((rule) => rule.cssText);
+      return {
+        thumb: root.getPropertyValue('--scroll-thumb').trim(),
+        thumbRule: rules.some((text) => text.startsWith('::-webkit-scrollbar-thumb')),
+        noArrows: rules.some(
+          (text) => text.startsWith('::-webkit-scrollbar-button') && text.includes('none'),
+        ),
+      };
+    });
+  const light = await read();
+  expect(light.thumb).not.toBe('');
+  expect(light.thumbRule).toBe(true);
+  expect(light.noArrows).toBe(true);
+
+  // and it follows the theme, because it is mixed from that theme's text color
+  await page.goto('/?theme=dark&noanim=1&exp=EXP-07&chart=age_curve');
+  await expect(page.locator('.selected-evidence .chart-workspace')).toBeVisible({ timeout: 90_000 });
+  const dark = await read();
+  expect(dark.thumb).not.toBe(light.thumb);
 });
 
 test('territory carries its exposure series with the filed dots', async ({ page }) => {
