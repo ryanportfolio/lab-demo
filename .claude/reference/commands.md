@@ -16,9 +16,11 @@
 
 ## Firewall quirk (this machine)
 
-Outbound TCP is blocked per-exe: node is allowed, chromium is not. To drive
-the deployed site directly with Playwright, start a local CONNECT proxy in
-node and pass it through:
+Outbound TCP has been blocked per-exe here: node allowed, chromium not.
+Chromium was unblocked on 2026-08-10, so try a direct run first — if chromium
+reports `net::ERR_NETWORK_ACCESS_DENIED`, the block is back and the CONNECT
+proxy below is the workaround. Start a local CONNECT proxy in node and pass it
+through:
 
 - Proxy scratch script pattern: `http.createServer` + `server.on('connect', net.connect...)` on `127.0.0.1:18888`
 - `PLAB_PROXY=http://127.0.0.1:18888` (playwright.config wires it into chromium)

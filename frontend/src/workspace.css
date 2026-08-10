@@ -463,11 +463,21 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .chart-full-body { position: relative; display: flex; align-items: flex-start; gap: 0; min-width: 0 }
 .chart-full-body > svg { flex: 1 1 auto; min-width: 0 }
 .chart-table-pane {
-  flex: 0 0 320px; max-height: 480px; overflow: auto; margin-left: 14px; padding-left: 14px;
+  flex: 0 1 380px; min-width: 300px; align-self: stretch; margin-left: 14px; padding-left: 14px;
+  /* clears the absolutely-positioned values toggle, which otherwise prints
+     over the first column headers */
+  padding-top: 30px;
   border-left: 1px solid var(--border-muted); color: var(--fg-muted); font-size: 14px;
 }
+/* the pane's own scroller: full height of the plot beside it, and free to
+   scroll sideways so the delta and exposure columns stay reachable rather
+   than being silently clipped */
+.chart-table-scroll { max-height: 460px; overflow: auto; border: 0; border-radius: 0 }
+.chart-table-scroll:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
+.chart-table-pane table { width: max-content; min-width: 100% }
 .chart-table-pane table,
-.exact-values table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; text-align: right }
+.exact-values table { border-collapse: collapse; font-family: var(--mono); font-size: 13px; text-align: right }
+.exact-values table { width: 100% }
 .chart-table-pane th, .chart-table-pane td { border-bottom: 1px solid var(--border-muted); padding: 5px 7px; white-space: nowrap }
 .chart-table-pane thead th { position: sticky; top: 0; background: var(--card); color: var(--fg-muted); font-size: var(--label); font-weight: 600; letter-spacing: var(--label-track); text-transform: uppercase }
 .chart-table-pane th:first-child { text-align: left }

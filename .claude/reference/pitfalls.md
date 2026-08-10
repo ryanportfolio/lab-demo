@@ -96,6 +96,49 @@ Against the live proxy, run only the read-only specs you need, expect a
 handful of extra runs/approvals if a mutating spec is included, and warn
 anyone concurrently using the app.
 
+## 2026-08-10 · A locally-built asset hash never matches Railway's
+
+Symptom: after `railway up`, a poll waiting for the asset hash that
+`npx vite build` just produced locally runs its whole window and reports a
+timeout — while the deploy actually succeeded minutes earlier.
+
+Cause: the Dockerfile pins `node:22-alpine` for the frontend stage, and this
+machine runs a different Node major (24.x observed). Different Node major
+means a different rollup/esbuild binary, so the same commit minifies to
+different bytes and a different content hash. Local build produced
+`index-CEx2U5g3.js`; Railway served `index-iutJt_xz.js` for the same commit.
+`.dockerignore` already excludes `frontend/node_modules` and `frontend/dist`,
+so this is not local build residue leaking in — the image builds clean and
+still lands elsewhere.
+
+Rule: never poll for a *predicted* hash. Verify a deploy by probing the thing
+that changed:
+
+- GraphQL schema → `curl -s -X POST <url>/graphql -d '{"query":"{ __type(name:\"Pt\"){ fields { name } } }"}'`
+- stored data → query a fresh run's evidence and assert the new field is non-null
+- server-rendered HTML → `curl <url>/record/<run> | grep <new marker>`
+- frontend code → read the *served* hash first, then
+  `curl <url>/assets/<that hash>.js | grep <new class name>`
+
+The served hash is still a useful *change* signal (it differs from the previous
+deploy's), just never a value you can know in advance. HTTP 200 alone proves
+nothing: the old build answers 200 for the whole rollout.
+
+## 2026-08-10 · One layout test disagrees between dev server and production build
+
+`chart-workspace.spec.ts` › "pinning and comparison keep the working layout
+geometrically stable" fails against a vite **dev server** (evidence panel
+807px → 789px after pinning and switching to Change) and passes against the
+**production build** of the very same commit. Verified at HEAD with no local
+edits, and on a freshly started dev server, so it is neither staleness nor a
+working-tree change.
+
+Consequence: a red result here is not automatically a regression. Before
+chasing one, re-run the same test against a production build (`npx vite build`
++ preview, or the deployed URL). Untriaged: the likely suspect is StrictMode's
+dev-only double-invocation changing which state the panel settles in, since
+Change mode drops the ±2 SE sub-headers and their row height.
+
 ## 2026-08-09 · StrictMode kills "skip the first effect run" refs
 
 `main.tsx` wraps the app in `React.StrictMode`, so every mount effect runs

@@ -191,8 +191,16 @@ export default function ChartValueTable({
   );
 
   if (variant === 'pane') {
+    // The studio pane owns its own scrolling: reusing the card's 220px cap
+    // here showed 5 of 73 rows and clipped the delta and exposure columns
+    // with no way to reach them.
     return (
-      <div className="exact-scroll" role="region" aria-label="Exact values">
+      <div
+        className="exact-scroll chart-table-scroll"
+        role="region"
+        aria-label="Exact values"
+        tabIndex={0}
+      >
         {table}
       </div>
     );
