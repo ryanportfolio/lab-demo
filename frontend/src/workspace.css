@@ -541,6 +541,23 @@ html.dark .approval-actions .btn-primary:disabled { background: var(--z800); col
 .approval-done { display: flex; align-items: center; gap: 14px; flex-wrap: wrap }
 .stamp { color: var(--ok); font-family: var(--mono); font-size: 16px }
 
+/* The sheet lives in the inspector rail, in the empty space under the Run
+   group, so the decision sits beside the evidence instead of below it. Same
+   surface, sized to the column: populations stack, the button takes the row. */
+.context-strip .approval-sheet { max-width: none; margin: 2px 0 0 }
+.context-strip .approval-body { padding: 14px }
+.context-strip .approval-title { margin-top: 0; font-size: 15px }
+.context-strip .approval-judgment { margin-top: 6px; font-size: 13px }
+.context-strip .statpair { grid-template-columns: 1fr; margin: 12px 0 }
+.context-strip .statpair .num { font-size: 16px }
+.context-strip .approval-bound { font-size: 12.5px }
+.context-strip .approval-ack { margin-top: 10px; padding: 8px 10px }
+.context-strip .approval-ack label { font-size: 13px }
+.context-strip .approval-foot { padding: 12px 14px }
+.context-strip .approval-actions { width: 100% }
+.context-strip .approval-actions .btn-primary { flex: 1; font-size: 14.5px }
+.context-strip .approval-foot .banner { margin: 0; width: 100% }
+
 .promote {
   margin-top: 16px; border: 1px solid var(--border); border-left: 3px solid var(--ok);
   border-radius: var(--r-ctl); background: var(--card); box-shadow: var(--shadow); padding: 12px 14px;
@@ -682,6 +699,8 @@ html.dark .approval-actions .btn-primary:disabled { background: var(--z800); col
   .rail-rows { gap: 4px }
   .rail-key { font-size: 12.5px }
   .rail-val { font-size: 12px }
+  /* In the collapsed strip the approval card takes a full row under the groups */
+  .context-strip > .approval-sheet { grid-column: 1 / -1; margin: 10px 0 4px }
 }
 
 @media (max-width: 820px) {

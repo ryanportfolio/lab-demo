@@ -3,6 +3,7 @@
 // what the run is fitting, what constrains it, and where the run stands.
 // Under 900px the rail collapses back to a compact strip above the workspace.
 
+import type { ReactNode } from 'react';
 import type { DatasetSummary, RailState, Run } from './api';
 import { fmtGini, fmtThousands } from './format';
 
@@ -17,6 +18,8 @@ interface Props {
   dataset: DatasetSummary | null;
   run: Run | null;
   view: 'console' | 'review';
+  /** review-view slot: the approval card rides the rail's empty space */
+  children?: ReactNode;
 }
 
 interface RailRow {
@@ -28,7 +31,7 @@ interface RailRow {
   state?: string;
 }
 
-export default function ContextStrip({ dataset, run, view }: Props) {
+export default function ContextStrip({ dataset, run, view, children }: Props) {
   const context: RailRow[] = [
     {
       key: 'Data',
@@ -100,6 +103,7 @@ export default function ContextStrip({ dataset, run, view }: Props) {
           </dl>
         </div>
       ))}
+      {children}
     </aside>
   );
 }
