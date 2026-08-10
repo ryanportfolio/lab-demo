@@ -949,6 +949,19 @@ export default function Chart({
     </div>
   );
 
+  // The comparison switch belongs to every surface the chart is read on: a
+  // full view without it makes Level the only view a reader can study closely
+  const modeControl = contract.comparison ? (
+    <div className="chart-mode" aria-label="Chart comparison">
+      <button type="button" aria-pressed={mode === 'level'} onClick={() => setMode('level')}>
+        Level
+      </button>
+      <button type="button" aria-pressed={mode === 'change'} onClick={() => setMode('change')}>
+        Change
+      </button>
+    </div>
+  ) : null;
+
   const notes = (
     <ul className="notes">
       {chart.notes.map((n) => (
@@ -1059,16 +1072,7 @@ export default function Chart({
           <span className="chart-question">{contract.question}</span>
           <figcaption>{chart.title}</figcaption>
         </div>
-        {contract.comparison && (
-          <div className="chart-mode" aria-label="Chart comparison">
-            <button type="button" aria-pressed={mode === 'level'} onClick={() => setMode('level')}>
-              Level
-            </button>
-            <button type="button" aria-pressed={mode === 'change'} onClick={() => setMode('change')}>
-              Change
-            </button>
-          </div>
-        )}
+        {modeControl}
       </div>
       {/* Card anatomy: question, provenance, chart, weak point, exact values.
           Provenance rides above the artifact so the source is read before the
@@ -1136,7 +1140,12 @@ export default function Chart({
               onMouseDown={(e) => e.stopPropagation()}
               onContextMenu={contextMenu}
             >
-              <figcaption>{chart.title}</figcaption>
+              {/* Title and switch share one flex row, so a long title moves
+                  the switch instead of printing under it */}
+              <div className="chart-full-head">
+                <figcaption>{chart.title}</figcaption>
+                {modeControl}
+              </div>
               {/* The source line rides every chart surface, full view included. */}
               <div className="chart-source">
                 {context

@@ -71,6 +71,8 @@ export default function AskChat({
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const body = useRef<HTMLDivElement>(null);
+  const followups = useRef<HTMLDetailsElement>(null);
+  const wasFollowupsOpen = useRef(followupsOpen);
 
   useEffect(() => {
     fetchSuggestedQuestions().then(setSuggested).catch(() => undefined);
@@ -86,6 +88,19 @@ export default function AskChat({
     }
     if (seed || autoFocus) requestAnimationFrame(() => input.current?.focus());
   }, [seed, open, autoFocus]);
+
+  // Unfolding brings the questions into view rather than growing a panel
+  // below the fold: the reader asked to see them, not to go looking
+  useEffect(() => {
+    const opened = followupsOpen && !wasFollowupsOpen.current;
+    wasFollowupsOpen.current = followupsOpen;
+    if (!opened) return;
+    const el = body.current;
+    const panel = followups.current;
+    if (!el || !panel) return;
+    const hidden = panel.getBoundingClientRect().bottom - el.getBoundingClientRect().bottom;
+    if (hidden > 0) el.scrollTo({ top: el.scrollTop + hidden + 12 });
+  }, [followupsOpen]);
 
   useEffect(() => {
     const field = input.current;
@@ -111,11 +126,17 @@ export default function AskChat({
     setThreads(loadThreads(threadKey));
   }
 
+  /** the lent trailing space belongs to one turn in one thread, not to the panel */
+  function dropTrailingSpace() {
+    if (body.current) body.current.style.paddingBottom = '';
+  }
+
   function switchTo(thread: AskThread) {
     setActiveId(thread.id);
     setAnswers(thread.turns);
     setSessionsOpen(false);
     setError(null);
+    dropTrailingSpace();
   }
 
   function startNew() {
@@ -127,6 +148,7 @@ export default function AskChat({
     setAnswers([]);
     setSessionsOpen(false);
     setError(null);
+    dropTrailingSpace();
   }
 
   function remove(thread: AskThread) {
@@ -175,8 +197,15 @@ export default function AskChat({
         const turns = el?.querySelectorAll<HTMLElement>('.ask-turn');
         const turn = turns?.length ? turns[turns.length - 1] : null;
         if (el && turn) {
+          // A short answer cannot reach the top on its own: the scroll runs
+          // out of content first. The panel lends the difference as trailing
+          // space, measured from zero so it never compounds turn to turn.
+          el.style.paddingBottom = '0px';
           const top =
             turn.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+          const below = el.scrollHeight - top;
+          const shortfall = Math.max(0, el.clientHeight - below - 8);
+          if (shortfall > 0) el.style.paddingBottom = `${shortfall}px`;
           el.scrollTo({ top: Math.max(top - 8, 0) });
         }
       });
@@ -351,7 +380,7 @@ export default function AskChat({
             a reader who folds and immediately navigates would lose the
             preference the fold was supposed to record */}
         {answers.length > 0 && !busy && remaining.length > 0 && (
-          <details className="ask-followups" open={followupsOpen}>
+          <details className="ask-followups" ref={followups} open={followupsOpen}>
             <summary
               onClick={(e) => {
                 e.preventDefault();
