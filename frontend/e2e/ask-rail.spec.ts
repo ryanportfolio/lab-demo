@@ -119,6 +119,31 @@ test('right-click on a selected slice is the ask shortcut, on the big chart and 
   await expect(rail.locator('textarea')).toHaveValue(/Explain/);
 });
 
+test('keep going opens by default and stays folded once the reader folds it', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  await page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"] .expand').click();
+  const rail = page.locator('.chart-studio-rail');
+  await rail.locator('.ask-sugg button').first().click();
+  const followups = rail.locator('.ask-followups');
+  await expect(followups).toBeVisible({ timeout: 15_000 });
+  await expect(followups).toHaveAttribute('open', '');
+  await expect(followups.locator('.ask-sugg button').first()).toBeVisible();
+
+  // folded by the reader, and it stays folded across a reload
+  await followups.locator('summary').click();
+  await expect(followups.locator('.ask-sugg button').first()).toBeHidden();
+  await page.goto(page.url());
+  await expect(page.locator('.promote')).toBeVisible({ timeout: 90_000 });
+  await expect(rail).toBeVisible({ timeout: 20_000 });
+  await expect(rail.locator('.ask-followups')).not.toHaveAttribute('open', '');
+
+  // and it opens again on demand
+  await rail.locator('.ask-followups summary').click();
+  await expect(rail.locator('.ask-followups .ask-sugg button').first()).toBeVisible();
+});
+
 test('the seam between chart and rail drags, persists, and resets on double-click', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);

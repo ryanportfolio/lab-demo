@@ -59,6 +59,14 @@ export default function AskChat({
     () => (threadKey ? loadThreads(threadKey)[0]?.turns : undefined) ?? [],
   );
   const [sessionsOpen, setSessionsOpen] = useState(false);
+  // The follow-ups start open and stay however the reader last left them
+  const [followupsOpen, setFollowupsOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('plab-ask-followups') !== 'closed';
+    } catch {
+      return true;
+    }
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -339,9 +347,27 @@ export default function AskChat({
         {busy && <div className="ask-busy">Reading the run</div>}
         {error && <div className="ask-error">{error}</div>}
 
+        {/* The fold is controlled, not native: the toggle event is queued, so
+            a reader who folds and immediately navigates would lose the
+            preference the fold was supposed to record */}
         {answers.length > 0 && !busy && remaining.length > 0 && (
-          <div className="ask-followups">
-            <span>Keep going</span>
+          <details className="ask-followups" open={followupsOpen}>
+            <summary
+              onClick={(e) => {
+                e.preventDefault();
+                const next = !followupsOpen;
+                setFollowupsOpen(next);
+                try {
+                  localStorage.setItem('plab-ask-followups', next ? 'open' : 'closed');
+                } catch {
+                  /* private browsing: the choice just does not stick */
+                }
+              }}
+            >
+              <span className="steps-chev" aria-hidden="true" />
+              <span>Keep going</span>
+              <span className="ask-followups-count">{remaining.length}</span>
+            </summary>
             <div className="ask-sugg">
               {remaining.map((s) => (
                 <button key={s} onClick={() => send(s)} disabled={busy || !ready}>
@@ -349,7 +375,7 @@ export default function AskChat({
                 </button>
               ))}
             </div>
-          </div>
+          </details>
         )}
       </div>
 
