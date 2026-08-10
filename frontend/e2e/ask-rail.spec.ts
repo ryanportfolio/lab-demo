@@ -148,6 +148,89 @@ test('the full view carries the comparison switch and lands a new turn at the to
   expect(offset).toBeLessThan(24);
 });
 
+test('a new question lands at the top from any scroll position, and stays stuck there', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+  await page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"] .expand').click();
+  const rail = page.locator('.chart-studio-rail');
+  await expect(rail).toBeVisible();
+  const bodyEl = rail.locator('.ask-body');
+
+  const turnOffset = (index: number) =>
+    rail.locator('.ask-turn').nth(index).evaluate((el) => {
+      const body = el.closest('.ask-body') as HTMLElement;
+      return el.getBoundingClientRect().top - body.getBoundingClientRect().top;
+    });
+
+  // seed a first turn with a chart in it, so later layout lands late
+  await rail.locator('.ask-sugg button').first().click();
+  await expect(rail.locator('.ask-row.ai').first()).toBeVisible({ timeout: 20_000 });
+
+  // ask from the top, the middle, and the bottom of the transcript: every
+  // question anchors its own turn to the top of the panel
+  const places = [
+    () => bodyEl.evaluate((el) => el.scrollTo({ top: 0 })),
+    () => bodyEl.evaluate((el) => el.scrollTo({ top: el.scrollHeight / 2 })),
+    () => bodyEl.evaluate((el) => el.scrollTo({ top: el.scrollHeight })),
+  ];
+  // alternate a suggested question, whose answer draws charts and so settles
+  // over several frames, with a typed one whose answer is a short miss
+  const asks = [
+    () => rail.locator('.ask-followups .ask-sugg button').first().click(),
+    async () => {
+      await rail.locator('textarea').fill('What is the weather in Chicago tomorrow?');
+      await rail.locator('textarea').press('Enter');
+    },
+    () => rail.locator('.ask-followups .ask-sugg button').first().click(),
+  ];
+  for (const [i, place] of places.entries()) {
+    await place();
+    await page.waitForTimeout(120);
+    await asks[i]();
+    await expect(rail.locator('.ask-turn')).toHaveCount(i + 2, { timeout: 30_000 });
+    await expect.poll(() => turnOffset(i + 1), { timeout: 10_000 }).toBeLessThan(24);
+    // and it holds after the answer's own layout has landed
+    await page.waitForTimeout(900);
+    expect(await turnOffset(i + 1)).toBeLessThan(24);
+  }
+
+  // content above the newest turn can settle late (a webfont landing, a chart
+  // sizing itself). The pin has to survive that, not fire once and hope.
+  await rail.locator('textarea').fill('One more question about this run?');
+  await rail.locator('textarea').press('Enter');
+  const latest = places.length + 1;
+  await expect(rail.locator('.ask-turn')).toHaveCount(latest + 1, { timeout: 30_000 });
+  await expect.poll(() => turnOffset(latest), { timeout: 10_000 }).toBeLessThan(24);
+  await rail.locator('.ask-turn').first().evaluate((el) => {
+    const grow = document.createElement('div');
+    grow.style.height = '260px';
+    el.appendChild(grow);
+  });
+  await expect.poll(() => turnOffset(latest), { timeout: 5_000 }).toBeLessThan(24);
+
+  // reading down through an answer keeps its question on the top edge
+  const first = rail.locator('.ask-turn').first();
+  const firstTop = await turnOffset(0);
+  await bodyEl.evaluate((el, delta) => el.scrollTo({ top: el.scrollTop + delta + 320 }), firstTop);
+  await page.waitForTimeout(200);
+  const stuckOffset = await first.locator('.ask-row.you').evaluate((el) => {
+    const body = el.closest('.ask-body') as HTMLElement;
+    return el.getBoundingClientRect().top - body.getBoundingClientRect().top;
+  });
+  expect(stuckOffset).toBeGreaterThanOrEqual(-2);
+  expect(stuckOffset).toBeLessThan(16);
+  await expect(first.locator('.ask-row.you .bubble')).toBeVisible();
+
+  // and the next question takes the top edge from it
+  await bodyEl.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+  await page.waitForTimeout(200);
+  const firstNowAbove = await first.locator('.ask-row.you').evaluate((el) => {
+    const body = el.closest('.ask-body') as HTMLElement;
+    return el.getBoundingClientRect().bottom <= body.getBoundingClientRect().top + 1;
+  });
+  expect(firstNowAbove).toBe(true);
+});
+
 test('keep going opens by default and stays folded once the reader folds it', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);

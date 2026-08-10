@@ -69,6 +69,8 @@ export default function AskChat({
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** index of the turn to hold at the top of the transcript, or null */
+  const [pin, setPin] = useState<number | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const followups = useRef<HTMLDetailsElement>(null);
@@ -88,6 +90,49 @@ export default function AskChat({
     }
     if (seed || autoFocus) requestAnimationFrame(() => input.current?.focus());
   }, [seed, open, autoFocus]);
+
+  // Holding a turn at the top is not one scroll: an answer's charts and their
+  // text lay out over several frames, and each one moves the target. The pin
+  // re-applies while the content settles and lets go the moment the reader
+  // takes the wheel.
+  useEffect(() => {
+    if (pin == null) return;
+    const el = body.current;
+    if (!el) return;
+    let frame = 0;
+    const apply = () => {
+      const turn = el.querySelectorAll<HTMLElement>('.ask-turn')[pin];
+      if (!turn) return;
+      // A short answer cannot reach the top on its own: the scroll runs out
+      // of content first. The panel lends the difference as trailing space,
+      // measured from zero so it never compounds turn to turn.
+      el.style.paddingBottom = '0px';
+      const top = turn.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+      const below = el.scrollHeight - top;
+      const shortfall = Math.max(0, el.clientHeight - below - 8);
+      if (shortfall > 0) el.style.paddingBottom = `${shortfall}px`;
+      el.scrollTo({ top: Math.max(top - 8, 0) });
+    };
+    const reapply = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(apply);
+    };
+    apply();
+    const observer = new ResizeObserver(reapply);
+    observer.observe(el);
+    Array.from(el.children).forEach((child) => observer.observe(child));
+    const release = () => setPin(null);
+    el.addEventListener('wheel', release, { passive: true });
+    el.addEventListener('touchstart', release, { passive: true });
+    const settled = window.setTimeout(release, 1500);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      window.clearTimeout(settled);
+      el.removeEventListener('wheel', release);
+      el.removeEventListener('touchstart', release);
+    };
+  }, [pin]);
 
   // Unfolding brings the questions into view rather than growing a panel
   // below the fold: the reader asked to see them, not to go looking
@@ -128,6 +173,7 @@ export default function AskChat({
 
   /** the lent trailing space belongs to one turn in one thread, not to the panel */
   function dropTrailingSpace() {
+    setPin(null);
     if (body.current) body.current.style.paddingBottom = '';
   }
 
@@ -191,24 +237,9 @@ export default function AskChat({
       setQ('');
       setChip(null);
       // Land the reader at the top of the new turn, not the bottom of a long
-      // answer: the question is the anchor the answer is read from.
-      requestAnimationFrame(() => {
-        const el = body.current;
-        const turns = el?.querySelectorAll<HTMLElement>('.ask-turn');
-        const turn = turns?.length ? turns[turns.length - 1] : null;
-        if (el && turn) {
-          // A short answer cannot reach the top on its own: the scroll runs
-          // out of content first. The panel lends the difference as trailing
-          // space, measured from zero so it never compounds turn to turn.
-          el.style.paddingBottom = '0px';
-          const top =
-            turn.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
-          const below = el.scrollHeight - top;
-          const shortfall = Math.max(0, el.clientHeight - below - 8);
-          if (shortfall > 0) el.style.paddingBottom = `${shortfall}px`;
-          el.scrollTo({ top: Math.max(top - 8, 0) });
-        }
-      });
+      // answer: the question is the anchor the answer is read from. The pin
+      // holds through the answer's own layout, which lands late.
+      setPin(next.length - 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'the question could not be answered');
     } finally {
