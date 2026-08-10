@@ -53,6 +53,9 @@ echo "== the decision record serves from database rows"
 record=$(curl -sf "$BASE/record/$run_id")
 echo "$record" | grep -q "assembled from platform records"
 echo "$record" | grep -q "Frozen inside the approval transaction"
+# sign-off exhibits: fresh approvals always carry them (0005 ships with this code)
+echo "$record" | grep -q "<svg"
+echo "$record" | grep -q "recorded at sign-off, not reconstructed at read time"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/record/999999")" = 404 ]
 
 echo "== smoke passed: run $run_id approved as v$version, record serves"
