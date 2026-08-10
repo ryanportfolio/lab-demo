@@ -74,7 +74,19 @@ export default function AskChat({
   const input = useRef<HTMLTextAreaElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const followups = useRef<HTMLDetailsElement>(null);
+  const sessions = useRef<HTMLDivElement>(null);
   const wasFollowupsOpen = useRef(followupsOpen);
+
+  // The session list is a menu, so anywhere else is a way out of it. The
+  // toggle sits inside the same box and closes itself, so it is spared here.
+  useEffect(() => {
+    if (!sessionsOpen) return;
+    const away = (event: PointerEvent) => {
+      if (!sessions.current?.contains(event.target as Node)) setSessionsOpen(false);
+    };
+    document.addEventListener('pointerdown', away, true);
+    return () => document.removeEventListener('pointerdown', away, true);
+  }, [sessionsOpen]);
 
   useEffect(() => {
     fetchSuggestedQuestions().then(setSuggested).catch(() => undefined);
@@ -299,7 +311,7 @@ export default function AskChat({
   return (
     <>
       {threadKey && (
-        <div className="ask-sessions">
+        <div className="ask-sessions" ref={sessions}>
           <button
             type="button"
             className="ask-sess-toggle"
