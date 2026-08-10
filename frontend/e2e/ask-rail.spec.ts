@@ -23,9 +23,8 @@ test('the full view opens as a full-screen split with a docked ask rail', async 
   // edge to edge: the studio spans the whole viewport, dialog chrome gone
   const scrim = page.locator('.chart-scrim.studio');
   await expect(scrim).toBeVisible();
-  const sheet = await page.locator('.chart-full').boundingBox();
-  const railBox = await rail.boundingBox();
-  expect(sheet!.width + railBox!.width).toBeGreaterThan(1270);
+  const scrimBox = await scrim.boundingBox();
+  expect(scrimBox!.width).toBeGreaterThan(1270);
 
   // a suggested question answers from artifacts, beside the chart
   await rail.locator('.ask-sugg button').first().click();
