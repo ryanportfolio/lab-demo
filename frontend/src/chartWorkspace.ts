@@ -44,6 +44,8 @@ export interface ChartWorkspaceContext {
   baseVersion: number;
   onAsk: (ask: AgentAsk) => void;
   onSave: (evidence: SavedChartEvidence) => void;
+  /** ids already carried into review, so a saved reading says so */
+  savedIds?: string[];
 }
 
 /**
@@ -421,6 +423,20 @@ export function buildChartAsk(
   return { question, context, send: `${question} Context: ${context}.` };
 }
 
+/**
+ * One reading of one chart: run, experiment, chart, slice, and view. Saving
+ * the same reading twice is the same card, which is what lets the workspace
+ * say a reading is already carried into review.
+ */
+export function savedEvidenceId(
+  chart: EvidenceChart,
+  context: ChartWorkspaceContext,
+  selection: ChartSelection,
+  mode: ChartMode,
+): string {
+  return `${context.runId}:${context.code}:${chart.kind}:${serializeSelection(selection)}:${mode}`;
+}
+
 export function makeSavedEvidence(
   chart: EvidenceChart,
   context: ChartWorkspaceContext,
@@ -430,7 +446,7 @@ export function makeSavedEvidence(
   const contract = contractFor(chart);
   const shown = displayChart(chart, contract, mode);
   return {
-    id: `${context.runId}:${context.code}:${chart.kind}:${serializeSelection(selection)}:${mode}`,
+    id: savedEvidenceId(chart, context, selection, mode),
     runId: context.runId,
     baseVersion: context.baseVersion,
     code: context.code,

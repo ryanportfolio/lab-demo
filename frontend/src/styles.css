@@ -372,7 +372,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
    question at the top: when content above the viewport settles, Chrome nudges
    scrollTop to keep what it thinks the reader was looking at. This panel
    decides where it sits. */
-.ask-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-anchor: none; overscroll-behavior: contain; padding: 14px; display: flex; flex-direction: column; gap: 16px }
+.ask-body { --ask-pad: 14px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-anchor: none; overscroll-behavior: contain; padding: var(--ask-pad); display: flex; flex-direction: column; gap: 16px }
 .ask-intro p { font-size: 14.5px; color: var(--fg-muted); line-height: 1.55 }
 .ask-wait { margin-top: 10px; color: var(--warn) }
 .ask-sugg { display: flex; flex-direction: column; gap: 6px; margin-top: 12px }
@@ -394,18 +394,19 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-followups .ask-sugg button { background: var(--card); box-shadow: var(--shadow-raise) }
 .ask-turn { display: flex; flex-direction: column; gap: 10px }
 .ask-row { display: flex; gap: 10px; align-items: flex-start }
-.ask-row .who { flex: none; width: 26px; height: 26px; border-radius: var(--r-full); background: var(--chipbg); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--fg-muted) }
-/* Who is speaking is carried twice over: the question is a filled block with
-   a neutral mark, the answer is open text under a brand-tinted one */
-.ask-row.ai .who { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--ci-text) }
+.ask-row .who { flex: none; width: 26px; height: 26px; border-radius: var(--r-full); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; font-weight: 700; background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--ci-text) }
 .ask-row .bubble { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.55 }
 /* The question a transcript is being read against stays on screen while its
    answer scrolls under it, and the next question pushes it off. The shadow
    is a solid block, not an effect: it covers the panel's own top padding so
    nothing slides through the gap above a stuck question. */
 .ask-row.you {
-  position: sticky; top: 0; z-index: 2; background: var(--card);
-  box-shadow: 0 -14px 0 0 var(--card);
+  position: sticky; top: 0; z-index: 2;
+  /* the band is the question: it runs edge to edge over the panel's own
+     padding, and the text inside it sits on that same ground */
+  display: block; margin-inline: calc(var(--ask-pad, 14px) * -1);
+  padding: 10px var(--ask-pad, 14px); background: var(--chipbg);
+  box-shadow: 0 -14px 0 0 var(--chipbg);
   /* --handoff runs 0 to 1 over the last header's worth of scroll before the
      next question takes the edge, so the outgoing one leaves rather than
      vanishes between two frames */
@@ -425,10 +426,9 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
   opacity: 0; transition: opacity var(--t-normal) var(--ease);
 }
 .ask-row.you[data-held]::after { opacity: 1 }
-.ask-row.you .bubble { border: 1px solid var(--border); border-radius: var(--r-md); padding: 9px 12px; background: var(--chipbg); color: var(--fg); font-weight: 500 }
-/* The question is a block the mark sits beside; the answer is the surface
-   itself, so its mark moves to the right edge and the text runs full width.
-   Only the answer's first row keeps clear of the mark. */
+.ask-row.you .bubble { background: none; border: 0; padding: 0; color: var(--fg); font-weight: 500 }
+/* The answer is the surface itself, so its mark rides the right edge and the
+   text runs full width. Only its first row keeps clear of the mark. */
 .ask-row.ai { display: block; position: relative }
 .ask-row.ai .who { position: absolute; top: 0; right: 0 }
 .ask-row.ai .bubble > :first-child { padding-right: 34px }
@@ -517,7 +517,19 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart-full > svg[data-tall-frame] {
   width: min(100%, max(520px, calc((92vh - 452px) * 920 / 540)));
 }
-.chart-full .notes { font-size: 13.5px }
+/* The full view has the room the card does not, and its readings are what a
+   reviewer actually studies, so the whole strip under the plot steps up. */
+.chart-full .notes { font-size: 15px }
+.chart-full .chart-weakness { font-size: 15px }
+.chart-full .chart-weakness b { font-size: 12px }
+.chart-full .selection-label { font-size: 18px }
+.chart-full .selection-values { font-size: 15.5px }
+.chart-full .chart-actions button { font-size: 15px; min-height: 42px; padding: 7px 16px }
+.chart-full .chart-actions .act-clear { font-size: 13.5px; min-height: 0; padding: 4px 12px }
+.chart-full .empty-hint { font-size: 13px }
+.chart-full .pin-weakest { font-size: 14.5px }
+.chart-full .chart-source { font-size: 12.5px }
+.chart-full .legend { font-size: 14.5px }
 .chart-full .chart-close { position: absolute; top: 12px; right: 14px; font-family: var(--mono); font-size: 12px; color: var(--fg-subtle); background: var(--card); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px 10px; cursor: pointer }
 .chart-full .chart-close:hover { color: var(--fg); border-color: var(--fg-subtle) }
 /* The hint sits in the flow under the source line on every full view. Riding
@@ -547,7 +559,7 @@ body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 .studio-resize:hover::after, .studio-resize[data-drag]::after { background: var(--brand) }
 .studio-resize:focus-visible { outline: none }
 .studio-resize:focus-visible::after { background: var(--ring) }
-.chart-studio-rail .ask-body { padding: 11px; gap: 28px }
+.chart-studio-rail .ask-body { --ask-pad: 11px; gap: 28px }
 .chart-studio-rail .ask-intro p,
 .chart-studio-rail .ask-row .bubble,
 .chart-studio-rail .ask-sugg button { font-size: 15px }
@@ -592,8 +604,8 @@ body.chartfull .ask-esc { opacity: .3; pointer-events: none }
   background: var(--card); color: var(--fg); box-shadow: var(--shadow-lg);
   font-size: 12px; line-height: 1.35; white-space: nowrap;
 }
-.hint[data-placement="bottom"] { transform: translateX(-50%) }
-.hint[data-placement="right"] { transform: translateY(-50%) }
+/* left/top are set in script after measuring, so the bubble is never cut by
+   the window's edge; no transform offset to undo */
 .snav-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--r-pill); padding: 5px 11px; color: var(--fg-subtle) }
 .snav-search:focus-within { border-color: var(--fg-subtle) }
 .snav-search svg { flex: none }

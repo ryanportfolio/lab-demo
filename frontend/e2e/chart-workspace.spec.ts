@@ -339,7 +339,15 @@ test('selection can ask with context, copy a link, and enter final review', asyn
   await page.keyboard.press('Escape');
   await expect(rail).toBeHidden();
 
-  await chart.locator('button', { hasText: 'Save to review' }).click();
+  const save = chart.locator('.chart-actions .act-primary', { hasText: 'Save to review' });
+  await expect(save).not.toHaveAttribute('data-done', 'true');
+  await save.click();
+  // the reading is in the package now, and the button says so instead of
+  // offering to carry it again
+  await expect(chart.locator('.chart-actions .act-primary', { hasText: 'Saved to review' })).toHaveAttribute(
+    'data-done',
+    'true',
+  );
   await expect(chart.locator('.chart-action-status')).toContainText('Saved');
   await page.locator('.promote button').click();
   await expect(page.locator('.saved-evidence')).toBeVisible();

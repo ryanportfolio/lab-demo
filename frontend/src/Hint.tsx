@@ -4,8 +4,11 @@
 // hover or focus, and is positioned in fixed coordinates so it is never
 // clipped by a scrolling panel or a narrow rail.
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+
+/** how close the bubble may come to the window's edge */
+const MARGIN = 8;
 
 export default function Hint({
   text,
@@ -19,6 +22,7 @@ export default function Hint({
 }) {
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const host = useRef<HTMLSpanElement>(null);
+  const bubble = useRef<HTMLSpanElement>(null);
 
   const show = () => {
     const trigger = host.current?.firstElementChild ?? host.current;
@@ -31,6 +35,23 @@ export default function Hint({
     );
   };
   const hide = () => setAt(null);
+
+  // The controls that need naming sit in corners, so a bubble centred on one
+  // runs off the window and is cut. It is measured and pulled back inside
+  // before it paints.
+  useLayoutEffect(() => {
+    const el = bubble.current;
+    if (!el || !at) return;
+    el.style.transform = 'none';
+    const width = el.offsetWidth;
+    const height = el.offsetHeight;
+    const wanted = placement === 'right' ? at.x : at.x - width / 2;
+    const maxLeft = Math.max(MARGIN, window.innerWidth - width - MARGIN);
+    el.style.left = `${Math.min(Math.max(wanted, MARGIN), maxLeft)}px`;
+    const wantedTop = placement === 'right' ? at.y - height / 2 : at.y;
+    const maxTop = Math.max(MARGIN, window.innerHeight - height - MARGIN);
+    el.style.top = `${Math.min(Math.max(wantedTop, MARGIN), maxTop)}px`;
+  }, [at, placement, text]);
 
   return (
     <>
@@ -49,6 +70,7 @@ export default function Hint({
         createPortal(
           <span
             className="hint"
+            ref={bubble}
             data-placement={placement}
             role="tooltip"
             style={{ left: at.x, top: at.y }}
