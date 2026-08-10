@@ -96,6 +96,83 @@ Against the live proxy, run only the read-only specs you need, expect a
 handful of extra runs/approvals if a mutating spec is included, and warn
 anyone concurrently using the app.
 
+## 2026-08-10 · A locally-built asset hash never matches Railway's
+
+Symptom: after `railway up`, a poll waiting for the asset hash that
+`npx vite build` just produced locally runs its whole window and reports a
+timeout — while the deploy actually succeeded minutes earlier.
+
+Cause: the Dockerfile pins `node:22-alpine` for the frontend stage, and this
+machine runs a different Node major (24.x observed). Different Node major
+means a different rollup/esbuild binary, so the same commit minifies to
+different bytes and a different content hash. Local build produced
+`index-CEx2U5g3.js`; Railway served `index-iutJt_xz.js` for the same commit.
+`.dockerignore` already excludes `frontend/node_modules` and `frontend/dist`,
+so this is not local build residue leaking in — the image builds clean and
+still lands elsewhere.
+
+Rule: never poll for a *predicted* hash. Verify a deploy by probing the thing
+that changed:
+
+- GraphQL schema → `curl -s -X POST <url>/graphql -d '{"query":"{ __type(name:\"Pt\"){ fields { name } } }"}'`
+- stored data → query a fresh run's evidence and assert the new field is non-null
+- server-rendered HTML → `curl <url>/record/<run> | grep <new marker>`
+- frontend code → read the *served* hash first, then
+  `curl <url>/assets/<that hash>.js | grep <new class name>`
+
+The served hash is still a useful *change* signal (it differs from the previous
+deploy's), just never a value you can know in advance. HTTP 200 alone proves
+nothing: the old build answers 200 for the whole rollout.
+
+## 2026-08-10 · "It passes against live" does not clear a local test failure
+
+The live backend is shared: other sessions start runs constantly, so the newest
+run — and therefore which experiment and chart the app lands on with no `exp`
+parameter — changes minute to minute. A layout test can pass against the
+deployed URL and fail locally on the *same source* purely because the two runs
+rendered different content.
+
+This misled a diagnosis: "pinning and comparison keep the working layout
+geometrically stable" failing locally (evidence panel 807px → 789px) was read
+as a dev-server-versus-production-build discrepancy. It was neither. It was a
+real regression — the chart companion's uncertainty line exists in Level and
+not in Change, so the panel lifted by one line on switching — fixed in #62 by
+reserving two lines with `min-height` on `.chart-companion[data-variant="card"]`.
+
+Rules: pin `exp=` and `chart=` in any test whose layout depends on content;
+assert the rendered `data-kind` before interacting (see `openChart` in
+`chart-companions.spec.ts`); and treat a green run against live as weak
+evidence, never as proof that a local red is environmental.
+
+## 2026-08-10 · Parallel sessions converge on the same files and duplicate each other
+
+Several sessions run against this repo at once. On 2026-08-10, four PRs landed
+or opened within roughly an hour all editing the same three files
+(`frontend/src/ChartValueTable.tsx`, `frontend/src/workspace.css`,
+`frontend/e2e/chart-companions.spec.ts`): #59 introduced the value table, then
+#62, #64 and #65 each reworked it. Two sessions independently found and fixed
+the same over-scoped test locator, and a pane-clipping fix was written twice —
+once narrowly, and once properly as part of #64's placement work, which
+superseded it.
+
+Symptoms to expect: `mergeable: CONFLICTING` on a PR that was clean minutes
+earlier; `main` moving *during* a rebase; and a "no checks reported" PR because
+the branch conflicts.
+
+Rules:
+
+- `git fetch origin main` immediately before branching, and again before
+  opening the PR. Assume the base is stale otherwise.
+- Before writing a fix, check open PRs for the same area:
+  `gh pr list --state open` and read titles — they are descriptive here. If an
+  open PR already covers the surface, prefer commenting or waiting over
+  shipping a second fix.
+- When a conflict does appear, read the other side's diff before resolving.
+  Twice on this date the other session's version was the better one, and the
+  right resolution was to drop the local change entirely rather than merge both.
+- Prefer branches whose diff does not touch hot shared files. Documentation,
+  reference notes, and backend crates collide far less than the chart frontend.
+
 ## 2026-08-09 · StrictMode kills "skip the first effect run" refs
 
 `main.tsx` wraps the app in `React.StrictMode`, so every mount effect runs
