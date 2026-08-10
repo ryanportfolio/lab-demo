@@ -1,8 +1,8 @@
 // The chart's exact-value twin. One component, two homes: the card's
-// collapsed details block, and the studio full view's side pane where chart
-// and table are synchronized views of the same selection. Values are
-// first-class evidence: every number a mark encodes is readable, selectable,
-// and copyable here, never hover-only.
+// collapsed details block, and the studio full view's pane, which the reader
+// seats beside the plot, under it, or in its stead. Values are first-class
+// evidence: every number a mark encodes is readable, selectable, and copyable
+// here, never hover-only.
 
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
@@ -24,6 +24,8 @@ export default function ChartValueTable({
   onSelectionChange,
   hidden,
   variant,
+  source,
+  fileBase,
 }: {
   /** the displayed chart (level or change form), same object the plot draws */
   chart: EvidenceChart;
@@ -32,8 +34,12 @@ export default function ChartValueTable({
   selection: ChartSelection | null;
   onSelectionChange?: (selection: ChartSelection | null) => void;
   hidden?: Set<string>;
-  /** details = collapsed under the card · pane = studio side table */
+  /** details = collapsed under the card · pane = the studio's placed table */
   variant: 'details' | 'pane';
+  /** provenance line leading a copy and a file; falls back to the title */
+  source?: string;
+  /** file stem for the CSV download; falls back to the chart's own name */
+  fileBase?: string;
 }) {
   const xValues = Array.from(
     new Set(chart.series.flatMap((series) => series.points.map((point) => point.x))),
@@ -248,7 +254,7 @@ export default function ChartValueTable({
     series.points.some((point) => point.se != null);
   const round = (value: number) => Number(value.toFixed(6));
 
-  const exported = () => {
+  const exported = (rows: number[]) => {
     const header: (string | number)[] = [chart.xLabel];
     primary.forEach((series) => {
       header.push(series.label);
@@ -269,7 +275,7 @@ export default function ChartValueTable({
       if (secondary.label === 'Earned exposure') header.push('Share of exposure (%)');
     }
 
-    const rows = xValues.map((x) => {
+    const body = rows.map((x) => {
       const cells: (string | number)[] = [labels.get(x) ?? round(x)];
       primary.forEach((series) => {
         const point = at(series, x);
@@ -297,13 +303,27 @@ export default function ChartValueTable({
       return cells;
     });
 
-    return [header, ...rows];
+    return [header, ...body];
   };
 
+  // Numbers that leave the app carry what produced them on the line above:
+  // an experiment, a run, and the model version they were fitted against.
+  // A block of figures nobody can attribute is not evidence any more.
+  const provenance = source ?? chart.title;
+  const selectedXs = xValues.filter(isSelected);
+  // A pin is an act of narrowing, so the clipboard follows it. The file does
+  // not: an export that silently drops rows is a trap for whoever opens it.
+  const copyXs = selectedXs.length > 0 ? selectedXs : xValues;
+  const partial = copyXs.length !== xValues.length;
+
   // Excel's paste target is tab-separated text; its file target is CSV
-  const asTsv = () => exported().map((row) => row.join('\t')).join('\r\n');
+  const asTsv = () =>
+    [
+      partial ? `${provenance} · ${copyXs.length} of ${xValues.length} rows, selected` : provenance,
+      ...exported(copyXs).map((row) => row.join('\t')),
+    ].join('\r\n');
   const asCsv = () =>
-    exported()
+    [[provenance], ...exported(xValues)]
       .map((row) =>
         row
           .map((cell) => {
@@ -347,7 +367,12 @@ export default function ChartValueTable({
   };
 
   const download = () => {
-    const name = `${chart.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${mode}.csv`;
+    // the stem names the experiment, run and version where the surface knows
+    // them, so a folder of exports stays sorted and attributable
+    const name = `${
+      fileBase ??
+      `${chart.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${mode}`
+    }.csv`;
     // the BOM is what makes Excel read the file as UTF-8
     const blob = new Blob([`﻿${asCsv()}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -362,8 +387,22 @@ export default function ChartValueTable({
 
   const tools = (
     <div className="exact-tools">
-      <button type="button" className="exact-tool" data-done={copied || undefined} onClick={copy}>
-        {copied ? '✓ Copied' : 'Copy'}
+      <button
+        type="button"
+        className="exact-tool"
+        data-done={copied || undefined}
+        title={
+          partial
+            ? 'Copy the pinned rows as tab-separated text, provenance line first'
+            : 'Copy every row as tab-separated text, provenance line first'
+        }
+        onClick={copy}
+      >
+        {copied
+          ? '✓ Copied'
+          : partial
+            ? `Copy ${copyXs.length} row${copyXs.length === 1 ? '' : 's'}`
+            : 'Copy'}
       </button>
       <button type="button" className="exact-tool" onClick={download}>
         Download CSV

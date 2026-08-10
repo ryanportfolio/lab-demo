@@ -545,6 +545,9 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart-full-head figcaption { min-width: 0 }
 .chart-full-head .chart-mode { margin: -3px 0 }
 .chart-full-head .chart-mode button { min-height: 32px; min-width: 66px; font-size: 13.5px }
+/* Four short segments, so they take the room their words need rather than the
+   two-segment switch's width */
+.chart-full-head .chart-place button { min-width: 52px }
 /* The plot cedes size before the sheet grows scrollbars: its width is capped
    so the resulting height (width times the frame ratio) plus the sheet's
    fixed content stays inside 92vh even on a short inner window. Width and

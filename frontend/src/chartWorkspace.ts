@@ -381,12 +381,58 @@ export const serializeSelection = (selection: ChartSelection) => {
   return `${normalized.start}:${normalized.end}`;
 };
 
+/** Where the studio seats the value table. `off` is the plot alone. */
+export type TablePlace = 'side' | 'below' | 'only' | 'off';
+export const TABLE_PLACES: TablePlace[] = ['side', 'below', 'only', 'off'];
+export const isTablePlace = (value: string | null): value is TablePlace =>
+  !!value && (TABLE_PLACES as string[]).includes(value);
+
+/** The identity half of a workspace context: what a number has to travel
+ *  with to stay evidence. Surfaces without ask and save paths still have it. */
+export type ChartIdentity = Pick<
+  ChartWorkspaceContext,
+  'runId' | 'code' | 'target' | 'denominator' | 'baseVersion'
+>;
+
+/** The provenance line leading a copied block or an exported file: numbers
+ *  travel with what produced them, or they are not evidence. */
+export function chartSourceLine(
+  chart: EvidenceChart,
+  context?: ChartIdentity,
+  askSource?: string,
+  mode?: ChartMode,
+): string {
+  // the change view's numbers are differences, and a pasted block that does
+  // not say so reads as levels
+  const view = mode === 'change' ? ' · change view' : '';
+  if (context) {
+    return `${chart.title}${view} · ${context.code} · run ${context.runId} · on v${context.baseVersion} · ${context.target} / ${context.denominator}`;
+  }
+  return askSource ? `${chart.title}${view} · ${askSource}` : `${chart.title}${view}`;
+}
+
+/** File stem for an exported table: identity first, so a folder of exports
+ *  sorts by experiment and stays attributable to a run and a version. */
+export function chartFileBase(
+  chart: EvidenceChart,
+  context?: ChartIdentity,
+  mode?: ChartMode,
+): string {
+  const slug = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const view = mode === 'change' ? '-change' : '';
+  return context
+    ? `${slug(context.code)}-${slug(chart.kind)}${view}-run-${slug(context.runId)}-v${context.baseVersion}`
+    : `${slug(chart.title) || 'chart-values'}${view}`;
+}
+
 export function updateEvidenceUrl(updates: {
   exp?: string | null;
   chart?: string | null;
   mode?: ChartMode | null;
   selection?: ChartSelection | null;
   full?: boolean | null;
+  table?: TablePlace | null;
 }) {
   const url = new URL(location.href);
   const set = (key: string, value?: string | null) => {
@@ -401,6 +447,9 @@ export function updateEvidenceUrl(updates: {
     set('sel', updates.selection ? serializeSelection(updates.selection) : null);
   }
   if ('full' in updates) set('full', updates.full ? '1' : null);
+  // the placement rides the evidence link, so a shared reading opens on the
+  // surface its author was reading it on
+  if ('table' in updates) set('tbl', updates.table ?? null);
   history.replaceState(null, '', `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
 }
 

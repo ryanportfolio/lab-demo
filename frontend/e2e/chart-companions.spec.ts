@@ -52,27 +52,71 @@ test('a table row pins the chart selection and the URL follows', async ({ page }
   await expect(page).toHaveURL(/sel=70(%3A|:)70/);
 });
 
-test('the studio full view seats the value table beside the plot', async ({ page }) => {
+test('the studio seats the value table where the reader puts it', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto(`${AGE}&full=1`);
   const full = page.locator('.chart-full');
   await expect(full).toBeVisible({ timeout: 90_000 });
 
   const pane = full.locator('.chart-table-pane');
-  await expect(pane).toBeVisible();
-  // side by side: the pane starts right of the plot's end
-  const plot = await full.locator('.chart-full-body > svg').boundingBox();
-  const table = await pane.boundingBox();
-  expect(table!.x).toBeGreaterThanOrEqual(plot!.x + plot!.width - 1);
+  const plot = full.locator('.chart-full-body > svg');
+  const place = (label: string) =>
+    full.locator('.chart-place button', { hasText: new RegExp(`^${label}$`) });
 
-  // the hide control folds the pane away and the preference persists
-  await full.locator('.chart-table-toggle').click();
+  // Below is the default: the table starts under the plot, full width
+  await expect(pane).toBeVisible();
+  await expect(place('Below')).toHaveAttribute('aria-pressed', 'true');
+  let plotBox = (await plot.boundingBox())!;
+  let tableBox = (await pane.boundingBox())!;
+  expect(tableBox.y).toBeGreaterThanOrEqual(plotBox.y + plotBox.height - 1);
+
+  // Side: the pane starts right of the plot's end
+  await place('Side').click();
+  plotBox = (await plot.boundingBox())!;
+  tableBox = (await pane.boundingBox())!;
+  expect(tableBox.x).toBeGreaterThanOrEqual(plotBox.x + plotBox.width - 1);
+  await expect(page).toHaveURL(/tbl=side/);
+
+  // Only drops the plot, Off drops the table
+  await place('Only').click();
+  await expect(plot).toHaveCount(0);
+  await expect(pane).toBeVisible();
+  await place('Off').click();
   await expect(pane).toHaveCount(0);
-  await page.reload();
+  await expect(plot).toBeVisible();
+
+  // the placement persists across a reload
+  await page.goto(`${AGE}&full=1`);
   await expect(page.locator('.chart-full')).toBeVisible({ timeout: 90_000 });
   await expect(page.locator('.chart-full .chart-table-pane')).toHaveCount(0);
-  await page.locator('.chart-full .chart-table-toggle').click();
-  await expect(page.locator('.chart-full .chart-table-pane')).toBeVisible();
+});
+
+test('an evidence link carries the placement it was copied at', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto(`${AGE}&full=1&tbl=only`);
+  const full = page.locator('.chart-full');
+  await expect(full).toBeVisible({ timeout: 90_000 });
+  await expect(full.locator('.chart-full-body > svg')).toHaveCount(0);
+  await expect(full.locator('.chart-table-pane')).toBeVisible();
+});
+
+test('a pinned row narrows the copy to the selection', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto(`${AGE}&sel=70:70`);
+  const panel = page.locator('.selected-evidence');
+  await expect(panel.locator('.chart-workspace')).toBeVisible({ timeout: 90_000 });
+  await panel.locator('.exact-values summary').click();
+
+  // pinning is an act of narrowing, and the button says what it will take
+  const copy = panel.locator('.exact-tool', { hasText: /^Copy 1 row$/ });
+  await expect(copy).toBeVisible();
+  await copy.click();
+  const pasted: string = await page.evaluate(() => navigator.clipboard.readText());
+  const lines = pasted.split('\r\n');
+  expect(lines).toHaveLength(3); // provenance, header, the pinned row
+  expect(lines[0]).toContain('1 of');
+  expect(lines[0]).toContain('selected');
+  expect(lines[2].startsWith('70\t')).toBe(true);
 });
 
 test('the full view survives a reload with the studio open', async ({ page }) => {
@@ -160,13 +204,15 @@ test('the value table leaves as tab-separated text and as a CSV file', async ({ 
   await expect(panel.locator('.chart-workspace')).toBeVisible({ timeout: 90_000 });
   await panel.locator('.exact-values summary').click();
 
-  // copy: a spreadsheet paste is tab separated, headers first, and the
-  // stacked cells arrive as their own numeric columns
+  // copy: a spreadsheet paste leads with the provenance line, then the
+  // headers, and the stacked cells arrive as their own numeric columns
   await panel.locator('.exact-tool', { hasText: 'Copy' }).click();
   await expect(panel.locator('.exact-tool').first()).toContainText('Copied');
   const pasted: string = await page.evaluate(() => navigator.clipboard.readText());
   const lines = pasted.split('\r\n');
-  const header = lines[0].split('\t');
+  expect(lines[0]).toContain('EXP-07');
+  expect(lines[0]).toMatch(/run .+ on v\d+/);
+  const header = lines[1].split('\t');
   expect(header[0]).toMatch(/age/i);
   expect(header.some((cell) => /low \(-2 SE\)$/.test(cell))).toBe(true);
   expect(header.some((cell) => /high \(\+2 SE\)$/.test(cell))).toBe(true);
@@ -176,12 +222,13 @@ test('the value table leaves as tab-separated text and as a CSV file', async ({ 
   // every cell that carries a number carries only a number
   row.slice(1).filter(Boolean).forEach((cell) => expect(Number.isNaN(Number(cell))).toBe(false));
 
-  // download: the same shape, comma separated, named for the chart
+  // download: the same shape, comma separated, and the file is named for the
+  // experiment, run and model version rather than for the chart alone
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     panel.locator('.exact-tool', { hasText: 'Download CSV' }).click(),
   ]);
-  expect(download.suggestedFilename()).toMatch(/\.csv$/);
+  expect(download.suggestedFilename()).toMatch(/^exp-07-.*-run-.*-v\d+\.csv$/);
   const stream = await download.createReadStream();
   const csv = await new Promise<string>((resolve, reject) => {
     let text = '';
@@ -190,7 +237,11 @@ test('the value table leaves as tab-separated text and as a CSV file', async ({ 
     stream.on('error', reject);
   });
   expect(csv.charCodeAt(0)).toBe(0xfeff);
-  expect(csv.split('\r\n')[0].replace('﻿', '')).toBe(header.join(','));
+  // the same provenance line, CSV-quoted if it happens to hold a comma
+  expect(csv.split('\r\n')[0].replace('﻿', '').replace(/^"|"$/g, '').replace(/""/g, '"')).toBe(
+    lines[0],
+  );
+  expect(csv.split('\r\n')[1]).toBe(header.join(','));
   expect(csv.split('\r\n')).toHaveLength(lines.length);
 });
 
