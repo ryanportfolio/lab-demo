@@ -13,6 +13,8 @@ interface Props {
   savedEvidence: SavedChartEvidence[];
   onAsk: (ask: AgentAsk) => void;
   onSave: (evidence: SavedChartEvidence) => void;
+  /** ids already carried into review, so a saved reading can say so */
+  savedIds?: string[];
   onCite?: (code: string) => void;
 }
 
@@ -36,6 +38,7 @@ export default function ReviewView({
   savedEvidence,
   onAsk,
   onSave,
+  savedIds,
   onCite,
 }: Props) {
   const [weakFocusNonce, setWeakFocusNonce] = useState(0);
@@ -210,6 +213,7 @@ export default function ReviewView({
             focused
             onAsk={onAsk}
             onSave={onSave}
+            savedIds={savedIds}
             onCite={onCite}
             askReady
             baseVersion={run.baseModelVersion}

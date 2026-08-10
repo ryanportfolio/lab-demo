@@ -383,8 +383,9 @@ export default function AskChat({
 
         {answers.map((a, i) => (
           <div className="ask-turn" key={i}>
+            {/* The question is the band, not a bubble on one: it runs the
+                panel's full width and needs no "You" to say whose it is */}
             <div className="ask-row you">
-              <span className="who">You</span>
               <div className="bubble">
                 {a.display ?? a.question}
                 {a.chip && <span className="ask-chip-echo">{a.chip}</span>}

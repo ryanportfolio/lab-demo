@@ -410,8 +410,23 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
   flex: 1 1 100%; border-color: color-mix(in srgb, var(--brand) 45%, var(--border));
   background: color-mix(in srgb, var(--brand) 12%, var(--card)); color: var(--ci-text); font-weight: 550;
 }
-.chart-actions .act-primary:hover, .chart-actions .act-primary:focus-visible {
+/* A reading already in the review package is a state, not an offer: the
+   button keeps its place in the row and stops asking to be pressed. */
+.chart-actions .act-primary[data-done] {
+  border-color: color-mix(in srgb, var(--ok) 45%, var(--border));
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  color: var(--ok);
+}
+/* :not([data-done]) matters more than it looks: the pointer is still on the
+   button the moment it is pressed, so a plain hover rule would repaint the
+   saved state away exactly when it is being read. */
+.chart-actions .act-primary:not([data-done]):hover,
+.chart-actions .act-primary:not([data-done]):focus-visible {
   border-color: var(--brand); background: color-mix(in srgb, var(--brand) 20%, var(--card)); color: var(--ci-text);
+}
+.chart-actions .act-primary[data-done]:hover,
+.chart-actions .act-primary[data-done]:focus-visible {
+  border-color: var(--ok); background: color-mix(in srgb, var(--ok) 20%, transparent);
 }
 .chart-action-status { display: block; min-height: 16px; margin-top: 4px; color: var(--ok); font-family: var(--mono); font-size: 12.5px }
 .chart-notes { border-top: 1px solid var(--border-muted); color: var(--fg-subtle); font-size: 12.5px }

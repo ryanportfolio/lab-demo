@@ -20,6 +20,7 @@ import {
   isSecondarySeries,
   makeSavedEvidence,
   normalizeSelection,
+  savedEvidenceId,
   selectionLabel,
   selectionValues,
   weakActionLabel,
@@ -991,15 +992,30 @@ export default function Chart({
               >
                 Ask about selection
               </button>
+              {/* A reading already carried into review says so rather than
+                  offering to carry it again */}
               <button
                 type="button"
                 className="act-primary"
+                data-done={
+                  context.savedIds?.includes(
+                    savedEvidenceId(chart, context, selection, mode),
+                  ) || undefined
+                }
                 onClick={() => {
                   context.onSave(makeSavedEvidence(chart, context, selection, mode));
                   setActionStatus('Saved to final review');
                 }}
               >
-                Save to review
+                {context.savedIds?.includes(
+                  savedEvidenceId(chart, context, selection, mode),
+                ) ? (
+                  <>
+                    <span aria-hidden="true">✓</span> Saved to review
+                  </>
+                ) : (
+                  'Save to review'
+                )}
               </button>
               <button type="button" onClick={copyLink}>Copy evidence link</button>
             </>

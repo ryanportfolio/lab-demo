@@ -237,6 +237,9 @@ export default function App() {
     setAskOpen(true);
   }, []);
 
+  // the ids already carried into review, so a saved reading can say so
+  const savedIds = useMemo(() => savedEvidence.map((item) => item.id), [savedEvidence]);
+
   const saveEvidence = useCallback((evidence: SavedChartEvidence) => {
     setSavedEvidence((current) => [
       evidence,
@@ -518,6 +521,7 @@ export default function App() {
                     focused
                     onAsk={askFromEvidence}
                     onSave={saveEvidence}
+                    savedIds={savedIds}
                     onCite={revealExperiment}
                     askReady={!!complete}
                     experiments={run.experiments}
@@ -549,6 +553,7 @@ export default function App() {
             savedEvidence={savedEvidence}
             onAsk={askFromEvidence}
             onSave={saveEvidence}
+            savedIds={savedIds}
             onCite={revealExperiment}
           />
         ) : (

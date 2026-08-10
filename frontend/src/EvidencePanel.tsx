@@ -97,6 +97,7 @@ export default function EvidencePanel({
   focused = false,
   onAsk,
   onSave,
+  savedIds,
   onCite,
   askReady = false,
   experiments,
@@ -112,6 +113,8 @@ export default function EvidencePanel({
   focused?: boolean;
   onAsk?: (ask: AgentAsk) => void;
   onSave?: (evidence: SavedChartEvidence) => void;
+  /** ids already carried into review, so a saved reading can say so */
+  savedIds?: string[];
   /** citation navigation out of the docked rail (reveal an experiment) */
   onCite?: (code: string) => void;
   /** the run has finished, so the docked rail's questions are open */
@@ -450,6 +453,7 @@ export default function EvidencePanel({
                           }
                         },
                         onSave,
+                        savedIds,
                       }
                     : undefined
                 }
