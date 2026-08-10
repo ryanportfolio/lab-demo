@@ -305,7 +305,20 @@ export default function AskChat({
                   <p key={k}>{p}</p>
                 ))}
                 {a.charts.map((c) => (
-                  <Chart key={c.kind + c.title} chart={c} plain={plain} />
+                  <Chart
+                    key={c.kind + c.title}
+                    chart={c}
+                    plain={plain}
+                    // A selection on an answer's chart can be asked about in
+                    // place: the composed question and its chip land in this
+                    // same composer
+                    onAskSelection={(carried) => {
+                      setQ(carried.question);
+                      setChip(carried);
+                      requestAnimationFrame(() => input.current?.focus());
+                    }}
+                    askSource={a.citations[0]?.code ?? null}
+                  />
                 ))}
                 {a.citations.length > 0 && (
                   <div className="cites">

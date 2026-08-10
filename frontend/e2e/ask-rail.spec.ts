@@ -92,6 +92,61 @@ test('sessions persist on this browser and restore with the link', async ({ page
   await expect(rail.locator('.ask-row.you').first()).toBeVisible();
 });
 
+test('right-click on a selected slice is the ask shortcut, on the big chart and on answer charts', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  await page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"] .expand').click();
+  const rail = page.locator('.chart-studio-rail');
+  await expect(rail).toBeVisible();
+
+  // the studio's big chart: pin the weakest slice, right-click, and the
+  // composer is seeded with the question and its context chip
+  await page.locator('.chart-full-diagnostics .pin-weakest').click();
+  await page.locator('.chart-full > svg').click({ button: 'right' });
+  await expect(rail.locator('textarea')).toHaveValue(/Explain/);
+  await expect(rail.locator('.ask-chip')).toContainText('EXP-07');
+
+  // an answer's mini chart can do the same without a workspace context
+  await rail.locator('.ask-chip button').click();
+  await rail.locator('.ask-sugg button').first().click();
+  const answerChart = rail.locator('.ask-row.ai .chart').first();
+  await expect(answerChart).toBeVisible({ timeout: 15_000 });
+  await answerChart.locator('.pin-weakest').click();
+  await expect(answerChart.locator('.chart-actions button', { hasText: 'Ask about selection' })).toBeVisible();
+  await answerChart.locator('svg').first().click({ button: 'right' });
+  await expect(rail.locator('.ask-foot .ask-chip')).toBeVisible();
+  await expect(rail.locator('textarea')).toHaveValue(/Explain/);
+});
+
+test('the seam between chart and rail drags, persists, and resets on double-click', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  await page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"] .expand').click();
+  const rail = page.locator('.chart-studio-rail');
+  await expect(rail).toBeVisible();
+  const before = (await rail.boundingBox())!.width;
+
+  const seam = (await page.locator('.studio-resize').boundingBox())!;
+  const y = seam.y + seam.height / 2;
+  await page.mouse.move(seam.x + seam.width / 2, y);
+  await page.mouse.down();
+  await page.mouse.move(seam.x + seam.width / 2 - 120, y, { steps: 6 });
+  await page.mouse.up();
+  const dragged = (await rail.boundingBox())!.width;
+  expect(dragged).toBeGreaterThan(before + 100);
+
+  // the width is a preference: it survives reopening the studio by link
+  await page.goto(page.url());
+  await expect(page.locator('.promote')).toBeVisible({ timeout: 90_000 });
+  await expect(rail).toBeVisible({ timeout: 20_000 });
+  expect((await rail.boundingBox())!.width).toBeGreaterThan(before + 100);
+
+  await page.locator('.studio-resize').dblclick();
+  expect((await rail.boundingBox())!.width).toBeLessThan(before + 10);
+});
+
 test('narrow viewports keep the centered dialog and the palette fallback', async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 1200 });
   await page.goto('/?theme=light&noanim=1');

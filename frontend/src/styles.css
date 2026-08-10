@@ -390,7 +390,12 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-row.ai .who { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--ci-text) }
 .ask-row .bubble { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.55 }
 .ask-row.you .bubble { border: 1px solid var(--border); border-radius: var(--r-md); padding: 9px 12px; background: var(--chipbg); color: var(--fg); font-weight: 500 }
-.ask-row.ai .bubble { border-left: 2px solid var(--border); padding-left: 12px }
+/* The question is a block the mark sits beside; the answer is the surface
+   itself, so its mark moves to the right edge and the text runs full width.
+   Only the answer's first row keeps clear of the mark. */
+.ask-row.ai { display: block; position: relative }
+.ask-row.ai .who { position: absolute; top: 0; right: 0 }
+.ask-row.ai .bubble > :first-child { padding-right: 34px }
 .ask-row.ai .bubble p + p { margin-top: 8px }
 .ask-row.ai .bubble .chart { margin-top: 12px }
 .steps { margin-bottom: 10px }
@@ -497,6 +502,13 @@ body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 .chart-full-split > svg { width: min(100%, 1600px, max(520px, calc((100dvh - 430px) * 920 / 470))) }
 .chart-full-split > svg[data-tall-frame] { width: min(100%, 1600px, max(520px, calc((100dvh - 430px) * 920 / 540))) }
 .chart-studio-rail { flex: 0 0 490px; min-width: 0; display: flex; flex-direction: column; height: 100dvh; background: var(--card) }
+/* The seam between chart and rail is the sizer. It straddles the chart pane's
+   border so the grab target is wider than the line it draws. */
+.studio-resize { flex: 0 0 10px; margin: 0 -5px; position: relative; z-index: 3; cursor: col-resize; background: transparent; touch-action: none }
+.studio-resize::after { content: ''; position: absolute; inset: 0; left: 4px; width: 2px; background: transparent; transition: background var(--t-fast) var(--ease) }
+.studio-resize:hover::after, .studio-resize[data-drag]::after { background: var(--brand) }
+.studio-resize:focus-visible { outline: none }
+.studio-resize:focus-visible::after { background: var(--ring) }
 .chart-studio-rail .ask-body { padding: 11px; gap: 28px }
 .chart-studio-rail .ask-intro p,
 .chart-studio-rail .ask-row .bubble,
