@@ -7,7 +7,9 @@ import {
   type EvidenceChart,
   type Experiment,
 } from './api';
+import { chartKey, chartsFromEvidence } from './evidenceCharts';
 import { fmtDelta, fmtGini } from './format';
+import StudioNav from './StudioNav';
 import {
   contractFor,
   displayChart,
@@ -21,98 +23,6 @@ import {
   type ChartSelection,
   type SavedChartEvidence,
 } from './chartWorkspace';
-
-function liftChart(ev: Evidence): EvidenceChart | null {
-  if (!ev.lift.length) return null;
-  const pts = (pick: (bucket: Evidence['lift'][number]) => number) =>
-    ev.lift.map((bucket) => ({
-      x: bucket.decile,
-      y: pick(bucket),
-      label: String(bucket.decile),
-    }));
-  const first = ev.lift[0];
-  const last = ev.lift[ev.lift.length - 1];
-  const ratio = (lo: number, hi: number) => (lo > 0 ? hi / lo : 0);
-  return {
-    kind: 'lift',
-    title: 'Actual frequency by risk decile',
-    xLabel: 'Decile of predicted rate, equal exposure',
-    yLabel: 'Claims per car year',
-    series: [
-      { label: 'Earned exposure', style: 'bar', points: pts((bucket) => bucket.exposure) },
-      { label: 'Actual, this model', style: 'bar', points: pts((bucket) => bucket.actual) },
-      { label: 'Predicted', style: 'line', points: pts((bucket) => bucket.predicted) },
-      {
-        label: 'Actual, v12 deciles',
-        style: 'dot',
-        points: pts((bucket) => bucket.baselineActual),
-      },
-    ],
-    notes: [
-      `Top decile against bottom decile: ${ratio(first.actual, last.actual).toFixed(2)}x here, ${ratio(first.baselineActual, last.baselineActual).toFixed(2)}x on v12`,
-      'Buckets hold equal earned exposure, so bar heights compare directly',
-    ],
-    gloss:
-      'Policies are ordered by predicted risk, split into ten equal-exposure groups, and checked against what actually happened.',
-  };
-}
-
-function foldChart(ev: Evidence): EvidenceChart | null {
-  if (!ev.foldDeltas.length) return null;
-  const held = ev.foldDeltas.filter((delta) => delta > 0).length;
-  const worst = Math.min(...ev.foldDeltas);
-  return {
-    kind: 'folds',
-    title: 'Change in separation by fold',
-    xLabel: 'Cross validation fold',
-    yLabel: 'Change in Gini against v12',
-    series: [
-      {
-        label: 'Fold delta',
-        style: 'bar',
-        points: ev.foldDeltas.map((delta, index) => ({
-          x: index + 1,
-          y: delta,
-          label: String(index + 1),
-        })),
-      },
-    ],
-    notes: [
-      `${held} of ${ev.foldDeltas.length} folds land above zero, weakest ${worst >= 0 ? '+' : ''}${worst.toFixed(3)}`,
-      'Each fold refits the baseline and variant on the same rows',
-    ],
-    gloss:
-      'The comparison is rerun across held-back slices. A gain that survives every slice is less likely to be noise.',
-  };
-}
-
-const chartKey = (chart: EvidenceChart) => `${chart.kind}:${chart.title}`;
-
-function normalizeChart(chart: EvidenceChart): EvidenceChart[] {
-  if (chart.kind !== 'missingness' || chart.series.length < 2) return [chart];
-  const regional = chart.series.find((series) => series.label === 'Missing share by region');
-  const frequency = chart.series.find((series) => series.label === 'Frequency by mileage status');
-  if (!regional || !frequency) return [chart];
-  return [
-    {
-      ...chart,
-      title: 'Missing mileage by region',
-      xLabel: 'Region',
-      yLabel: 'Policies missing mileage, percent',
-      series: [regional],
-      notes: chart.notes.slice(0, 1),
-    },
-    {
-      ...chart,
-      kind: 'missing_frequency',
-      title: 'Frequency by mileage status',
-      xLabel: 'Mileage status',
-      yLabel: 'Claims per car year',
-      series: [frequency],
-      notes: chart.notes.slice(1),
-    },
-  ];
-}
 
 function tabLabel(chart: EvidenceChart): string {
   const labels: Record<string, string> = {
@@ -189,6 +99,9 @@ export default function EvidencePanel({
   onSave,
   onCite,
   askReady = false,
+  experiments,
+  navTarget,
+  onStudioNavigate,
   baseVersion = 12,
   weakFocus,
 }: {
@@ -203,6 +116,12 @@ export default function EvidencePanel({
   onCite?: (code: string) => void;
   /** the run has finished, so the docked rail's questions are open */
   askReady?: boolean;
+  /** the whole run's experiments; enables the studio's chart navigator */
+  experiments?: Experiment[];
+  /** a chart the studio navigator asked for; the nonce fires the switch */
+  navTarget?: { code: string; kind: string; nonce: number } | null;
+  /** studio-internal navigation: swap experiment and chart, keep the studio open */
+  onStudioNavigate?: (code: string, kind: string) => void;
   /** version of the model this run branched from, stamped on evidence context */
   baseVersion?: number;
   /**
@@ -235,13 +154,16 @@ export default function EvidencePanel({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // Switching experiments closes the studio; the initial mount honors ?full=1.
-  // Compare against the previous code rather than skipping the first effect
-  // run, because StrictMode double-invokes mount effects in dev.
+  // External experiment switches (ledger click, citation travel) close the
+  // studio — those paths clear full from the URL first. Navigator switches
+  // keep full=1, so the studio stays up and only the pane swaps. Compare
+  // against the previous code rather than skipping the first effect run,
+  // because StrictMode double-invokes mount effects in dev.
   const prevCode = useRef(code);
   useEffect(() => {
     if (prevCode.current === code) return;
     prevCode.current = code;
+    if (new URLSearchParams(location.search).get('full') === '1') return;
     setFullOpen(false);
     setRailSeed(null);
   }, [code]);
@@ -305,20 +227,27 @@ export default function EvidencePanel({
     };
   }, [runId, code, retry]);
 
-  const charts = useMemo(() => {
-    if (!evidence) return [];
-    const next = evidence.charts.flatMap(normalizeChart);
-    const lift = liftChart(evidence);
-    const folds = foldChart(evidence);
-    if (lift) next.push(lift);
-    if (folds) next.push(folds);
-    return next;
-  }, [evidence]);
+  const charts = useMemo(() => (evidence ? chartsFromEvidence(evidence) : []), [evidence]);
   const shownCode = evidence?.code ?? code;
   const activeChart = charts.find((chart) => chartKey(chart) === activeKey) ?? charts[0];
   const displayedChart = activeChart
     ? displayChart(activeChart, contractFor(activeChart), mode)
     : undefined;
+
+  // Apply a navigator switch once its experiment's charts are on hand. The
+  // nonce distinguishes a fresh click from a target already applied.
+  const appliedNav = useRef(0);
+  useEffect(() => {
+    if (!navTarget || navTarget.nonce === appliedNav.current) return;
+    if (shownCode !== navTarget.code || !charts.length) return;
+    appliedNav.current = navTarget.nonce;
+    const target = charts.find((chart) => chart.kind === navTarget.kind) ?? charts[0];
+    resolve(() => {
+      setActiveKey(chartKey(target));
+      setMode(contractFor(target).defaultMode);
+      setSelection(null);
+    });
+  }, [navTarget, charts, shownCode, resolve]);
 
   // Jump to the weak point's own chart. The chart is picked by matching the
   // weak-point prose against chart words, not by position, so the same button
@@ -526,6 +455,17 @@ export default function EvidencePanel({
                 }
                 expanded={fullOpen}
                 onExpandedChange={setFull}
+                sideNav={
+                  railWide && experiments && onStudioNavigate ? (
+                    <StudioNav
+                      runId={runId}
+                      experiments={experiments}
+                      activeCode={shownCode}
+                      activeKind={activeChart?.kind ?? null}
+                      onNavigate={onStudioNavigate}
+                    />
+                  ) : undefined
+                }
                 askRail={
                   railWide && onAsk && onSave ? (
                     <>

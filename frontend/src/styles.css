@@ -464,6 +464,9 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 @media (max-width: 1100px) {
   .chart-hint { position: static; margin: 2px 0 8px; text-align: left }
 }
+/* The split's chart pane is narrower than the viewport, so the absolute hint
+   would ride over the title; it joins the flow instead. */
+.chart-full-split .chart-hint { position: static; margin: 2px 0 8px; text-align: left }
 body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 @keyframes chartin { from { opacity: 0; transform: scale(.985) } }
 
@@ -500,3 +503,55 @@ body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 .ask-sess-open span { font-size: 11.5px; color: var(--fg-subtle) }
 .ask-sess-del { flex: none; min-width: 24px; min-height: 24px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--fg-subtle); font-size: 15px; line-height: 1; cursor: pointer }
 .ask-sess-del:hover { color: var(--fg); background: var(--chipbg) }
+
+/* ---- studio navigator: the harness-sidebar shape, purpose-built for run
+   evidence. Lab-tuned 2026-08-10 (280px, compact default, user-set density). ---- */
+.chart-studio-nav { flex: 0 0 auto; height: 100dvh; border-right: 1px solid var(--border); background: var(--bg) }
+.snav { width: 280px; height: 100%; display: flex; flex-direction: column; transition: width var(--t-fast) var(--ease) }
+.snav[data-collapsed] { width: 46px }
+.snav-top { display: flex; align-items: center; gap: 6px; padding: 10px 10px 8px }
+.snav[data-collapsed] .snav-top { justify-content: center; padding: 10px 0 8px }
+.snav-toggle, .snav-density { flex: none; font: inherit; font-size: 13px; font-family: var(--mono); min-width: 26px; min-height: 26px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--fg-muted); cursor: pointer }
+.snav-toggle:hover, .snav-density:hover { background: var(--chipbg); color: var(--fg) }
+.snav-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--r-pill); padding: 5px 11px; color: var(--fg-subtle) }
+.snav-search:focus-within { border-color: var(--fg-subtle) }
+.snav-search svg { flex: none }
+.snav-search input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 12.5px; color: var(--fg); outline: none }
+.snav-search input::placeholder { color: var(--fg-subtle) }
+.snav-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 2px 8px 10px }
+.snav-sect { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left; border: 0; background: transparent; font: inherit; padding: 12px 8px 5px; cursor: pointer; color: var(--fg-subtle); font-size: 12px; border-radius: var(--r-sm) }
+.snav-dot { flex: none; width: 7px; height: 7px; border-radius: var(--r-full); background: var(--fg-subtle) }
+.snav-dot[data-v="win"] { background: var(--ok) }
+.snav-dot[data-v="scr"] { background: var(--bad) }
+.snav-dot[data-v="abs"] { background: var(--brand) }
+.snav-st { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.snav-st b { font-family: var(--mono); font-size: 11.5px; font-weight: 500; color: var(--fg-muted); margin-right: 6px }
+.snav-chev { flex: none; font-size: 9px; opacity: 0; transition: transform var(--t-fast) var(--ease) }
+.snav-sect:hover .snav-chev, .snav-sect:focus-visible .snav-chev { opacity: 1 }
+.snav-group[data-closed] .snav-chev { transform: rotate(-90deg); opacity: 1 }
+.snav-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--fg-subtle); padding: 12px 8px 5px }
+.snav-item { display: flex; align-items: flex-start; gap: 2px; border-radius: var(--r-sm) }
+.snav-item:hover, .snav-item[data-active] { background: var(--chipbg) }
+.snav-open { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 8px; text-align: left; border: 0; background: transparent; color: var(--fg); font: inherit; padding: 6px 0 6px 8px; border-radius: var(--r-sm); cursor: pointer }
+.snav-bullet { flex: none; width: 6px; height: 6px; border-radius: var(--r-full); border: 1.5px solid var(--fg-subtle); margin-top: 6px }
+.snav-item[data-active] .snav-bullet { background: var(--brand); border-color: var(--brand) }
+.snav-t { flex: 1; min-width: 0 }
+.snav-t b { display: block; font-size: 13px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.snav-item[data-active] .snav-t b { font-weight: 500 }
+.snav-t small { display: none; font-family: var(--mono); font-size: 10.5px; color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.snav-q { display: none; font-size: 11.5px; color: var(--fg-muted); line-height: 1.35; margin-top: 1px }
+.snav[data-density="info"] .snav-t small { display: block }
+.snav[data-density="rich"] .snav-t small, .snav[data-density="rich"] .snav-q { display: block }
+.snav-star { flex: none; align-self: flex-start; border: 0; background: transparent; color: var(--fg-subtle); font-size: 13px; cursor: pointer; padding: 5px 6px 0 0; opacity: 0; border-radius: var(--r-sm) }
+.snav-item:hover .snav-star, .snav-item:focus-within .snav-star, .snav-star[data-on] { opacity: 1 }
+.snav-star[data-on] { color: var(--brand) }
+.snav-empty, .snav-none { padding: 6px 8px 8px 22px; font-size: 12px; color: var(--fg-subtle) }
+.snav-empty { padding-left: 8px; padding-top: 12px }
+.snav-foot { border-top: 1px solid var(--border-muted); padding: 8px 12px; font-size: 11px; color: var(--fg-subtle) }
+.snav :focus-visible { outline: 2px solid var(--ring); outline-offset: 1px }
+
+/* Scrollbars follow the theme on every studio scroll surface */
+.snav-list, .chart-scrim.studio .chart-full, .chart-studio-rail .ask-body, .ask-sess-list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}

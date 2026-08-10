@@ -723,6 +723,7 @@ export default function Chart({
   expanded: controlledExpanded,
   onExpandedChange,
   askRail,
+  sideNav,
 }: {
   chart: EvidenceChart;
   plain: boolean;
@@ -735,6 +736,8 @@ export default function Chart({
   onExpandedChange?: (next: boolean) => void;
   /** docked Ask surface; when present the full view is an edge-to-edge split */
   askRail?: ReactNode;
+  /** chart navigator docked on the studio's left edge */
+  sideNav?: ReactNode;
 }) {
   const contract = useMemo(() => contractFor(chart), [chart]);
   const [localSelection, setLocalSelection] = useState<ChartSelection | null>(null);
@@ -1024,6 +1027,15 @@ export default function Chart({
             className={`chart-scrim${askRail ? ' studio' : ''}`}
             onMouseDown={() => setExpanded(false)}
           >
+            {askRail && sideNav && (
+              <aside
+                className="chart-studio-nav"
+                aria-label="All charts in this run"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {sideNav}
+              </aside>
+            )}
             <figure
               className={`chart chart-workspace chart-full${askRail ? ' chart-full-split' : ''}`}
               data-kind={chart.kind}

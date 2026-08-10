@@ -245,6 +245,19 @@ export default function App() {
     setAnnouncement(`${evidence.title}, ${evidence.selection}, saved to final review.`);
   }, []);
 
+  // The studio navigator swaps experiment and chart while the studio stays
+  // open: full=1 survives in the URL, which is what tells EvidencePanel not
+  // to close on the code change.
+  const [navTarget, setNavTarget] = useState<{ code: string; kind: string; nonce: number } | null>(
+    null,
+  );
+  const studioNavigate = useCallback((code: string, kind: string) => {
+    userSelected.current = true;
+    setSelectedCode(code);
+    setNavTarget((prev) => ({ code, kind, nonce: (prev?.nonce ?? 0) + 1 }));
+    updateEvidenceUrl({ exp: code, chart: kind, mode: null, selection: null, full: true });
+  }, []);
+
   const chooseExperiment = useCallback((code: string) => {
     userSelected.current = true;
     setSelectedCode(code);
@@ -507,6 +520,9 @@ export default function App() {
                     onSave={saveEvidence}
                     onCite={revealExperiment}
                     askReady={!!complete}
+                    experiments={run.experiments}
+                    navTarget={navTarget}
+                    onStudioNavigate={studioNavigate}
                     baseVersion={run.baseModelVersion}
                   />
                 ) : (
