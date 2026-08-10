@@ -28,9 +28,10 @@ async function approveOpenReview(page: Page) {
   // that refresh resets the acknowledgment checkbox; let it settle first
   await page.waitForTimeout(900);
   if (await gate.count()) {
-    await gate.locator('input[type="checkbox"]').check();
-    await expect(gate.locator('button')).toBeEnabled();
-    await gate.locator('button').click();
+    await page.locator('.approval-ack input[type="checkbox"]').check();
+    const approve = gate.locator('.btn-primary');
+    await expect(approve).toBeEnabled();
+    await approve.click();
     await expect(page.locator('.stamp')).toBeVisible({ timeout: 20_000 });
   }
   await page.locator('.review-head .back').click();

@@ -14,32 +14,55 @@
   --z600: #52525c; --z700: #3f3f46; --z800: #27272a; --z900: #1c1c1f; --z950: #09090b;
   --brand: #4e79a7; --brand-100: #d8e3f5; --brand-300: #83aee2; --brand-600: #3d6187; --brand-800: #1d3247;
   --green: #197a30; --green-d: #11b652; --red: #bf000f; --red-d: #ff6568; --amber: #d58800; --amber-d: #e09f00;
-  --dot-close: #ff544d; --dot-min: #ffbd2e; --dot-max: #28c93f;
-  --r-sm: .25rem; --r-md: .375rem; --r-lg: .5rem; --r-xl: .75rem; --r-full: 9999px;
+  /* Radius collapses to three steps: 10px controls and cards, 14px floating
+     surfaces, 999 pills. The old four-step ramp aliases onto them so every
+     existing reference lands on the collapsed scale. */
+  --r-ctl: 10px; --r-surface: 14px; --r-pill: 999px;
+  --r-sm: var(--r-ctl); --r-md: var(--r-ctl); --r-lg: var(--r-ctl); --r-xl: var(--r-surface); --r-full: var(--r-pill);
+  /* One label layer: 11px uppercase mono carries section labels, keys, and
+     provenance. Nothing else in the app is uppercase. */
+  --label: 11px; --label-track: .12em;
+  /* Shell geometry: the breadcrumb bar's height is the inspector rail's sticky
+     offset, so the two never have to be kept in sync by hand. */
+  --topbar-h: 52px; --rail-w: 300px;
   --t-fast: .15s; --t-normal: .2s; --t-slow: .3s; --ease: cubic-bezier(.23, 1, .32, 1);
   --sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
+/* Two elevation steps and nothing else: --shadow is the barely-there ambient
+   a card carries, --shadow-lg belongs to floating surfaces only (ask palette,
+   expanded chart, run popover). --shadow-raise lifts a single selected
+   segment inside a segmented control. */
 html.light {
   --bg: #fff; --bg-subtle: var(--z50); --fg: var(--z950); --fg-muted: var(--z500); --fg-subtle: var(--z400);
   --border: var(--z200); --border-muted: var(--z100); --card: #fff; --primary: var(--z900); --primary-fg: var(--z50);
   --ring: var(--z400); --ok: var(--green); --bad: var(--red); --warn: var(--amber); --ci-text: var(--brand-600);
   --chipbg: var(--z100);
+  --shadow: 0 1px 2px rgba(9, 9, 11, .04), 0 8px 24px rgba(9, 9, 11, .06);
+  --shadow-lg: 0 2px 6px rgba(9, 9, 11, .05), 0 24px 60px rgba(9, 9, 11, .1);
+  --shadow-raise: 0 1px 2px rgba(9, 9, 11, .12);
 }
 html.dark {
   --bg: var(--z950); --bg-subtle: var(--z900); --fg: var(--z50); --fg-muted: var(--z400); --fg-subtle: var(--z500);
   --border: var(--z800); --border-muted: var(--z900); --card: var(--z950); --primary: var(--z50); --primary-fg: var(--z900);
   --ring: var(--z300); --ok: var(--green-d); --bad: var(--red-d); --warn: var(--amber-d); --ci-text: var(--brand-300);
-  --chipbg: var(--z800);
+  /* The chip ground is one step off the page in both themes: z100 on white,
+     z900 on z950. At z800 the dark segmented control read louder than the
+     content sitting on it. */
+  --chipbg: var(--z900);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+  --shadow-lg: 0 2px 6px rgba(0, 0, 0, .45), 0 24px 60px rgba(0, 0, 0, .5);
+  --shadow-raise: 0 1px 2px rgba(0, 0, 0, .5);
 }
 * { box-sizing: border-box; margin: 0; padding: 0 }
-html { font-family: var(--sans); -webkit-font-smoothing: antialiased }
+/* Digits align wherever they stack: measures, ids, deltas, table columns. */
+html { font-family: var(--sans); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums }
 body {
   background: var(--bg); color: var(--fg); min-height: 100vh;
   display: flex; flex-direction: column;
   transition: background var(--t-normal) var(--ease), color var(--t-normal) var(--ease);
 }
-.no-anim *, .no-anim { transition: none !important; animation: none !important }
+.no-anim *, .no-anim *::before, .no-anim *::after, .no-anim { transition: none !important; animation: none !important }
 .no-anim .evidence-focus.is-resolving .evidence-resolve { opacity: 1 !important; filter: none !important }
 
 
@@ -47,9 +70,9 @@ body {
 .layout { display: grid; grid-template-columns: 1fr 330px }
 .main { padding: 30px 36px 40px; min-width: 0 }
 .rail { border-left: 1px solid var(--border-muted); padding: 30px 22px 40px; display: flex; flex-direction: column; gap: 24px }
-.rail h3 { font-family: var(--mono); font-size: 12.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-subtle); margin-bottom: 10px }
+.rail h3 { font-family: var(--mono); font-size: var(--label); font-weight: 500; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--fg-subtle); margin-bottom: 10px }
 
-.goal { position: sticky; top: 52px; z-index: 10; box-shadow: 0 6px 14px -10px rgba(0,0,0,.4); display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; background: var(--bg) }
+.goal { position: sticky; top: 52px; z-index: 10; box-shadow: var(--shadow); display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; background: var(--bg) }
 .goal .ai { flex: none; width: 26px; height: 26px; border-radius: var(--r-full); background: var(--chipbg); display: grid; place-items: center; font-family: var(--mono); font-size: 12px; color: var(--fg-muted) }
 .goal .txt { font-size: 15.5px; line-height: 1.5 }
 .goal .txt b { font-weight: 500 }
@@ -60,7 +83,7 @@ body {
 .strip .spin { display: inline-block; width: 10px; height: 10px; border: 1.5px solid var(--fg-subtle); border-top-color: transparent; border-radius: var(--r-full); vertical-align: -1px; margin-right: 5px }
 .running .spin { animation: rot .8s linear infinite }
 @keyframes rot { to { transform: rotate(360deg) } }
-.strip .replay { margin-left: auto; font: inherit; font-size: 14px; padding: 5px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); color: var(--fg-muted); cursor: pointer; transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease) }
+.strip .replay { margin-left: auto; font: inherit; font-size: 14px; padding: 5px 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card); color: var(--fg-muted); cursor: pointer; transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease) }
 .strip .replay:hover { color: var(--fg); border-color: var(--fg-subtle) }
 .strip .replay:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
 
@@ -79,7 +102,9 @@ body {
 .exp .name { font-size: 15.5px; font-weight: 500 }
 .exp .hyp { font-size: 14px; color: var(--fg-muted); line-height: 1.45; margin-top: 5px }
 .exp .stat { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13.5px; min-height: 22px; flex-wrap: wrap }
-.chip { font-family: var(--mono); font-size: 12.5px; padding: 2px 7px; border-radius: var(--r-sm); background: var(--chipbg); color: var(--fg-muted); white-space: nowrap }
+/* Shape 2 of 3: the bordered pill. A pill always carries a hairline so a
+   reader can tell scoped state from body copy without hovering it. */
+.chip { font-family: var(--mono); font-size: 12.5px; padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card); color: var(--fg-muted); white-space: nowrap }
 .chip.g { color: var(--ok) }
 .chip.b { color: var(--bad) }
 .chip.w { color: var(--warn) }
@@ -90,7 +115,7 @@ html.dark .folds i { background: var(--z700) }
 .folds i.p, html.dark .folds i.p { background: var(--ok) }
 .folds i.f, html.dark .folds i.f { background: var(--bad) }
 .exp .verdict { margin-top: 10px; font-size: 14px; line-height: 1.45; border-top: 1px solid var(--border-muted); padding-top: 9px; color: var(--fg-muted) }
-.exp .verdict b { font-family: var(--mono); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600 }
+.exp .verdict b { font-family: var(--mono); font-size: var(--label); letter-spacing: var(--label-track); text-transform: uppercase; font-weight: 600 }
 .exp .verdict.ship b { color: var(--ok) }
 .exp .verdict.scrap b { color: var(--bad) }
 .exp .verdict.winner b { color: var(--ci-text) }
@@ -146,19 +171,24 @@ body.plain .gloss { display: block }
 .swrow { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between }
 .swtxt { font-size: 13.5px; color: var(--fg-muted); line-height: 1.4 }
 .swtxt b { display: block; font-weight: 500; color: var(--fg); font-size: 14.5px; margin-bottom: 2px }
+/* The fourth shape: an iOS-style switch, where the label does the naming and
+   the track does the state. */
 .sw {
-  flex: none; width: 34px; height: 20px; border-radius: var(--r-full); border: 1px solid var(--border);
+  flex: none; width: 34px; height: 20px; border-radius: var(--r-pill); border: 1px solid var(--border);
   background: var(--chipbg); position: relative; cursor: pointer; padding: 0; margin-top: 2px;
   transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 }
-.sw i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: var(--r-full); background: var(--card); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform var(--t-fast) var(--ease) }
+.sw i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: var(--r-pill); background: var(--card); box-shadow: var(--shadow-raise); transition: transform var(--t-fast) var(--ease) }
 .sw[aria-checked="true"], html.dark .sw[aria-checked="true"] { background: var(--brand); border-color: var(--brand) }
 .sw[aria-checked="true"] i { transform: translateX(14px); background: #fff }
 .sw:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
 
-.seg { display: inline-flex; background: var(--bg-subtle); border: 1px solid var(--border-muted); border-radius: var(--r-lg); padding: 3px; gap: 2px }
-.seg button { font: inherit; font-size: 14px; padding: 4px 0; flex: 1; border: 0; background: transparent; color: var(--fg-muted); border-radius: var(--r-md); cursor: pointer; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease) }
-.seg button[aria-pressed="true"] { background: var(--card); color: var(--fg); font-weight: 500; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .1), 0 1px 2px -1px rgba(0, 0, 0, .1) }
+/* Shape 1 of 3: the segmented control. Chip ground, no outer border, and the
+   selected segment floats on it as a surface-coloured slab. */
+.seg { display: inline-flex; background: var(--chipbg); border: 0; border-radius: var(--r-ctl); padding: 2px; gap: 2px }
+.seg button { font: inherit; font-size: 14px; padding: 5px 0; flex: 1; border: 0; background: transparent; color: var(--fg-muted); border-radius: calc(var(--r-ctl) - 2px); cursor: pointer; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease) }
+.seg button:hover:not([aria-pressed="true"]) { color: var(--fg) }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--fg); font-weight: 500; box-shadow: var(--shadow-raise) }
 .seg button:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px }
 .rail .seg { width: 100% }
 
@@ -167,20 +197,20 @@ body.plain .gloss { display: block }
 /* review view */
 .rv-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap }
 .rv-head h2 { font-size: 22.5px; font-weight: 600; letter-spacing: -.02em }
-.rv-head .vchip { font-family: var(--mono); font-size: 13px; padding: 3px 8px; border-radius: var(--r-sm); background: var(--chipbg); color: var(--fg-muted) }
-.status { font-family: var(--mono); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; padding: 3px 9px; border-radius: var(--r-full); border: 1px solid var(--border); color: var(--fg-muted) }
+.rv-head .vchip { font-family: var(--mono); font-size: 13px; padding: 3px 9px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card); color: var(--fg-muted) }
+.status { font-family: var(--mono); font-size: var(--label); letter-spacing: var(--label-track); text-transform: uppercase; padding: 4px 10px; border-radius: var(--r-pill); border: 1px solid var(--border); color: var(--fg-muted) }
 .status.approved { color: var(--ok); border-color: currentColor }
 .rv-sub { font-size: 14px; color: var(--fg-subtle); margin-top: 6px }
 .back { display: inline-block; font-size: 14px; color: var(--fg-muted); text-decoration: none; margin-bottom: 14px; cursor: pointer; background: none; border: 0; font-family: inherit; padding: 0 }
 .back:hover { color: var(--fg) }
 .back:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
-.rv-note { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; margin-top: 20px; background: var(--bg) }
+.rv-note { border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 14px 16px; margin-top: 20px; background: var(--card); box-shadow: var(--shadow) }
 .rv-note .byline { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--fg-subtle); margin-bottom: 8px }
 .rv-note .byline .ai { width: 22px; height: 22px; border-radius: var(--r-full); background: var(--chipbg); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; color: var(--fg-muted) }
 .rv-note p { font-size: 14.5px; line-height: 1.55; color: var(--fg) }
 .rv-note p + p { margin-top: 8px }
 .rv-sect { margin-top: 24px }
-.rv-sect > h3 { font-family: var(--mono); font-size: 12.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-subtle); margin-bottom: 10px }
+.rv-sect > h3 { font-family: var(--mono); font-size: var(--label); font-weight: 500; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--fg-subtle); margin-bottom: 10px }
 .gr-row { display: flex; gap: 10px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--border-muted); font-size: 14.5px }
 .gr-row:last-child { border-bottom: 0 }
 .gr-row .mk { font-family: var(--mono); flex: none; width: 16px; color: var(--ok) }
@@ -190,13 +220,13 @@ body.plain .gloss { display: block }
 .led-row { display: flex; gap: 12px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--border-muted); font-size: 14.5px }
 .led-row:last-child { border-bottom: 0 }
 .led-row .lid { font-family: var(--mono); font-size: 12.5px; color: var(--fg-subtle); flex: none; width: 52px }
-.led-row .disp { font-family: var(--mono); font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; flex: none; width: 76px }
+.led-row .disp { font-family: var(--mono); font-size: var(--label); letter-spacing: var(--label-track); text-transform: uppercase; flex: none; width: 76px }
 .led-row .disp.abs { color: var(--ci-text) }
 .led-row .disp.scr { color: var(--bad) }
 .led-row .disp.win { color: var(--ok) }
 .led-row .why { color: var(--fg-muted); line-height: 1.45 }
-.rv-product { margin-top: 22px; font-size: 14px; color: var(--fg-subtle); border: 1px dashed var(--border); border-radius: var(--r-md); padding: 10px 14px; line-height: 1.5 }
-.rv-approve { display: flex; align-items: center; gap: 14px; justify-content: space-between; flex-wrap: wrap; margin-top: 24px; border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; background: var(--bg) }
+.rv-product { margin-top: 22px; font-size: 14px; color: var(--fg-subtle); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 10px 14px; line-height: 1.5 }
+.rv-approve { display: flex; align-items: center; gap: 14px; justify-content: space-between; flex-wrap: wrap; margin-top: 24px; border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 14px 16px; background: var(--card); box-shadow: var(--shadow) }
 .rv-approve .txt { font-size: 14.5px; color: var(--fg-muted); line-height: 1.5 }
 .rv-approve button { font: inherit; font-size: 14.5px; font-weight: 500; padding: 8px 16px; border: 0; border-radius: var(--r-md); background: var(--primary); color: var(--primary-fg); cursor: pointer }
 .rv-approve button:disabled { opacity: .55; cursor: default }
@@ -210,35 +240,37 @@ body.plain .gloss { display: block }
 :root { --chart-line: var(--brand); --chart-base: var(--z400); --chart-band: var(--brand-300); --chart-alt: var(--z500); --chart-exposure: var(--z200) }
 html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-alt: var(--z400); --chart-exposure: var(--z800) }
 
+/* The bar states location and nothing else: brand, run, view. Everything in
+   it is muted back to body weight except the node you are standing on. */
 .topbar {
-  position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: auto 1fr auto;
-  align-items: center; gap: 18px; height: 52px; padding: 0 22px;
+  position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; gap: 18px; height: var(--topbar-h); padding: 0 22px;
   border-bottom: 1px solid var(--border); background: var(--bg);
 }
-.brand { display: flex; align-items: center; gap: 9px; font-size: 15.5px; font-weight: 600; letter-spacing: -.01em }
-.brand .logo { width: 15px; height: 15px; border-radius: var(--r-sm); background: var(--brand); transform: rotate(45deg) }
-.crumb { font-size: 14px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
-.crumb b { color: var(--fg); font-weight: 500 }
-.crumb span { margin: 0 6px; color: var(--fg-subtle) }
+.crumb { display: flex; align-items: center; min-width: 0; font-size: 14px; color: var(--fg-muted) }
+.brand { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; letter-spacing: -.01em; white-space: nowrap }
+.brand .logo { flex: none; width: 11px; height: 11px; border-radius: 2px; background: var(--brand); transform: rotate(45deg) }
+.crumb-sep { flex: none; margin: 0 8px; color: var(--fg-subtle) }
+.crumb-current { min-width: 0; overflow: hidden; color: var(--fg); font-weight: 500; text-overflow: ellipsis; white-space: nowrap }
 .tb-right { display: flex; justify-content: flex-end; gap: 10px }
 .askbtn {
   display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 14.5px;
-  padding: 6px 10px 6px 12px; border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--r-pill);
   background: var(--card); color: var(--fg-muted); cursor: pointer;
   transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 }
 .askbtn:hover:not(:disabled) { color: var(--fg); border-color: var(--fg-subtle) }
 .askbtn:disabled { opacity: .5; cursor: default }
 .askbtn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
-.kbd { font-family: var(--mono); font-size: 12px; color: var(--fg-subtle); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 1px 4px }
+.kbd { font-family: var(--mono); font-size: 12px; color: var(--fg-subtle); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 1px 6px }
 
 .app { flex: 1 }
 .banner { padding: 10px 22px }
 /* ---- evidence ---- */
 .exp.open { grid-column: 1 / -1; border-color: var(--fg-subtle) }
 .open-ev {
-  margin-top: 10px; font: inherit; font-size: 13.5px; padding: 4px 9px; cursor: pointer;
-  border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); color: var(--fg-muted);
+  margin-top: 10px; font: inherit; font-size: 13.5px; padding: 4px 11px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card); color: var(--fg-muted);
 }
 .open-ev:hover { color: var(--fg); border-color: var(--fg-subtle) }
 .open-ev:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
@@ -248,7 +280,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .facts b { font-family: var(--mono); font-weight: 500; color: var(--fg) }
 .charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px }
 
-.chart { border: 1px solid var(--border-muted); border-radius: var(--r-lg); padding: 12px 14px 10px; background: var(--bg) }
+.chart { border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 12px 14px 10px; background: var(--card); box-shadow: var(--shadow) }
 .chart figcaption { font-size: 14.5px; font-weight: 500; color: var(--fg); margin-bottom: 8px }
 .chart svg { display: block; width: 100%; height: auto }
 .chart .grid { stroke: var(--border-muted); stroke-width: 1 }
@@ -268,10 +300,11 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 
 /* ---- ask palette ---- */
 .ask-scrim { position: fixed; inset: 0; overscroll-behavior: contain; z-index: 40; background: rgba(9, 9, 11, .35); display: flex; justify-content: center; align-items: flex-start; padding: 8vh 16px 6vh }
+/* A floating surface: 14px radius and the only large shadow in the app. */
 .ask {
   width: min(760px, 100%); max-height: 86vh; display: flex; flex-direction: column;
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .35); overflow: hidden;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r-surface);
+  box-shadow: var(--shadow-lg); overflow: hidden;
 }
 .ask-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border-muted) }
 .ask-bar h2 { flex: 1; font-size: 14px; font-weight: 500; color: var(--fg) }
@@ -284,10 +317,12 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
   border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); color: var(--fg);
 }
 .ask-compose textarea:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px }
-.ask-send { font: inherit; font-size: 13px; font-weight: 500; padding: 9px 18px; border: 0; border-radius: var(--r-md); background: var(--primary); color: var(--primary-fg); cursor: pointer }
+.ask-send { font: inherit; font-size: 13px; font-weight: 500; padding: 9px 18px; border: 0; border-radius: var(--r-md); background: var(--primary); color: var(--primary-fg); cursor: pointer; transition: background var(--t-fast) var(--ease) }
+.ask-send:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 85%, var(--fg-subtle)) }
 .ask-send:disabled { opacity: .45; cursor: default }
 .ask-send:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
-.ask-esc { font: inherit; font-size: 12.5px; font-family: var(--mono); color: var(--fg-subtle); background: transparent; border: 1px solid var(--border); border-radius: var(--r-sm); padding: 2px 6px; cursor: pointer }
+.ask-esc { font: inherit; font-size: 12.5px; font-family: var(--mono); color: var(--fg-subtle); background: transparent; border: 1px solid var(--border); border-radius: var(--r-pill); padding: 2px 9px; cursor: pointer }
+.ask-esc:hover { color: var(--fg); border-color: var(--fg-subtle) }
 .ask-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px; display: flex; flex-direction: column; gap: 16px }
 .ask-intro p { font-size: 14.5px; color: var(--fg-muted); line-height: 1.55 }
 .ask-wait { margin-top: 10px; color: var(--warn) }
@@ -297,7 +332,7 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-sugg button:disabled, .ask-compose textarea:disabled { opacity: .5; cursor: default }
 .ask-sugg button:focus-visible, .cites button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
 .ask-followups { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-muted); padding-top: 12px }
-.ask-followups > span { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--fg-subtle) }
+.ask-followups > span { font-family: var(--mono); font-size: var(--label); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--fg-subtle) }
 .ask-followups .ask-sugg { margin-top: 0 }
 .ask-turn { display: flex; flex-direction: column; gap: 10px }
 .ask-row { display: flex; gap: 10px; align-items: flex-start }
@@ -312,7 +347,8 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .step .target { color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .step .ok { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--ok) }
 .cites { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px; color: var(--fg-subtle) }
-.cites button { font: inherit; font-size: 13px; font-family: var(--mono); padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--r-full); background: var(--bg); color: var(--ci-text); cursor: pointer }
+.cites button { font: inherit; font-size: 13px; font-family: var(--mono); padding: 3px 10px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card); color: var(--ci-text); cursor: pointer }
+.cites button:hover { border-color: var(--brand) }
 .ask-busy, .ask-error { font-family: var(--mono); font-size: 13px; color: var(--fg-subtle) }
 .ask-error { color: var(--bad) }
 .ask-foot { display: flex; flex-direction: column; gap: 7px; padding: 12px 14px; border-top: 1px solid var(--border-muted) }
@@ -350,18 +386,22 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart .tip text { font-family: var(--mono); font-size: 11.5px; fill: var(--fg-muted) }
 .chart .tip .tiphead { fill: var(--fg) }
 .chart figcaption { padding-right: 34px }
-.chart .expand { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; display: grid; place-items: center; background: none; border: 1px solid transparent; border-radius: var(--r-sm); color: var(--fg-subtle); cursor: pointer; padding: 0 }
+/* An icon button still has to read as pressable before it is hovered, so the
+   hairline is permanent rather than a hover reveal. */
+.chart .expand { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; display: grid; place-items: center; background: var(--card); border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--fg-subtle); cursor: pointer; padding: 0 }
 .chart .expand svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.4 }
-.chart .expand:hover { color: var(--fg); border-color: var(--border-muted) }
+.chart .expand:hover { color: var(--fg); border-color: var(--fg-subtle) }
 .chart .legend button { display: inline-flex; align-items: center; gap: 5px; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer }
+/* colour only: .off owns text-decoration, so hover must not fight it */
+.chart .legend button:hover:not(:disabled) { color: var(--fg) }
 .chart .legend button:disabled { cursor: default }
 .chart .legend button.off { opacity: .4; text-decoration: line-through }
 .chart-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(9, 9, 11, .45); display: flex; justify-content: center; align-items: center; padding: 4vh 18px; overscroll-behavior: contain }
-.chart-full { width: min(1150px, 96vw); max-height: 92vh; overflow: auto; overscroll-behavior: contain; margin: 0; padding: 16px 20px 14px; box-shadow: 0 30px 70px -30px rgba(0, 0, 0, .55); animation: chartin .12s ease-out }
+.chart-full { width: min(1150px, 96vw); max-height: 92vh; overflow: auto; overscroll-behavior: contain; margin: 0; border-radius: var(--r-surface); padding: 16px 20px 14px; box-shadow: var(--shadow-lg); animation: chartin .12s ease-out }
 .chart-full figcaption { font-size: 17px; padding-right: 48px }
 .chart-full .notes { font-size: 13.5px }
-.chart-full .chart-close { position: absolute; top: 12px; right: 14px; font-family: var(--mono); font-size: 12px; color: var(--fg-subtle); background: none; border: 1px solid var(--border-muted); border-radius: var(--r-sm); padding: 3px 8px; cursor: pointer }
-.chart-full .chart-close:hover { color: var(--fg) }
+.chart-full .chart-close { position: absolute; top: 12px; right: 14px; font-family: var(--mono); font-size: 12px; color: var(--fg-subtle); background: var(--card); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px 10px; cursor: pointer }
+.chart-full .chart-close:hover { color: var(--fg); border-color: var(--fg-subtle) }
 .chart-hint { display: block; margin-top: 10px; font-size: 12px; color: var(--fg-subtle); font-family: var(--mono) }
 body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 @keyframes chartin { from { opacity: 0; transform: scale(.985) } }

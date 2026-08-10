@@ -1,5 +1,6 @@
 // Active model context is the thing a reviewer keeps checking evidence against,
-// so it stays under the app bar while the working paper scrolls.
+// so it sits in an inspector rail beside the working paper and stays pinned
+// under the breadcrumb bar while the paper scrolls.
 
 import { expect, test } from '@playwright/test';
 import * as fs from 'node:fs';
@@ -7,7 +8,7 @@ import * as fs from 'node:fs';
 const OUT = '../.tmp/shots';
 fs.mkdirSync(OUT, { recursive: true });
 
-test('active model context stays pinned while the working paper scrolls', async ({
+test('active model context stays pinned beside the working paper while it scrolls', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 700 });
@@ -26,6 +27,18 @@ test('active model context stays pinned while the working paper scrolls', async 
   const topbar = page.locator('.topbar');
   const before = await context.boundingBox();
   expect(before).not.toBeNull();
+
+  // The rail is beside the working paper, not stacked above it
+  const paper = await page.locator('.run-view').boundingBox();
+  expect(before!.x).toBeGreaterThanOrEqual(paper!.x + paper!.width - 1);
+
+  // Placed right, read first: the rail leads the shell in the DOM so keyboard
+  // and screen-reader order reach the context before the evidence it frames.
+  const railLeadsDom = await page.evaluate(() => {
+    const shell = document.querySelector('.app-shell');
+    return shell?.firstElementChild?.classList.contains('context-strip') ?? false;
+  });
+  expect(railLeadsDom).toBe(true);
 
   await page.evaluate(() => window.scrollTo(0, 1_400));
   await page.waitForTimeout(300);

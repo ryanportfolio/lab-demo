@@ -60,8 +60,8 @@ test('a run leaves an agent record that survives into review and approval', asyn
   await expect(reviewRecord.locator('.act-row.act-human')).toHaveCount(0);
 
   // Approve: the run's single irreversible action, attributed to the human
-  await page.locator('.approval-actions input[type="checkbox"]').check();
-  await page.locator('.approval-actions button').click();
+  await page.locator('.approval-ack input[type="checkbox"]').check();
+  await page.locator('.approval-actions .btn-primary').click();
   await expect(page.locator('.stamp')).toBeVisible({ timeout: 20_000 });
   const humanRow = reviewRecord.locator('.act-row.act-human');
   await expect(humanRow).toHaveCount(1, { timeout: 20_000 });

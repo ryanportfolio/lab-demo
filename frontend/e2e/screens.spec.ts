@@ -56,9 +56,9 @@ test('review open and approve, light', async ({ page }) => {
   await freeze(page);
   await page.screenshot({ path: `${OUT}/review-open-light.png`, fullPage: true });
 
-  const approve = page.locator('.approval-gate button');
+  const approve = page.locator('.approval-gate .btn-primary');
   if (await approve.isVisible()) {
-    await page.locator('.approval-actions input').check();
+    await page.locator('.approval-ack input').check();
     await approve.click();
     await expect(page.locator('.approval-gate .stamp')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('.status.approved')).toBeVisible();
