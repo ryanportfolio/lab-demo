@@ -112,9 +112,18 @@ export default function AskPanel({
       ]);
       setQ('');
       setChip(null);
-      requestAnimationFrame(() =>
-        body.current?.scrollTo({ top: body.current.scrollHeight }),
-      );
+      // Land the reader at the top of the new turn, not the bottom of a long
+      // answer: the question is the anchor the answer is read from.
+      requestAnimationFrame(() => {
+        const el = body.current;
+        const turns = el?.querySelectorAll<HTMLElement>('.ask-turn');
+        const turn = turns?.length ? turns[turns.length - 1] : null;
+        if (el && turn) {
+          const top =
+            turn.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+          el.scrollTo({ top: Math.max(top - 8, 0) });
+        }
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'the question could not be answered');
     } finally {
