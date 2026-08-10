@@ -378,9 +378,15 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-sugg button:focus-visible, .cites button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
 /* The unasked questions are an offer, not part of the answer: they sit on
    their own ground so the eye never reads them as something the run said */
-.ask-followups { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border); border-radius: var(--r-surface); background: var(--bg-subtle); padding: 12px }
-.ask-followups > span { font-family: var(--mono); font-size: var(--label); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--fg-subtle) }
-.ask-followups .ask-sugg { margin-top: 0 }
+.ask-followups { border: 1px solid var(--border); border-radius: var(--r-surface); background: var(--bg-subtle); padding: 12px }
+.ask-followups > summary { display: flex; align-items: center; gap: 8px; list-style: none; cursor: pointer; font-family: var(--mono); font-size: var(--label); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--fg-subtle) }
+.ask-followups > summary::-webkit-details-marker { display: none }
+.ask-followups > summary:hover { color: var(--fg-muted) }
+.ask-followups > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: var(--r-sm) }
+.ask-followups > summary .steps-chev { margin-right: 1px }
+.ask-followups-count { margin-left: auto; letter-spacing: 0 }
+.ask-followups[open] > summary .steps-chev { transform: rotate(45deg) }
+.ask-followups .ask-sugg { margin-top: 10px }
 .ask-followups .ask-sugg button { background: var(--card); box-shadow: var(--shadow-raise) }
 .ask-turn { display: flex; flex-direction: column; gap: 10px }
 .ask-row { display: flex; gap: 10px; align-items: flex-start }
@@ -469,24 +475,20 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
    height shrink together, so the element box keeps the viewBox ratio and the
    pointer-to-axis math, which divides by rect width, stays exact. */
 .chart-full > svg {
-  width: min(100%, max(520px, calc((92vh - 430px) * 920 / 470)));
+  width: min(100%, max(520px, calc((92vh - 452px) * 920 / 470)));
   margin-inline: auto;
 }
 .chart-full > svg[data-tall-frame] {
-  width: min(100%, max(520px, calc((92vh - 430px) * 920 / 540)));
+  width: min(100%, max(520px, calc((92vh - 452px) * 920 / 540)));
 }
 .chart-full .notes { font-size: 13.5px }
 .chart-full .chart-close { position: absolute; top: 12px; right: 14px; font-family: var(--mono); font-size: 12px; color: var(--fg-subtle); background: var(--card); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px 10px; cursor: pointer }
 .chart-full .chart-close:hover { color: var(--fg); border-color: var(--fg-subtle) }
-/* Rides the full-view header's empty space, beside the Esc pill. Falls back
-   into the flow when the sheet is too narrow to fit it beside the title. */
-.chart-hint { display: block; position: absolute; top: 19px; right: 72px; font-size: 12px; color: var(--fg-subtle); font-family: var(--mono); text-align: right }
-@media (max-width: 1100px) {
-  .chart-hint { position: static; margin: 2px 0 8px; text-align: left }
-}
-/* The split's chart pane is narrower than the viewport, so the absolute hint
-   would ride over the title; it joins the flow instead. */
-.chart-full-split .chart-hint { position: static; margin: 2px 0 8px; text-align: left }
+/* The hint sits in the flow under the source line on every full view. Riding
+   the header's empty space only worked while both the hint and the title were
+   short: a long title and a long hint reach for the same pixels and the
+   absolute one wins, printing over the other. */
+.chart-hint { display: block; margin: 2px 0 8px; font-size: 12px; color: var(--fg-subtle); font-family: var(--mono) }
 body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 @keyframes chartin { from { opacity: 0; transform: scale(.985) } }
 

@@ -360,9 +360,15 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .chart-full-diagnostics .chart-selection-empty { min-height: 72px }
 /* The full view is wide, so the pinned readout is one strip: label and stats
    read left, actions sit right, nothing stacks into empty rows. */
+/* Clear is absolutely placed in the strip's top right corner, so the strip
+   itself reserves that corner. Reserving it on the readout alone was enough
+   only while the actions wrapped to their own row underneath: a one-line
+   readout with one action puts that action on Clear's line, and under it. */
 .chart-full-diagnostics .chart-selection {
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; min-height: 0;
+  padding-right: 76px;
 }
+.chart-full-diagnostics .chart-selection .selection-readout { padding-right: 0 }
 .chart-full-diagnostics .selection-readout { flex: 1 1 auto; align-items: baseline }
 .chart-full-diagnostics .chart-actions { margin-top: 0 }
 .chart-full-diagnostics .chart-actions .act-primary { flex: 0 1 auto }
