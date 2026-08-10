@@ -201,7 +201,7 @@ pub fn chart_json(c: &plab_platform::evidence::Chart) -> serde_json::Value {
             "label": s.label,
             "style": s.style.as_str(),
             "points": s.points.iter().map(|p| json!({
-                "x": p.x, "y": p.y, "label": p.label,
+                "x": p.x, "y": p.y, "label": p.label, "se": p.se,
             })).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),
     })
@@ -220,6 +220,12 @@ fn evidence_json(r: &ExperimentRecord) -> Option<serde_json::Value> {
                 "deviance": f.deviance,
                 "aic": f.aic,
                 "alpha": f.alpha,
+                "train_exposure": f.train_exposure,
+                "train_claims": f.train_claims,
+                "train_window": f.train_window,
+                "holdout_window": f.holdout_window,
+                "fold_val_exposure": f.fold_val_exposure,
+                "cov_ridge": f.cov_ridge,
             })),
             "lift": e.lift.iter().map(|b| json!({
                 "decile": b.decile,
@@ -746,6 +752,63 @@ mod tests {
         assert_eq!(p["actions_total"], 26);
         assert_eq!(p["actions_refused"], 4);
         assert_eq!(p["weakest_point"], "9.8% of exposure");
+    }
+
+    /// se survives the write path and the read path unchanged, so the band a
+    /// reviewer sees is the band the run computed.
+    #[test]
+    fn chart_json_round_trips_se() {
+        use plab_platform::evidence::{Chart, Pt, Series, Style};
+        let chart = Chart {
+            kind: "age_curve".into(),
+            title: "t".into(),
+            x_label: "x".into(),
+            y_label: "y".into(),
+            series: vec![Series {
+                label: "Fitted spline".into(),
+                style: Style::Line,
+                points: vec![
+                    Pt::xy(45.0, 1.0),
+                    Pt::xy(80.0, 1.4).with_se(Some(0.05)),
+                ],
+            }],
+            notes: vec![],
+            gloss: String::new(),
+        };
+        let parsed = crate::schema::chart_from_json(&chart_json(&chart));
+        let pts = &parsed.series[0].points;
+        assert_eq!(pts[0].se, None, "exact point stays bandless");
+        assert_eq!(pts[1].se, Some(0.05));
+        // the band convention: y * exp(+/-2 se) is asymmetric around y
+        let (y, se) = (pts[1].y, pts[1].se.unwrap());
+        assert!((y * (2.0 * se).exp() - y) > (y - y * (-2.0 * se).exp()));
+    }
+
+    /// Evidence written before standard errors and provenance facts shipped
+    /// parses with every new field absent, never a default that lies.
+    #[test]
+    fn legacy_evidence_json_degrades_to_none() {
+        let legacy = serde_json::json!({
+            "facts": {
+                "rows": 100, "params": 5, "iterations": 4, "converged": true,
+                "gini": 0.3, "baseline_gini": 0.29, "deviance": 1.0, "aic": 2.0,
+                "alpha": null
+            },
+            "lift": [],
+            "fold_deltas": [0.001],
+            "charts": [{
+                "kind": "age_curve", "title": "t", "x_label": "x", "y_label": "y",
+                "notes": [], "gloss": "",
+                "series": [{"label": "Fitted spline", "style": "line",
+                    "points": [{"x": 45.0, "y": 1.0, "label": null}]}]
+            }]
+        });
+        let ev = crate::schema::evidence_from_json("EXP-01", &legacy);
+        let f = ev.facts.expect("facts parse");
+        assert_eq!(f.train_exposure, None);
+        assert_eq!(f.train_window, None);
+        assert_eq!(f.cov_ridge, None);
+        assert_eq!(ev.charts[0].series[0].points[0].se, None);
     }
 
     #[test]

@@ -297,6 +297,7 @@ pub fn execute(
         &d12.names,
         &d12.x,
         f12.beta.as_slice(),
+        f12.covariance.as_ref(),
         &filed_log,
         |r| r.driver_age <= 24,
         "drivers aged 18 to 24",
@@ -339,6 +340,18 @@ pub fn execute(
         },
     });
 
+    // The out-of-time holdout's identity, read off the rows themselves
+    let holdout_window = {
+        let mut periods: Vec<&'static str> = holdout.iter().map(|r| r.period.as_str()).collect();
+        periods.sort();
+        periods.dedup();
+        match (periods.first(), periods.last()) {
+            (Some(a), Some(b)) if a != b => format!("{a} to {b}"),
+            (Some(a), _) => (*a).to_string(),
+            _ => String::new(),
+        }
+    };
+
     // The playbook's proposals, waves one and two
     let plans = agent::Playbook::base_plans();
     let mut records: Vec<ExperimentRecord> = Vec::new();
@@ -357,6 +370,7 @@ pub fn execute(
             &fold_val_rows,
             &profile,
             &config,
+            &holdout_window,
             sink,
             &mut records,
         )?;
@@ -384,6 +398,7 @@ pub fn execute(
             &fold_val_rows,
             &profile,
             &config,
+            &holdout_window,
             sink,
             &mut records,
         )?;
@@ -562,6 +577,7 @@ fn run_one(
     fold_val_rows: &[Vec<&PolicyRow>],
     profile: &DataProfileFacts,
     config: &RunConfig,
+    holdout_window: &str,
     sink: &mut dyn FnMut(RunEvent),
     records: &mut Vec<ExperimentRecord>,
 ) -> Result<(), String> {
@@ -640,17 +656,24 @@ fn run_one(
     let is_blend = plan.archetype == Archetype::CredibilityTerritory;
 
     // EXP-03's modern credibility blend, computed on the full train rows
-    let blend_rel = if is_blend {
-        let (mut raw, zone_exp) = filing::raw_relativities(train)?;
+    let (blend_rel, blend_zone_exp, blend_se) = if is_blend {
+        let (mut raw, zone_exp, se_ln) = filing::raw_relativities(train)?;
         // normalize raw before blending, matching the filing procedure
         let total: f64 = zone_exp.iter().sum();
         let mean: f64 = (0..N_ZONES).map(|z| zone_exp[z] * raw[z]).sum::<f64>() / total;
         for r in raw.iter_mut() {
             *r /= mean;
         }
-        Some(filing::blend(&raw, &zone_exp, config.blend_k))
+        let se = se_ln
+            .as_ref()
+            .map(|s| filing::blend_se_ln(&raw, &zone_exp, s, config.blend_k));
+        (
+            Some(filing::blend(&raw, &zone_exp, config.blend_k)),
+            Some(zone_exp),
+            se,
+        )
     } else {
-        None
+        (None, None, None)
     };
     let variant_log: Vec<f64> = match &blend_rel {
         Some(b) => b.iter().map(|r| r.ln()).collect(),
@@ -679,7 +702,7 @@ fn run_one(
         let val_rows = &fold_val_rows[k];
         // EXP-03 recomputes its blend from the fold's training rows only
         let fold_log: Vec<f64> = if is_blend {
-            let (mut raw, zone_exp) = filing::raw_relativities(fit_rows)?;
+            let (mut raw, zone_exp, _) = filing::raw_relativities(fit_rows)?;
             let total: f64 = zone_exp.iter().sum();
             let mean: f64 = (0..N_ZONES).map(|z| zone_exp[z] * raw[z]).sum::<f64>() / total;
             for r in raw.iter_mut() {
@@ -743,32 +766,59 @@ fn run_one(
         .map(|(m, e)| m / e.max(1e-12))
         .collect();
     let mut charts = Vec::new();
+    let fit_se = fit.beta_se();
     match plan.archetype {
         Archetype::SplineAge | Archetype::ComboSplineAccidents => {
-            let spline: Vec<f64> = d
+            let spline_idx: Vec<usize> = d
                 .names
                 .iter()
                 .enumerate()
                 .filter(|(_, n)| n.starts_with("age_spline_"))
-                .map(|(i, _)| fit.beta[i])
+                .map(|(i, _)| i)
                 .collect();
+            let spline: Vec<f64> = spline_idx.iter().map(|i| fit.beta[*i]).collect();
+            // the age-curve contrast is zero outside the spline columns, so
+            // the spline sub-block of the covariance is exact for its se
+            let spline_cov = fit.covariance.as_ref().map(|cov| {
+                nalgebra::DMatrix::from_fn(spline_idx.len(), spline_idx.len(), |a, b| {
+                    cov[(spline_idx[a], spline_idx[b])]
+                })
+            });
             // v12's column order is fixed: intercept, then the four age bands
             let bands: Vec<f64> = (1..5).map(|i| f12.beta[i]).collect();
+            let band_se: Option<Vec<f64>> = f12.beta_se().map(|se| (1..5).map(|i| se[i]).collect());
             charts.push(evidence::age_curve_chart_with_exposure(
-                &spline, &bands, train,
+                &spline,
+                &bands,
+                spline_cov.as_ref(),
+                band_se.as_deref(),
+                train,
             ));
             if let Some(i) = col("prior_acc_capped3") {
-                charts.push(evidence::accidents_chart(train, fit.beta[i]));
+                charts.push(evidence::accidents_chart(
+                    train,
+                    fit.beta[i],
+                    fit_se.as_ref().map(|se| se[i]),
+                ));
             }
         }
         Archetype::CappedAccidents => {
             if let Some(i) = col("prior_acc_capped3") {
-                charts.push(evidence::accidents_chart(train, fit.beta[i]));
+                charts.push(evidence::accidents_chart(
+                    train,
+                    fit.beta[i],
+                    fit_se.as_ref().map(|se| se[i]),
+                ));
             }
         }
         Archetype::CredibilityTerritory => {
             if let Some(b) = &blend_rel {
-                charts.push(evidence::territory_chart(filed_rel, b));
+                charts.push(evidence::territory_chart(
+                    filed_rel,
+                    b,
+                    blend_se.as_deref(),
+                    blend_zone_exp.as_deref(),
+                ));
             }
         }
         Archetype::NegBinomialFamily => {
@@ -779,6 +829,7 @@ fn run_one(
                     &fit.mu,
                     a,
                     fit.aic - baseline.aic,
+                    Some(&d.exposure),
                 ));
             }
         }
@@ -789,6 +840,27 @@ fn run_one(
         }
         Archetype::MileageBands => {}
     }
+    // provenance facts every chart companion shows; computed from the rows in
+    // hand, never hardcoded copy
+    let train_exposure: f64 = train.iter().map(|r| r.earned_exposure).sum();
+    let train_claims: f64 = train.iter().map(|r| r.claim_count as f64).sum();
+    let mut periods: Vec<&'static str> = train.iter().map(|r| r.period.as_str()).collect();
+    periods.sort();
+    periods.dedup();
+    let train_window = match (periods.first(), periods.last()) {
+        (Some(a), Some(b)) if a != b => format!("{a} to {b}"),
+        (Some(a), _) => (*a).to_string(),
+        _ => String::new(),
+    };
+    let fold_val_exposure = if fold_val_rows.is_empty() {
+        0.0
+    } else {
+        fold_val_rows
+            .iter()
+            .map(|rows| rows.iter().map(|r| r.earned_exposure).sum::<f64>())
+            .sum::<f64>()
+            / fold_val_rows.len() as f64
+    };
     let evidence = Evidence {
         facts: Some(FitFacts {
             rows: train.len(),
@@ -800,6 +872,12 @@ fn run_one(
             deviance: fit.deviance,
             aic: fit.aic,
             alpha,
+            train_exposure,
+            train_claims,
+            train_window,
+            holdout_window: holdout_window.to_string(),
+            fold_val_exposure,
+            cov_ridge: fit.cov_ridge,
         }),
         lift: evidence::lift_buckets(&rates, &base_rates, &d.y, &d.exposure, 10),
         fold_deltas: fold_deltas.clone(),

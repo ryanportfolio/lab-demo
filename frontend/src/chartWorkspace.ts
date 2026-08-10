@@ -34,6 +34,18 @@ export interface ChartContract {
   defaultMode: ChartMode;
 }
 
+/** Provenance facts a chart companion shows beside the artifact. A view over
+ *  `evidence.facts` — no new state; absent fields simply do not render. */
+export interface ChartProvenance {
+  trainWindow?: string | null;
+  holdoutWindow?: string | null;
+  trainRows?: number | null;
+  trainExposure?: number | null;
+  trainClaims?: number | null;
+  foldValExposure?: number | null;
+  covRidge?: number | null;
+}
+
 export interface ChartWorkspaceContext {
   runId: string;
   code: string;
@@ -42,6 +54,8 @@ export interface ChartWorkspaceContext {
   model: string;
   /** version of the model this run branched from */
   baseVersion: number;
+  /** provenance facts from the run's evidence, when the surface has them */
+  provenance?: ChartProvenance;
   onAsk: (ask: AgentAsk) => void;
   onSave: (evidence: SavedChartEvidence) => void;
   /** ids already carried into review, so a saved reading says so */
@@ -166,7 +180,9 @@ export function displayChart(
           ? 0
           : 100 * (point.y / base.y - 1)
         : point.y - base.y;
-    return [{ ...point, y }];
+    // a change view compares two dependent fits on the same rows; the level
+    // view's standard errors do not transfer, so the derived series drops them
+    return [{ ...point, y, se: null }];
   });
   const weight = chart.series.filter(isSecondarySeries);
   return {
@@ -222,8 +238,15 @@ export function selectionValues(
     const last = points[points.length - 1].y;
     const fmt = (value: number) =>
       Math.abs(value) >= 10 ? value.toFixed(1) : Math.abs(value) >= 1 ? value.toFixed(2) : value.toFixed(3);
+    // a single pinned point with a standard error reads out its ±2 SE
+    // interval beside the estimate, on the same scale as the series
+    const se = points.length === 1 ? points[0].se : null;
+    const interval =
+      se != null
+        ? ` (${fmt(first * Math.exp(-2 * se))} to ${fmt(first * Math.exp(2 * se))})`
+        : '';
     return [
-      `${series.label} ${points.length === 1 ? fmt(first) : `${fmt(first)} → ${fmt(last)}`}`,
+      `${series.label} ${points.length === 1 ? `${fmt(first)}${interval}` : `${fmt(first)} → ${fmt(last)}`}`,
     ];
   });
 }
@@ -251,11 +274,21 @@ export function weakPoint(chart: EvidenceChart, contract: ChartContract): string
     const label =
       chart.series.flatMap((series) => series.points).find((point) => point.x === thinnest.x)?.label ??
       thinnest.x;
+    // where the thin slice's estimate carries a standard error, the weak
+    // point names the band there: thin exposure and wide uncertainty are the
+    // same fact seen from two sides
+    const banded = chart.series
+      .filter((series) => !isSecondarySeries(series))
+      .flatMap((series) => series.points)
+      .find((point) => point.x === thinnest.x && point.se != null);
+    const bandNote = banded
+      ? ` · ±2 SE ${(banded.y * Math.exp(-2 * banded.se!)).toFixed(2)} to ${(banded.y * Math.exp(2 * banded.se!)).toFixed(2)} there`
+      : '';
     if (weight.label === 'Earned exposure') {
       const dimension = chart.xLabel.toLowerCase().includes('age') ? 'age ' : '';
-      return `Thinnest evidence: ${dimension}${label} · ${thinnest.y.toLocaleString('en-US', { maximumFractionDigits: 0 })} earned car-years`;
+      return `Thinnest evidence: ${dimension}${label} · ${thinnest.y.toLocaleString('en-US', { maximumFractionDigits: 0 })} earned car-years${bandNote}`;
     }
-    return `Thinnest evidence: ${label} · ${thinnest.y.toFixed(1)}% of exposure`;
+    return `Thinnest evidence: ${label} · ${thinnest.y.toFixed(1)}% of exposure${bandNote}`;
   }
   return chart.notes[1] ?? chart.notes[0] ?? `${contract.question} Exact evidence available.`;
 }
