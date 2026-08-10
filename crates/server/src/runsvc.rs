@@ -201,7 +201,7 @@ pub fn chart_json(c: &plab_platform::evidence::Chart) -> serde_json::Value {
             "label": s.label,
             "style": s.style.as_str(),
             "points": s.points.iter().map(|p| json!({
-                "x": p.x, "y": p.y, "label": p.label,
+                "x": p.x, "y": p.y, "label": p.label, "lo": p.lo, "hi": p.hi,
             })).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),
     })

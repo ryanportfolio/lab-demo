@@ -22,6 +22,7 @@ import {
   normalizeSelection,
   selectionLabel,
   selectionValues,
+  updateEvidenceUrl,
   weakActionLabel,
   weakestSelection,
   weakPoint,
@@ -121,6 +122,7 @@ function seriesColor(
   primaryAll: EvidenceSeries[],
 ): string {
   if (isSecondary(s.label)) return 'var(--chart-exposure)';
+  if (s.style === 'band') return 'var(--chart-band)';
   const i = primaryAll.indexOf(s);
   if (chart.kind === 'segment_effects') return 'var(--chart-band)';
   if (s.label.startsWith('v12') || s.label.includes('v12')) return 'var(--chart-base)';
@@ -188,6 +190,13 @@ function Plot({
   const xMax = categorical ? Math.max(...allXAll) : Math.max(...allX);
 
   const values = primary.flatMap((s) => s.points.map((p) => p.y));
+  // an uncertainty band's edges are data: the frame must contain them
+  primary.forEach((s) =>
+    s.points.forEach((p) => {
+      if (p.lo != null) values.push(p.lo);
+      if (p.hi != null) values.push(p.hi);
+    }),
+  );
   if (rel) values.push(1);
   else values.push(0);
   const activeGuardrail =
@@ -321,10 +330,20 @@ function Plot({
           const p = at(s, hx);
           if (!p) return [];
           const sec = isSecondary(s.label);
+          // a band reads as its interval; a banded line carries its interval
+          // beside the center so the exact edges never hide in the shading
+          const v =
+            s.style === 'band' && p.lo != null && p.hi != null
+              ? `${fmtVal(p.lo)} to ${fmtVal(p.hi)}`
+              : sec
+                ? p.y.toFixed(1)
+                : p.lo != null && p.hi != null
+                  ? `${fmtVal(p.y)} (${fmtVal(p.lo)} to ${fmtVal(p.hi)})`
+                  : fmtVal(p.y);
           return [
             {
               label: s.label,
-              v: sec ? p.y.toFixed(1) : fmtVal(p.y),
+              v,
               col: color(s),
               style: s.style,
             },
@@ -530,6 +549,31 @@ function Plot({
       <g className="chart-layer chart-layer-evidence">
         {primary.map((s) => {
         const c = color(s);
+        // uncertainty region: ±2 SE around a fitted series, drawn behind the
+        // lines as a closed area from the hi edge out and the lo edge back
+        const banded = s.points.filter((p) => p.lo != null && p.hi != null);
+        const bandArea =
+          banded.length >= 2 ? (
+            <path
+              key={`${s.label}-band`}
+              className="se-band"
+              d={`${banded
+                .map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.x)},${sy(p.hi!)}`)
+                .join(' ')} ${[...banded]
+                .reverse()
+                .map((p) => `L${sx(p.x)},${sy(p.lo!)}`)
+                .join(' ')} Z`}
+            />
+          ) : null;
+        if (s.style === 'band') {
+          // the CSS gives the region a dashed edge as well as a fill, so the
+          // band never relies on fill color alone to be seen
+          return (
+            <g key={s.label} className="se-band-series">
+              {bandArea}
+            </g>
+          );
+        }
         if (s.style === 'bar') {
           return (
             <g key={s.label} className="bars">
@@ -603,14 +647,16 @@ function Plot({
                 .map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.x)},${sy(p.y)}`)
                 .join(' ');
         return (
-          <path
-            key={s.label}
-            d={d}
-            fill="none"
-            stroke={c}
-            strokeWidth={s.style === 'step' ? 1.4 : 1.8}
-            strokeDasharray={s.style === 'step' ? '4 3' : undefined}
-          />
+          <g key={s.label}>
+            {bandArea}
+            <path
+              d={d}
+              fill="none"
+              stroke={c}
+              strokeWidth={s.style === 'step' ? 1.4 : 1.8}
+              strokeDasharray={s.style === 'step' ? '4 3' : undefined}
+            />
+          </g>
         );
         })}
       </g>
@@ -621,7 +667,7 @@ function Plot({
             <line className="cross" x1={cx} x2={cx} y1={PAD.t} y2={PAD.t + plotH} />
           )}
           {primary
-            .filter((s) => s.style !== 'bar')
+            .filter((s) => s.style !== 'bar' && s.style !== 'band')
             .flatMap((s) => {
               const p = at(s, hx);
               return p
@@ -650,6 +696,14 @@ function Plot({
                 <g className="tiprow" key={r.label}>
                   {r.style === 'dot' ? (
                     <circle cx={tipX + 12.5} cy={cy} r={3.2} style={{ fill: r.col }} />
+                  ) : r.style === 'band' ? (
+                    <rect
+                      x={tipX + 7}
+                      y={cy - 3.5}
+                      width={11}
+                      height={7}
+                      style={{ fill: r.col, opacity: 0.35 }}
+                    />
                   ) : r.style === 'bar' ? (
                     <rect
                       x={tipX + 9}
@@ -970,6 +1024,116 @@ export default function Chart({
     </ul>
   );
 
+  // The exact-values table twin: the full series as numbers, linked both
+  // ways to the plot. A chart is read for shape; the decision is read from
+  // the values, so they are one action away and never hover-only.
+  const [tableOpen, setTableOpen] = useState(
+    () => !!context && new URLSearchParams(location.search).get('tbl') === '1',
+  );
+  const toggleTable = () => {
+    const next = !tableOpen;
+    setTableOpen(next);
+    if (context) updateEvidenceUrl({ table: next });
+  };
+  const tableSeries = shown.series.filter((s) => !hidden.has(s.label));
+  const tableXs = Array.from(
+    new Set(tableSeries.flatMap((s) => s.points.map((p) => p.x))),
+  ).sort((a, b) => a - b);
+  const tableLabelAt = (x: number) =>
+    tableSeries.flatMap((s) => s.points).find((p) => Math.abs(p.x - x) < 1e-9 && p.label != null)
+      ?.label ?? fmtVal(x);
+  const cellText = (s: EvidenceSeries, x: number): string => {
+    const p = s.points.find((q) => Math.abs(q.x - x) < 1e-9);
+    if (!p) return '';
+    if (s.style === 'band' && p.lo != null && p.hi != null)
+      return `${fmtVal(p.lo)} to ${fmtVal(p.hi)}`;
+    if (isSecondary(s.label)) return p.y.toFixed(1);
+    if (p.lo != null && p.hi != null)
+      return `${fmtVal(p.y)} (${fmtVal(p.lo)} to ${fmtVal(p.hi)})`;
+    return fmtVal(p.y);
+  };
+  const selectedRange = selection ? normalizeSelection(selection) : null;
+  const rowSelected = (x: number) =>
+    !!selectedRange && x >= selectedRange.start && x <= selectedRange.end;
+  const pinnedRowRef = useRef<HTMLTableRowElement | null>(null);
+  useEffect(() => {
+    if (tableOpen && selection) {
+      pinnedRowRef.current?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [tableOpen, selection]);
+  const copyTable = async () => {
+    const source = context
+      ? `${context.code} · run ${context.runId} · on v${context.baseVersion} · ${context.target} / ${context.denominator}`
+      : (askSource ?? chart.title);
+    const head = [chart.xLabel, ...tableSeries.map((s) => s.label)].join('\t');
+    const body = tableXs
+      .map((x) => [tableLabelAt(x), ...tableSeries.map((s) => cellText(s, x))].join('\t'))
+      .join('\n');
+    const text = `${chart.title} · ${shown.yLabel} · ${source}\n${head}\n${body}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setActionStatus('Table copied with source');
+    } catch {
+      setActionStatus('Copy failed in this browser');
+    }
+  };
+  const tableToggle = (
+    <button
+      type="button"
+      className="values-toggle"
+      aria-pressed={tableOpen}
+      aria-expanded={tableOpen}
+      onClick={toggleTable}
+    >
+      Values
+    </button>
+  );
+  const valuesTable = tableOpen ? (
+    <div className="chart-values">
+      <div className="chart-values-head">
+        <span>
+          {chart.xLabel} · {shown.yLabel}
+        </span>
+        <button type="button" onClick={copyTable}>
+          Copy table
+        </button>
+      </div>
+      <div className="chart-values-scroll" tabIndex={0}>
+        <table aria-label={`Exact values, ${chart.title}. Click a row to pin it on the chart.`}>
+          <thead>
+            <tr>
+              <th scope="col">{chart.xLabel}</th>
+              {tableSeries.map((s) => (
+                <th key={s.label} scope="col">
+                  {s.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {tableXs.map((x) => {
+              const isSel = rowSelected(x);
+              return (
+                <tr
+                  key={x}
+                  ref={isSel && Math.abs(x - (selectedRange?.start ?? x)) < 1e-9 ? pinnedRowRef : undefined}
+                  aria-selected={isSel}
+                  data-selected={isSel || undefined}
+                  onClick={() => setSelection({ start: x, end: x })}
+                >
+                  <th scope="row">{tableLabelAt(x)}</th>
+                  {tableSeries.map((s) => (
+                    <td key={s.label}>{cellText(s, x)}</td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  ) : null;
+
   // One slot, two homes: the card's diagnostics column and the full view.
   // Only the card instance announces changes, so a pin is spoken once.
   const selectionSlot = (live: boolean) =>
@@ -1178,11 +1342,15 @@ export default function Chart({
                 big={wide}
                 autoFocus
               />
-              {legend}
+              <div className="legend-row">
+                {legend}
+                {tableToggle}
+              </div>
               <div className="chart-full-diagnostics">
                 <div className="chart-weakness"><b>Weakest</b>{weakness}</div>
                 <div className="chart-selection-slot">{selectionSlot(false)}</div>
               </div>
+              {valuesTable}
               {notes}
               {plain && <div className="gloss">{chart.gloss}</div>}
             </figure>

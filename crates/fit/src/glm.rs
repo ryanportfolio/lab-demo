@@ -17,6 +17,9 @@ pub enum Family {
 #[derive(Debug, Clone)]
 pub struct Fit {
     pub beta: DVector<f64>,
+    /// Covariance of beta at convergence, the inverse of the final weighted
+    /// information X'WX. Zero matrix when the inverse was unavailable.
+    pub cov: DMatrix<f64>,
     pub mu: Vec<f64>,
     pub eta: Vec<f64>,
     pub deviance: f64,
@@ -25,6 +28,13 @@ pub struct Fit {
     pub n_params: usize,
     pub iterations: usize,
     pub converged: bool,
+}
+
+impl Fit {
+    /// Standard error of one coefficient.
+    pub fn se(&self, i: usize) -> f64 {
+        self.cov[(i, i)].max(0.0).sqrt()
+    }
 }
 
 const MAX_ITER: usize = 50;
@@ -122,11 +132,44 @@ pub fn fit_glm(
     }
 
     let loglik = loglik_of(family, y, &mu);
+
+    // Covariance from the information matrix at the converged weights. The
+    // loop's X'WX belongs to the previous beta, so rebuild with final mu.
+    let mut info = DMatrix::<f64>::zeros(p, p);
+    for i in 0..n {
+        let mi = mu[i].max(MU_FLOOR);
+        let wi = match family {
+            Family::Poisson => mi,
+            Family::NegBinomial { alpha } => mi / (1.0 + alpha * mi),
+        };
+        let xi = x.row(i);
+        for a in 0..p {
+            let xa = xi[a];
+            if xa == 0.0 {
+                continue;
+            }
+            let wxa = wi * xa;
+            for b in a..p {
+                info[(a, b)] += wxa * xi[b];
+            }
+        }
+    }
+    for a in 0..p {
+        for b in (a + 1)..p {
+            info[(b, a)] = info[(a, b)];
+        }
+    }
+    let cov = info
+        .cholesky()
+        .map(|ch| ch.inverse())
+        .unwrap_or_else(|| DMatrix::zeros(p, p));
+
     // NB2 spends one extra parameter on alpha
     let n_params = p + matches!(family, Family::NegBinomial { .. }) as usize;
     Ok(Fit {
         aic: aic(loglik, n_params),
         beta,
+        cov,
         mu,
         eta,
         deviance: dev,
@@ -212,6 +255,13 @@ mod tests {
             "beta0 {} vs {expected}",
             fit.beta[0]
         );
+        // Intercept-only Poisson closed form: Var(beta0) = 1 / sum(mu)
+        let se_expected = (1.0 / fit.mu.iter().sum::<f64>()).sqrt();
+        assert!(
+            (fit.se(0) - se_expected).abs() < 1e-8,
+            "se0 {} vs {se_expected}",
+            fit.se(0)
+        );
     }
 
     /// Simulate from a known Poisson GLM and recover the coefficients.
@@ -240,6 +290,13 @@ mod tests {
         assert!((fit.beta[0] - b0).abs() < 0.05, "b0 {}", fit.beta[0]);
         assert!((fit.beta[1] - b1).abs() < 0.05, "b1 {}", fit.beta[1]);
         assert!((fit.beta[2] - b2).abs() < 0.05, "b2 {}", fit.beta[2]);
+        // The planted truth sits inside ±4 SE, and SEs are sane (positive,
+        // small at n = 40k)
+        for (i, b) in [b0, b1, b2].iter().enumerate() {
+            let se = fit.se(i);
+            assert!(se > 0.0 && se < 0.05, "se{i} {se}");
+            assert!((fit.beta[i] - b).abs() < 4.0 * se, "b{i} outside 4 SE");
+        }
     }
 
     /// On overdispersed (gamma-mixed) counts, profile NB2 recovers a positive

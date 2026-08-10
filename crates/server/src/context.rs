@@ -580,6 +580,8 @@ fn lift_chart(e: &ExpRow) -> Option<EvidenceChart> {
                 x: b.decile as f64,
                 y: f(b),
                 label: Some(b.decile.to_string()),
+                lo: None,
+                hi: None,
             })
             .collect(),
     };
@@ -661,6 +663,8 @@ fn fold_chart(e: &ExpRow) -> Option<EvidenceChart> {
             x: i as f64 + 1.0,
             y: *d,
             label: Some(format!("{}", i + 1)),
+            lo: None,
+            hi: None,
         })
         .collect();
     let held = ev.fold_deltas.iter().filter(|d| **d > 0.0).count();

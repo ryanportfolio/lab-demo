@@ -745,25 +745,37 @@ fn run_one(
     let mut charts = Vec::new();
     match plan.archetype {
         Archetype::SplineAge | Archetype::ComboSplineAccidents => {
-            let spline: Vec<f64> = d
+            let spline_idx: Vec<usize> = d
                 .names
                 .iter()
                 .enumerate()
                 .filter(|(_, n)| n.starts_with("age_spline_"))
-                .map(|(i, _)| fit.beta[i])
+                .map(|(i, _)| i)
                 .collect();
+            let spline: Vec<f64> = spline_idx.iter().map(|&i| fit.beta[i]).collect();
+            // spline-block covariance, for the pointwise ±2 SE band
+            let k = spline_idx.len();
+            let mut spline_cov = nalgebra::DMatrix::<f64>::zeros(k, k);
+            for (a, &ia) in spline_idx.iter().enumerate() {
+                for (b, &ib) in spline_idx.iter().enumerate() {
+                    spline_cov[(a, b)] = fit.cov[(ia, ib)];
+                }
+            }
             // v12's column order is fixed: intercept, then the four age bands
             let bands: Vec<f64> = (1..5).map(|i| f12.beta[i]).collect();
             charts.push(evidence::age_curve_chart_with_exposure(
-                &spline, &bands, train,
+                &spline,
+                &bands,
+                Some(&spline_cov),
+                train,
             ));
             if let Some(i) = col("prior_acc_capped3") {
-                charts.push(evidence::accidents_chart(train, fit.beta[i]));
+                charts.push(evidence::accidents_chart(train, fit.beta[i], fit.se(i)));
             }
         }
         Archetype::CappedAccidents => {
             if let Some(i) = col("prior_acc_capped3") {
-                charts.push(evidence::accidents_chart(train, fit.beta[i]));
+                charts.push(evidence::accidents_chart(train, fit.beta[i], fit.se(i)));
             }
         }
         Archetype::CredibilityTerritory => {

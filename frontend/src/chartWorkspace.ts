@@ -1,4 +1,4 @@
-import type { EvidenceChart, EvidenceSeries } from './api';
+import type { EvidenceChart, EvidenceSeries, Pt } from './api';
 
 export type ChartMode = 'level' | 'change';
 
@@ -216,13 +216,26 @@ export function selectionValues(
       }
       return [`${series.label} ${amount.toFixed(1)}%`];
     }
-    const first = points[0].y;
-    const last = points[points.length - 1].y;
+    const first = points[0];
+    const last = points[points.length - 1];
     const fmt = (value: number) =>
       Math.abs(value) >= 10 ? value.toFixed(1) : Math.abs(value) >= 1 ? value.toFixed(2) : value.toFixed(3);
-    return [
-      `${series.label} ${points.length === 1 ? fmt(first) : `${fmt(first)} → ${fmt(last)}`}`,
-    ];
+    const interval = (point: Pt) =>
+      point.lo != null && point.hi != null ? `${fmt(point.lo)} to ${fmt(point.hi)}` : null;
+    if (series.style === 'band') {
+      // the band's exact edges, so uncertainty is copyable, not just visible
+      const one = interval(first);
+      const two = interval(last);
+      if (!one) return [];
+      return [
+        `${series.label} ${points.length === 1 || !two ? one : `${one} → ${two}`}`,
+      ];
+    }
+    const head = `${series.label} ${
+      points.length === 1 ? fmt(first.y) : `${fmt(first.y)} → ${fmt(last.y)}`
+    }`;
+    const band = points.length === 1 ? interval(first) : null;
+    return [band ? `${head} · ±2 SE ${band}` : head];
   });
 }
 
@@ -352,6 +365,8 @@ export function updateEvidenceUrl(updates: {
   mode?: ChartMode | null;
   selection?: ChartSelection | null;
   full?: boolean | null;
+  /** the exact-values table twin is open */
+  table?: boolean | null;
 }) {
   const url = new URL(location.href);
   const set = (key: string, value?: string | null) => {
@@ -366,6 +381,7 @@ export function updateEvidenceUrl(updates: {
     set('sel', updates.selection ? serializeSelection(updates.selection) : null);
   }
   if ('full' in updates) set('full', updates.full ? '1' : null);
+  if ('table' in updates) set('tbl', updates.table ? '1' : null);
   history.replaceState(null, '', `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
 }
 

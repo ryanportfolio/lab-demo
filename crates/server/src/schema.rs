@@ -70,6 +70,10 @@ pub struct Pt {
     pub y: f64,
     /// tick label when the x axis is categorical
     pub label: Option<String>,
+    /// lower edge of an uncertainty band, ±2 SE on the display scale
+    pub lo: Option<f64>,
+    /// upper edge of an uncertainty band
+    pub hi: Option<f64>,
 }
 
 #[derive(SimpleObject, Clone)]
@@ -513,6 +517,8 @@ pub fn chart_from_json(v: &serde_json::Value) -> EvidenceChart {
                                         x: pt["x"].as_f64().unwrap_or(0.0),
                                         y: pt["y"].as_f64().unwrap_or(0.0),
                                         label: pt["label"].as_str().map(String::from),
+                                        lo: pt["lo"].as_f64(),
+                                        hi: pt["hi"].as_f64(),
                                     })
                                     .collect()
                             })

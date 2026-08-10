@@ -28,10 +28,14 @@ export interface Pt {
   x: number;
   y: number;
   label: string | null;
+  /** lower edge of an uncertainty band, ±2 SE on the display scale */
+  lo?: number | null;
+  /** upper edge of an uncertainty band */
+  hi?: number | null;
 }
 export interface EvidenceSeries {
   label: string;
-  style: 'bar' | 'line' | 'step' | 'dot';
+  style: 'bar' | 'line' | 'step' | 'dot' | 'band';
   points: Pt[];
 }
 export interface EvidenceChart {
@@ -292,46 +296,74 @@ export async function approveReview(reviewId: string): Promise<number> {
   return d.approveReview.version;
 }
 
-const CHART_FIELDS = `
+const chartFields = (withBands: boolean) => `
   kind title xLabel yLabel notes gloss
-  series { label style points { x y label } }
+  series { label style points { x y label${withBands ? ' lo hi' : ''} } }
 `;
+
+// A server predating the uncertainty-band fields rejects a query naming
+// them. One retry without the band fields keeps the dev-against-deployed
+// workflow alive across the schema rollout; bands simply do not render.
+// The retry keys on the validation message, not on the flag: concurrent
+// first fetches (StrictMode mounts twice) can both fail before either
+// learns the answer, and each must still fall back.
+let serverHasBands = true;
+const missingBandFields = (err: unknown) =>
+  /Unknown field \\?"(lo|hi)\\?"/.test(String(err));
 
 export async function fetchEvidence(
   runId: string,
   code: string,
 ): Promise<Evidence | null> {
-  const d = await gql<{ evidence: Evidence | null }>(
+  const query = (withBands: boolean) =>
     `query($runId: ID!, $code: String!) {
       evidence(runId: $runId, code: $code) {
         code
         facts { rows params iterations converged gini baselineGini deviance aic alpha }
         lift { decile exposure actual predicted baselineActual }
         foldDeltas
-        charts { ${CHART_FIELDS} }
+        charts { ${chartFields(withBands)} }
       }
-    }`,
-    { runId, code },
-  );
-  return d.evidence;
+    }`;
+  try {
+    const d = await gql<{ evidence: Evidence | null }>(query(serverHasBands), {
+      runId,
+      code,
+    });
+    return d.evidence;
+  } catch (err) {
+    if (missingBandFields(err)) {
+      serverHasBands = false;
+      const d = await gql<{ evidence: Evidence | null }>(query(false), { runId, code });
+      return d.evidence;
+    }
+    throw err;
+  }
 }
 
 /// The context expert answers as the agent role: it may read every artifact
 /// in the run, and the same role is refused at the approve gate.
 export async function ask(runId: string, question: string): Promise<Answer> {
-  const d = await gql<{ ask: Answer }>(
+  const query = (withBands: boolean) =>
     `query($runId: ID!, $question: String!) {
       ask(runId: $runId, question: $question) {
         question intent paragraphs gloss
         citations { code label status }
         steps { tool target status }
-        charts { ${CHART_FIELDS} }
+        charts { ${chartFields(withBands)} }
       }
-    }`,
-    { runId, question },
-    'agent',
-  );
-  return d.ask;
+    }`;
+  try {
+    const d = await gql<{ ask: Answer }>(query(serverHasBands), { runId, question }, 'agent');
+    return d.ask;
+  } catch (err) {
+    if (missingBandFields(err)) {
+      serverHasBands = false;
+      const d = await gql<{ ask: Answer }>(query(false), { runId, question }, 'agent');
+      return d.ask;
+    }
+    throw err;
+  }
 }
 
 export async function fetchSuggestedQuestions(): Promise<string[]> {

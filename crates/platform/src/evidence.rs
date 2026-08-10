@@ -17,6 +17,8 @@ pub enum Style {
     Line,
     Step,
     Dot,
+    /// Uncertainty region: points carry `lo`/`hi` around the center `y`
+    Band,
 }
 
 impl Style {
@@ -26,6 +28,7 @@ impl Style {
             Style::Line => "line",
             Style::Step => "step",
             Style::Dot => "dot",
+            Style::Band => "band",
         }
     }
 }
@@ -36,17 +39,38 @@ pub struct Pt {
     pub y: f64,
     /// tick label when the x axis is categorical
     pub label: Option<String>,
+    /// lower edge of an uncertainty band, ±2 SE on the display scale
+    pub lo: Option<f64>,
+    /// upper edge of an uncertainty band
+    pub hi: Option<f64>,
 }
 
 impl Pt {
     pub fn xy(x: f64, y: f64) -> Self {
-        Pt { x, y, label: None }
+        Pt {
+            x,
+            y,
+            label: None,
+            lo: None,
+            hi: None,
+        }
     }
     pub fn labelled(x: f64, y: f64, label: impl Into<String>) -> Self {
         Pt {
             x,
             y,
             label: Some(label.into()),
+            lo: None,
+            hi: None,
+        }
+    }
+    pub fn band(x: f64, y: f64, lo: f64, hi: f64) -> Self {
+        Pt {
+            x,
+            y,
+            label: None,
+            lo: Some(lo),
+            hi: Some(hi),
         }
     }
 }
@@ -182,9 +206,10 @@ fn age_exposure(rows: &[&PolicyRow]) -> Vec<Pt> {
 pub fn age_curve_chart_with_exposure(
     spline_beta: &[f64],
     band_beta: &[f64],
+    spline_cov: Option<&nalgebra::DMatrix<f64>>,
     rows: &[&PolicyRow],
 ) -> Chart {
-    let mut c = age_curve_chart(spline_beta, band_beta);
+    let mut c = age_curve_chart(spline_beta, band_beta, spline_cov);
     // Exposure rides on its own axis behind the curve, so a reader can see
     // how much book sits under each part of the shape
     c.series.insert(
@@ -198,15 +223,48 @@ pub fn age_curve_chart_with_exposure(
     c
 }
 
-pub fn age_curve_chart(spline_beta: &[f64], band_beta: &[f64]) -> Chart {
+pub fn age_curve_chart(
+    spline_beta: &[f64],
+    band_beta: &[f64],
+    spline_cov: Option<&nalgebra::DMatrix<f64>>,
+) -> Chart {
     let ref_basis = natural_basis(45.0, &AGE_KNOTS);
     let ref_log: f64 = ref_basis.iter().zip(spline_beta).map(|(b, c)| b * c).sum();
     let mut curve = Vec::new();
+    let mut band_pts = Vec::new();
     let mut step = Vec::new();
+    // widest relative band, to name where the shape is least certain
+    let mut widest: (f64, f64) = (0.0, 18.0); // (2*se, age)
     for age in 18..=90u8 {
         let basis = natural_basis(age as f64, &AGE_KNOTS);
         let lp: f64 = basis.iter().zip(spline_beta).map(|(b, c)| b * c).sum();
-        curve.push(Pt::xy(age as f64, (lp - ref_log).exp()));
+        let rel = (lp - ref_log).exp();
+        curve.push(Pt::xy(age as f64, rel));
+        // Pointwise ±2 SE of the contrast (lp - ref) via d' C d, where
+        // d = basis - ref_basis and C is the spline-block covariance.
+        if let Some(c) = spline_cov {
+            let d: Vec<f64> = basis
+                .iter()
+                .zip(&ref_basis)
+                .map(|(b, r)| b - r)
+                .collect();
+            let mut var = 0.0;
+            for a in 0..d.len().min(c.nrows()) {
+                for b in 0..d.len().min(c.ncols()) {
+                    var += d[a] * c[(a, b)] * d[b];
+                }
+            }
+            let se2 = 2.0 * var.max(0.0).sqrt();
+            if se2 > widest.0 {
+                widest = (se2, age as f64);
+            }
+            band_pts.push(Pt::band(
+                age as f64,
+                rel,
+                (lp - ref_log - se2).exp(),
+                (lp - ref_log + se2).exp(),
+            ));
+        }
         // v12 bands: 35 to 54 is the reference, so its coefficient is zero
         let band = age_band(age);
         let coef = match band {
@@ -234,43 +292,60 @@ pub fn age_curve_chart(spline_beta: &[f64], band_beta: &[f64]) -> Chart {
         .unwrap_or((18.0, 1.0));
     let old_end = curve.last().map(|p| p.y).unwrap_or(1.0);
 
+    let mut series = Vec::new();
+    if !band_pts.is_empty() {
+        series.push(Series {
+            label: "±2 SE".into(),
+            style: Style::Band,
+            points: band_pts,
+        });
+    }
+    series.extend([
+        Series {
+            label: "v12 bands".into(),
+            style: Style::Step,
+            points: step,
+        },
+        Series {
+            label: "Fitted spline".into(),
+            style: Style::Line,
+            points: curve,
+        },
+        Series {
+            label: "Knots".into(),
+            style: Style::Dot,
+            points: knots,
+        },
+    ]);
+    let mut notes = vec![
+        format!(
+            "Fitted peak {:.2} at age {}, and the curve reaches {:.2} at age 90",
+            peak.1, peak.0 as i32, old_end
+        ),
+        "Knots are the join points of the smooth pieces, not breaks in the price"
+            .into(),
+    ];
+    if spline_cov.is_some() {
+        notes.push(format!(
+            "The shaded band is ±2 standard errors; it is widest near age {}, where the data is thinnest",
+            widest.1 as i32
+        ));
+    }
+
     Chart {
         kind: "age_curve".into(),
         title: "Driver age relativity".into(),
         x_label: "Driver age".into(),
         y_label: "Relativity, age 45 = 1.00".into(),
-        series: vec![
-            Series {
-                label: "v12 bands".into(),
-                style: Style::Step,
-                points: step,
-            },
-            Series {
-                label: "Fitted spline".into(),
-                style: Style::Line,
-                points: curve,
-            },
-            Series {
-                label: "Knots".into(),
-                style: Style::Dot,
-                points: knots,
-            },
-        ],
-        notes: vec![
-            format!(
-                "Fitted peak {:.2} at age {}, and the curve reaches {:.2} at age 90",
-                peak.1, peak.0 as i32, old_end
-            ),
-            "Knots are the join points of the smooth pieces, not breaks in the price"
-                .into(),
-        ],
+        series,
+        notes,
         gloss: "The steps are the five age groups the current model prices on, and the smooth line is what the same data says the risk actually does with age. Where the line pulls away from the steps, drivers inside one group are being charged the same for different risk.".into(),
     }
 }
 
 /// Observed frequency by prior accident count, with the exposure behind each
 /// count, next to the fitted relativity of the capped factor.
-pub fn accidents_chart(rows: &[&PolicyRow], capped_coef: f64) -> Chart {
+pub fn accidents_chart(rows: &[&PolicyRow], capped_coef: f64, capped_se: f64) -> Chart {
     let max_k = 5usize;
     let mut exp = vec![0.0; max_k + 1];
     let mut clm = vec![0.0; max_k + 1];
@@ -296,7 +371,20 @@ pub fn accidents_chart(rows: &[&PolicyRow], capped_coef: f64) -> Chart {
         .collect();
     let base = observed[0].y.max(1e-9);
     let fitted: Vec<Pt> = (0..=max_k)
-        .map(|k| Pt::xy(k as f64, (capped_coef * k.min(3) as f64).exp() * base))
+        .map(|k| {
+            let kk = k.min(3) as f64;
+            let center = (capped_coef * kk).exp() * base;
+            if capped_se > 0.0 && k > 0 {
+                Pt::band(
+                    k as f64,
+                    center,
+                    ((capped_coef - 2.0 * capped_se) * kk).exp() * base,
+                    ((capped_coef + 2.0 * capped_se) * kk).exp() * base,
+                )
+            } else {
+                Pt::xy(k as f64, center)
+            }
+        })
         .collect();
     let share: Vec<Pt> = (0..=max_k)
         .map(|k| Pt::xy(k as f64, 100.0 * exp[k] / total))
@@ -329,10 +417,19 @@ pub fn accidents_chart(rows: &[&PolicyRow], capped_coef: f64) -> Chart {
             format!(
                 "Counts of 3 and above carry {thin:.1}% of earned exposure between them"
             ),
-            format!(
-                "Each accident below the cap multiplies frequency by {:.2}",
-                capped_coef.exp()
-            ),
+            if capped_se > 0.0 {
+                format!(
+                    "Each accident below the cap multiplies frequency by {:.2} (±2 SE: {:.2} to {:.2})",
+                    capped_coef.exp(),
+                    (capped_coef - 2.0 * capped_se).exp(),
+                    (capped_coef + 2.0 * capped_se).exp()
+                )
+            } else {
+                format!(
+                    "Each accident below the cap multiplies frequency by {:.2}",
+                    capped_coef.exp()
+                )
+            },
         ],
         gloss: "Drivers with more past accidents do claim more often, but almost nobody has three or more, so the model treats three and above as one group instead of pricing thin air.".into(),
     }
@@ -871,10 +968,68 @@ mod tests {
     }
 
     #[test]
+    fn age_curve_band_brackets_the_fit_and_pinches_at_the_reference() {
+        let spline = vec![0.4, -0.2, 0.1, 0.05];
+        let bands = vec![0.5, 0.2, 0.1, 0.3];
+        // a plausible positive-definite covariance for the four spline columns
+        let mut cov = nalgebra::DMatrix::<f64>::zeros(4, 4);
+        for i in 0..4 {
+            cov[(i, i)] = 0.004;
+        }
+        cov[(0, 1)] = 0.001;
+        cov[(1, 0)] = 0.001;
+        let c = age_curve_chart(&spline, &bands, Some(&cov));
+        let band = c
+            .series
+            .iter()
+            .find(|s| s.style == Style::Band)
+            .expect("band series present when covariance is given");
+        assert_eq!(band.points.len(), 73, "one band point per age 18..=90");
+        for p in &band.points {
+            let (lo, hi) = (p.lo.unwrap(), p.hi.unwrap());
+            assert!(lo <= p.y && p.y <= hi, "band brackets the fit at {}", p.x);
+        }
+        // the curve is a contrast against age 45, so uncertainty vanishes there
+        let at45 = band.points.iter().find(|p| p.x == 45.0).unwrap();
+        assert!(
+            (at45.hi.unwrap() - at45.lo.unwrap()).abs() < 1e-9,
+            "band pinches to zero width at the reference age"
+        );
+        // the band note names where the shape is least certain
+        assert!(c.notes.iter().any(|n| n.contains("standard errors")));
+        // without covariance there is no band series and no band note
+        let plain = age_curve_chart(&spline, &bands, None);
+        assert!(plain.series.iter().all(|s| s.style != Style::Band));
+        assert!(!plain.notes.iter().any(|n| n.contains("standard errors")));
+    }
+
+    #[test]
+    fn accidents_fitted_carries_its_interval() {
+        let r = rows(300);
+        let refs: Vec<&PolicyRow> = r.iter().collect();
+        let c = accidents_chart(&refs, 0.18, 0.03);
+        let fitted = c
+            .series
+            .iter()
+            .find(|s| s.label.starts_with("Fitted"))
+            .unwrap();
+        // k = 0 anchors the base with no interval; every later count has one
+        assert!(fitted.points[0].lo.is_none());
+        for p in fitted.points.iter().skip(1) {
+            let (lo, hi) = (p.lo.unwrap(), p.hi.unwrap());
+            assert!(lo < p.y && p.y < hi, "interval brackets the fit at {}", p.x);
+        }
+        // wider with each capped count: multiplicative errors compound
+        let w = |p: &Pt| p.hi.unwrap() / p.lo.unwrap();
+        assert!(w(&fitted.points[3]) > w(&fitted.points[1]));
+        assert!(c.notes.iter().any(|n| n.contains("±2 SE")));
+    }
+
+    #[test]
     fn age_curve_is_one_at_the_reference() {
         let spline = vec![0.4, -0.2, 0.1, 0.05];
         let bands = vec![0.5, 0.2, 0.1, 0.3];
-        let c = age_curve_chart(&spline, &bands);
+        let c = age_curve_chart(&spline, &bands, None);
         let curve = &c.series[1].points;
         let at45 = curve.iter().find(|p| p.x == 45.0).unwrap();
         assert!((at45.y - 1.0).abs() < 1e-12, "spline normalized at age 45");
@@ -928,8 +1083,8 @@ mod tests {
         let r = rows(200);
         let refs: Vec<&PolicyRow> = r.iter().collect();
         let charts = vec![
-            age_curve_chart(&[0.4, -0.2, 0.1, 0.05], &[0.5, 0.2, 0.1, 0.3]),
-            accidents_chart(&refs, 0.18),
+            age_curve_chart(&[0.4, -0.2, 0.1, 0.05], &[0.5, 0.2, 0.1, 0.3], None),
+            accidents_chart(&refs, 0.18, 0.02),
             territory_chart(&[1.0, 1.1], &[1.05, 1.0]),
             missingness_charts(&refs).remove(0),
         ];

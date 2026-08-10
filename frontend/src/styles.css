@@ -337,6 +337,28 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block }
 .chart .legend i[data-style="line"], .chart .legend i[data-style="step"] { height: 2px; width: 12px; border-radius: 0 }
 .chart .legend i[data-style="dot"] { border-radius: var(--r-full); width: 7px; height: 7px }
+.chart .legend i[data-style="band"] { height: 9px; width: 12px; border-radius: 2px; opacity: .38 }
+.chart .legend-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px }
+.chart .legend-row .legend { flex: 1 }
+.values-toggle { font-size: 12px; color: var(--fg-muted); background: none; border: 1px solid var(--border); border-radius: var(--r-sm, 4px); padding: 2px 9px; cursor: pointer; white-space: nowrap }
+.values-toggle:hover { color: var(--fg) }
+.values-toggle[aria-pressed="true"] { color: var(--fg); border-color: var(--fg-subtle) }
+/* Exact-values table twin: the chart as numbers, selection linked both ways */
+.chart-values { margin-top: 8px; border: 1px solid var(--border); border-radius: var(--r-sm, 4px); font-size: 12.5px }
+.chart-values-head { display: flex; justify-content: space-between; align-items: center; padding: 5px 9px; border-bottom: 1px solid var(--border); color: var(--fg-muted) }
+.chart-values-head button { font-size: 12px; background: none; border: none; color: var(--fg-muted); cursor: pointer; text-decoration: underline }
+.chart-values-head button:hover { color: var(--fg) }
+.chart-values-scroll { max-height: 258px; overflow-y: auto }
+.chart-values table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums }
+.chart-values th, .chart-values td { padding: 3px 9px; text-align: right; border-bottom: 1px solid var(--border-subtle, var(--border)) }
+.chart-values thead th { position: sticky; top: 0; background: var(--bg); z-index: 1; font-weight: 600; color: var(--fg-muted) }
+.chart-values tbody th { text-align: left; font-weight: 500 }
+.chart-values tbody tr { cursor: pointer }
+.chart-values tbody tr:hover { background: var(--bg-hover, rgba(127,127,127,.08)) }
+.chart-values tbody tr[data-selected] { background: var(--selection-bg, rgba(127,127,127,.14)); box-shadow: inset 2px 0 0 var(--chart-line) }
+/* ±2 SE region: translucent fill plus a dashed edge, so the band reads by
+   shape as well as color and survives grayscale */
+.se-band { fill: var(--chart-band); fill-opacity: .22; stroke: var(--chart-band); stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 2 3 }
 .chart .notes { list-style: none; margin-top: 8px; font-size: 13px; color: var(--fg-muted); line-height: 1.5 }
 .chart .notes li { padding-left: 14px; position: relative }
 .chart .notes li::before { content: "•"; position: absolute; left: 2px; color: var(--fg-subtle) }
