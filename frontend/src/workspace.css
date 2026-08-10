@@ -53,10 +53,12 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 /* Both topbar controls are the same bordered pill. The theme button used to
    be bare text, which gave a reader no way to know it was pressable. */
 .theme-cycle {
+  display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid var(--border); border-radius: var(--r-pill); background: transparent;
-  color: var(--fg-subtle); cursor: pointer; font-size: 15px; padding: 5px 11px;
+  color: var(--fg-subtle); cursor: pointer; padding: 6px; min-width: 29px; min-height: 29px;
   transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
+.theme-cycle svg { display: block }
 .theme-cycle:hover { color: var(--fg); border-color: var(--fg-subtle) }
 .askbtn { background: transparent; font-size: 16px; padding: 6px 13px }
 

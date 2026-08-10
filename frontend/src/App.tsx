@@ -358,8 +358,30 @@ export default function App() {
             className="theme-cycle"
             type="button"
             onClick={() => setThemePref((theme) => nextTheme(theme))}
+            aria-label={`Theme: ${themePref}. Activate to cycle`}
+            title={`Theme · ${themePref}`}
           >
-            Theme · {themePref}
+            {themePref === 'light' ? (
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="3.1" stroke="currentColor" strokeWidth="1.5" />
+                <path
+                  d="M8 1.2v1.6M8 13.2v1.6M1.2 8h1.6M13.2 8h1.6M3.2 3.2l1.13 1.13M11.67 11.67l1.13 1.13M12.8 3.2l-1.13 1.13M4.33 11.67L3.2 12.8"
+                  stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                />
+              </svg>
+            ) : themePref === 'dark' ? (
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path
+                  d="M13.4 9.6A5.9 5.9 0 0 1 6.4 2.6a5.9 5.9 0 1 0 7 7Z"
+                  stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"
+                />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M8 1.8a6.2 6.2 0 0 1 0 12.4Z" fill="currentColor" />
+              </svg>
+            )}
           </button>
           <button
             className="askbtn"
