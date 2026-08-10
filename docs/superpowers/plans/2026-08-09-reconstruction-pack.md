@@ -34,10 +34,19 @@ Sections, each labeled with *when it was recorded*:
    human approve action last.
 8. Provenance — which section was recorded when.
 
-Not included: charts (they are recomputed at render time in the SPA — putting
-them in the record would be read-time reconstruction, the thing FR-3 forbids)
-and the SPA's hardcoded material-diff panel (the recorded before→after lives in
-the action ledger already).
+Not included: the SPA's hardcoded material-diff panel (the recorded
+before→after lives in the action ledger already).
+
+Charts — rule refined 2026-08-10 (PR "compile to pack"): the original
+exclusion said charts are recomputed at render time in the SPA, so embedding
+them would be read-time reconstruction. The premise shifted: chart numbers
+are frozen per-run in `experiments.evidence`, and the record now embeds
+**static SVG exhibits rendered once inside the approval transaction** and
+stored in `reviews.exhibits` (migration 0005). At read time the record only
+concatenates stored strings, so the FR-3 rule — no read-time reconstruction —
+still holds; what renders is what was signed, renderer bugs included.
+Approvals that predate exhibits fall back to an honest sentence, mirroring
+the pre-snapshot `approved_package` fallback.
 
 ## Wiring
 

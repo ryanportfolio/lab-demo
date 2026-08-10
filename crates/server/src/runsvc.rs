@@ -694,6 +694,27 @@ pub async fn approve_review(
         .execute(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;
+    // Sign-off exhibits: the decision evidence rendered to static SVG once,
+    // inside this transaction, from the run's frozen evidence rows. A derived
+    // artifact: if the winner has no evidence, the column stays NULL and the
+    // record says so — the human's approval is never held hostage to a
+    // rendering step.
+    let evidence_row: Option<(serde_json::Value,)> = sqlx::query_as(
+        "SELECT evidence FROM experiments WHERE run_id = $1 AND code = $2 AND evidence IS NOT NULL",
+    )
+    .bind(run_id)
+    .bind(&winner_code)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+    let exhibits =
+        evidence_row.map(|(ev,)| crate::exhibit::build_exhibits(&ev, &winner_code));
+    sqlx::query("UPDATE reviews SET exhibits = $1 WHERE id = $2")
+        .bind(exhibits)
+        .bind(review_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
     tx.commit().await.map_err(|e| e.to_string())?;
     Ok(v13_id)
 }
