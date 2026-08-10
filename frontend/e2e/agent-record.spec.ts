@@ -27,11 +27,14 @@ test('a run leaves an agent record that survives into review and approval', asyn
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
-  // Runs from before action capture show an honest empty state; replay to
-  // record a fresh run rather than fabricating history for old ones. The
-  // panel stays open across the replay (component state, not DOM toggling).
+  // Replay a fresh run unconditionally: the assertions below need a run whose
+  // review is not yet approved (no human action in the record), and against a
+  // shared backend the newest run may already carry an approval. Replaying
+  // also covers pre-action-capture runs, whose record shows an honest empty
+  // state. The panel stays open across the replay (component state, not DOM
+  // toggling).
   await expect(record.locator('.agent-record-empty, .act-row').first()).toBeVisible();
-  if ((await record.locator('.agent-record-empty').count()) > 0) {
+  if (await page.locator('.replay').isEnabled()) {
     await page.locator('.replay').click();
     await ready(page);
   }
@@ -60,8 +63,8 @@ test('a run leaves an agent record that survives into review and approval', asyn
   await expect(reviewRecord.locator('.act-row.act-human')).toHaveCount(0);
 
   // Approve: the run's single irreversible action, attributed to the human
-  await page.locator('.approval-actions input[type="checkbox"]').check();
-  await page.locator('.approval-actions button').click();
+  await page.locator('.approval-ack input[type="checkbox"]').check();
+  await page.locator('.approval-actions .btn-primary').click();
   await expect(page.locator('.stamp')).toBeVisible({ timeout: 20_000 });
   const humanRow = reviewRecord.locator('.act-row.act-human');
   await expect(humanRow).toHaveCount(1, { timeout: 20_000 });

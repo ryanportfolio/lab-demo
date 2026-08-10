@@ -960,6 +960,14 @@ export default function Chart({
           </div>
         )}
       </div>
+      {/* Card anatomy: question, provenance, chart, weak point, exact values.
+          Provenance rides above the artifact so the source is read before the
+          shape, not discovered under it. */}
+      <div className="chart-source">
+        {context
+          ? `${context.code} · run ${context.runId} · ${context.target} / ${context.denominator}`
+          : `${chart.xLabel} / ${shown.yLabel}`}
+      </div>
       <span className="chart-y-readout">{shown.yLabel}</span>
       <Plot
         chart={shown}
@@ -981,13 +989,8 @@ export default function Chart({
         </svg>
       </button>
       {legend}
+      <div className="chart-weakness"><b>Weakest</b>{weakness}</div>
       <aside className="chart-diagnostics" aria-label="Chart diagnostics and actions">
-        <div className="chart-weakness"><b>Weakest</b>{weakness}</div>
-        <div className="chart-source">
-          {context
-            ? `${context.code} · run ${context.runId} · ${context.target} / ${context.denominator}`
-            : `${chart.xLabel} / ${shown.yLabel}`}
-        </div>
         <div className="chart-selection-slot">
           {selectionSlot(true)}
         </div>
@@ -1011,6 +1014,12 @@ export default function Chart({
               onMouseDown={(e) => e.stopPropagation()}
             >
               <figcaption>{chart.title}</figcaption>
+              {/* The source line rides every chart surface, full view included. */}
+              <div className="chart-source">
+                {context
+                  ? `${context.code} · run ${context.runId} · ${context.target} / ${context.denominator}`
+                  : `${chart.xLabel} / ${shown.yLabel}`}
+              </div>
               <button
                 type="button"
                 className="chart-close"

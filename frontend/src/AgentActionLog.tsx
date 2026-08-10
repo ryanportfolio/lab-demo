@@ -63,7 +63,7 @@ export default function AgentActionLog({ actions, onSelectExperiment, review }: 
                 key={action.seq}
                 className={`act-row act-${action.kind} act-${action.actor}`}
               >
-                <span className="act-seq">{action.seq}</span>
+                <span className="act-seq">{String(action.seq).padStart(2, '0')}</span>
                 <span className={`act-actor ${action.actor}`}>
                   {action.actor === 'human' ? 'Human' : 'AI'}
                 </span>

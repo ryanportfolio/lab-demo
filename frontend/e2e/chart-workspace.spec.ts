@@ -224,11 +224,16 @@ test('wide workspace gives evidence the stage and stacks experiment memory', asy
     const evidence = await page.locator('.selected-evidence').boundingBox();
     const ledger = await page.locator('.experiment-ledger').boundingBox();
     const frontier = await page.locator('.frontier-panel').boundingBox();
+    const rail = await page.locator('.context-strip').boundingBox();
     const focused = page.locator('.focused-chart');
     const diagnostics = await page.locator('.chart-diagnostics').boundingBox();
     const plot = await page.locator('.focused-chart .chart > svg').boundingBox();
 
-    expect(workspace!.width).toBeGreaterThanOrEqual(Math.min(viewport.width - 50, 2180));
+    // The inspector rail owns its own column, and the workspace takes the rest
+    expect(rail!.x).toBeGreaterThanOrEqual(workspace!.x + workspace!.width - 1);
+    expect(workspace!.width).toBeGreaterThanOrEqual(
+      Math.min(viewport.width - rail!.width - 50, 2180),
+    );
     expect(evidence!.x).toBeLessThan(ledger!.x);
     expect(evidence!.width).toBeGreaterThan(ledger!.width * 1.6);
     expect(Math.round(frontier!.x)).toBe(Math.round(ledger!.x));

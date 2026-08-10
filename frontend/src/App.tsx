@@ -331,27 +331,29 @@ export default function App() {
   return (
     <>
       <a className="skip-link" href="#workspace-main">Skip to model workspace</a>
+      {/* Location only: brand, the run it belongs to, the view you are in.
+          Branch and status moved to the inspector rail's Run group, so the
+          bar no longer carries identity, location, and properties at once. */}
       <header className="topbar">
-        <div className="brand">
-          <span className="logo" aria-hidden="true" />
-          <span>Prediction Lab</span>
-          <small>Product concept</small>
-        </div>
         <nav className="crumb" aria-label="Breadcrumb">
-          Models<span>›</span>Bodily Injury Frequency<span>›</span>
+          <a className="brand" href="https://web-production-563b7.up.railway.app">
+            <span className="logo" aria-hidden="true" />
+            Prediction Lab
+            <small>Product concept</small>
+          </a>
+          <span className="crumb-sep" aria-hidden="true">›</span>
           <RunHistory
-            label={
-              view === 'review'
-                ? `Review${review ? ` v${review.nextVersion}` : ''}`
-                : run
-                  ? `Run ${run.id}`
-                  : 'Run pending'
-            }
+            label={run ? `Run ${run.id}` : 'Run pending'}
             currentId={run?.id ?? null}
           />
+          <span className="crumb-sep" aria-hidden="true">›</span>
+          <span className="crumb-current" aria-current="page">
+            {view === 'review'
+              ? `Review${review ? ` v${review.nextVersion}` : ''}`
+              : 'Experiments'}
+          </span>
         </nav>
         <div className="tb-right">
-          <span className="branch-readout">{run?.branchName ?? 'run pending'}</span>
           <button
             className="theme-cycle"
             type="button"
@@ -373,8 +375,6 @@ export default function App() {
         </div>
       </header>
 
-      <ContextStrip dataset={dataset} run={run} view={view} />
-
       {error && (
         <div className="banner" role="alert">
           {error.includes('fetch')
@@ -383,123 +383,129 @@ export default function App() {
         </div>
       )}
 
-      {view === 'console' ? (
-        <main className="run-view" id="workspace-main">
-          <section className="goal-bar" aria-label="Agent goal and run status">
-            <div className="goal-copy">
-              <span className="ai-mark" aria-hidden="true">AI</span>
-              <div>
-                <span className="eyebrow">Agent goal</span>
-                <strong>{run?.goal ?? 'Loading the modeling run'}</strong>
+      {/* Content column plus the fixed inspector rail. The rail leads the
+          reading order, because it frames the evidence that follows, and the
+          shell grid places it in the right-hand column on a desktop. */}
+      <div className="app-shell">
+        <ContextStrip dataset={dataset} run={run} view={view} />
+        {view === 'console' ? (
+          <main className="run-view" id="workspace-main">
+            <section className="goal-bar" aria-label="Agent goal and run status">
+              <div className="goal-copy">
+                <span className="ai-mark" aria-hidden="true">AI</span>
+                <div>
+                  <span className="eyebrow">Agent goal</span>
+                  <strong>{run?.goal ?? 'Loading the modeling run'}</strong>
+                </div>
               </div>
-            </div>
-            {complete && winner && run && (
-              <section className="promote" aria-label="Winner ready for review">
-                <div>
-                  <span className="winner-mark" aria-hidden="true" />
-                  <strong>{winner.code} ready for human review</strong>
-                  <span>
-                    Gini {fmtGini(winner.gini ?? 0)} · {fmtDelta(winner.deltaGini ?? 0)} · {scrappedCount} failures retained
+              {complete && winner && run && (
+                <section className="promote" aria-label="Winner ready for review">
+                  <div>
+                    <span className="winner-mark" aria-hidden="true" />
+                    <strong>{winner.code} ready for human review</strong>
+                    <span>
+                      Gini {fmtGini(winner.gini ?? 0)} · {fmtDelta(winner.deltaGini ?? 0)} · {scrappedCount} failures retained
+                    </span>
+                  </div>
+                  <button type="button" onClick={() => setView('review')}>Open decision package →</button>
+                </section>
+              )}
+              <div className="goal-rails" aria-label="Hard guardrails">
+                {(run?.rails ?? []).map((rail) => (
+                  <span key={rail.key} data-state={rail.mark} title={rail.note ?? rail.label}>
+                    <i aria-hidden="true">{rail.mark === 'enforced' ? '!' : rail.mark === 'passed' ? '✓' : '·'}</i>
+                    {rail.label
+                      .replace('At most ', '≤')
+                      .replace(' new rating factors', ' factors')
+                      .replace('Territory rate movement within ', 'territory ')
+                      .replace('Lift must hold across ', '')}
                   </span>
-                </div>
-                <button type="button" onClick={() => setView('review')}>Open decision package →</button>
-              </section>
-            )}
-            <div className="goal-rails" aria-label="Hard guardrails">
-              {(run?.rails ?? []).map((rail) => (
-                <span key={rail.key} data-state={rail.mark} title={rail.note ?? rail.label}>
-                  <i aria-hidden="true">{rail.mark === 'enforced' ? '!' : rail.mark === 'passed' ? '✓' : '·'}</i>
-                  {rail.label
-                    .replace('At most ', '≤')
-                    .replace(' new rating factors', ' factors')
-                    .replace('Territory rate movement within ', 'territory ')
-                    .replace('Lift must hold across ', '')}
-                </span>
-              ))}
-            </div>
-            <div className="run-state">
-              <strong>{landedCount} / 7</strong>
-              <span>{running ? 'running' : complete ? 'complete' : 'loading'} · {elapsedText}</span>
-              <button className="replay" type="button" onClick={replay} disabled={running}>
-                Replay
-              </button>
-            </div>
-          </section>
+                ))}
+              </div>
+              <div className="run-state">
+                <strong>{landedCount} / 7</strong>
+                <span>{running ? 'running' : complete ? 'complete' : 'loading'} · {elapsedText}</span>
+                <button className="replay" type="button" onClick={replay} disabled={running}>
+                  Replay
+                </button>
+              </div>
+            </section>
 
-          <div className="run-workspace">
-            <ExperimentLedger
-              experiments={experiments}
-              selectedCode={selectedCode}
-              onSelect={chooseExperiment}
-            />
-
-            <section className="frontier-panel" aria-labelledby="frontier-heading">
-              <header className="workspace-heading">
-                <div>
-                  <span className="eyebrow">Question cost</span>
-                  <h2 id="frontier-heading">Experiment frontier</h2>
-                </div>
-                <span className="section-count">{candidateCount} forward · {scrappedCount} stopped</span>
-              </header>
-              <Frontier
+            <div className="run-workspace">
+              <ExperimentLedger
                 experiments={experiments}
-                baselineGini={run?.baselineGini ?? null}
-                complete={!!complete}
-                winnerCode={run?.winnerCode ?? null}
-                hovered={null}
                 selectedCode={selectedCode}
                 onSelect={chooseExperiment}
               />
-              <div className="frontier-readout">
-                <span>Higher is better</span>
-                <span>Right spends factor budget</span>
-                <strong>{winner?.deltaGini != null ? `${fmtDelta(winner.deltaGini)} winner` : 'Waiting for winner'}</strong>
-              </div>
-            </section>
 
-            <section className="selected-evidence" id="selected-evidence" aria-label="Selected experiment evidence">
-              {run && selected && selected.status !== 'running' ? (
-                <EvidencePanel
-                  runId={run.id}
-                  code={selected.code}
-                  plain={false}
-                  experiment={selected}
-                  focused
-                  onAsk={askFromEvidence}
-                  onSave={saveEvidence}
-                  baseVersion={run.baseModelVersion}
+              <section className="frontier-panel" aria-labelledby="frontier-heading">
+                <header className="workspace-heading">
+                  <div>
+                    <span className="eyebrow">Question cost</span>
+                    <h2 id="frontier-heading">Experiment frontier</h2>
+                  </div>
+                  <span className="section-count">{candidateCount} forward · {scrappedCount} stopped</span>
+                </header>
+                <Frontier
+                  experiments={experiments}
+                  baselineGini={run?.baselineGini ?? null}
+                  complete={!!complete}
+                  winnerCode={run?.winnerCode ?? null}
+                  hovered={null}
+                  selectedCode={selectedCode}
+                  onSelect={chooseExperiment}
                 />
-              ) : (
-                <div className="evidence-empty" aria-busy={running}>
-                  <span className="eyebrow">Evidence</span>
-                  <h2>{running ? 'Waiting for the first fit' : 'Select an experiment'}</h2>
+                <div className="frontier-readout">
+                  <span>Higher is better</span>
+                  <span>Right spends factor budget</span>
+                  <strong>{winner?.deltaGini != null ? `${fmtDelta(winner.deltaGini)} winner` : 'Waiting for winner'}</strong>
                 </div>
-              )}
-            </section>
-          </div>
+              </section>
 
-          <AgentActionLog actions={run?.actions ?? []} onSelectExperiment={chooseExperiment} />
+              <section className="selected-evidence" id="selected-evidence" aria-label="Selected experiment evidence">
+                {run && selected && selected.status !== 'running' ? (
+                  <EvidencePanel
+                    runId={run.id}
+                    code={selected.code}
+                    plain={false}
+                    experiment={selected}
+                    focused
+                    onAsk={askFromEvidence}
+                    onSave={saveEvidence}
+                    baseVersion={run.baseModelVersion}
+                  />
+                ) : (
+                  <div className="evidence-empty" aria-busy={running}>
+                    <span className="eyebrow">Evidence</span>
+                    <h2>{running ? 'Waiting for the first fit' : 'Select an experiment'}</h2>
+                  </div>
+                )}
+              </section>
+            </div>
 
-        </main>
-      ) : run && review && review.runId === run.id ? (
-        <ReviewView
-          run={run}
-          review={review}
-          plain={false}
-          onBack={() => setView('console')}
-          onApprove={onApprove}
-          approving={approving}
-          error={approveError}
-          savedEvidence={savedEvidence}
-          onAsk={askFromEvidence}
-          onSave={saveEvidence}
-        />
-      ) : (
-        <main className="review-loading" id="workspace-main">
-          <button className="back" type="button" onClick={() => setView('console')}>← Back to run</button>
-          <p>{running ? 'The run is still working' : 'No review is open for this run'}</p>
-        </main>
-      )}
+            <AgentActionLog actions={run?.actions ?? []} onSelectExperiment={chooseExperiment} />
+
+          </main>
+        ) : run && review && review.runId === run.id ? (
+          <ReviewView
+            run={run}
+            review={review}
+            plain={false}
+            onBack={() => setView('console')}
+            onApprove={onApprove}
+            approving={approving}
+            error={approveError}
+            savedEvidence={savedEvidence}
+            onAsk={askFromEvidence}
+            onSave={saveEvidence}
+          />
+        ) : (
+          <main className="review-loading" id="workspace-main">
+            <button className="back" type="button" onClick={() => setView('console')}>← Back to run</button>
+            <p>{running ? 'The run is still working' : 'No review is open for this run'}</p>
+          </main>
+        )}
+      </div>
 
       <div className="sr" aria-live="polite">{announcement}</div>
 

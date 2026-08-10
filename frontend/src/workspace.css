@@ -25,42 +25,85 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 }
 .skip-link:focus { transform: none }
 .eyebrow {
-  display: block; color: var(--fg-subtle); font-family: var(--mono); font-size: 13px;
-  font-weight: 600; letter-spacing: .1em; line-height: 1.2; text-transform: uppercase;
+  display: block; color: var(--fg-subtle); font-family: var(--mono); font-size: var(--label);
+  font-weight: 600; letter-spacing: var(--label-track); line-height: 1.2; text-transform: uppercase;
 }
-.section-count, .branch-readout, .review-requested {
+.section-count, .review-requested {
   color: var(--fg-subtle); font-family: var(--mono); font-size: 14px;
 }
 
-/* Shell and persistent active context */
-.topbar { grid-template-columns: auto minmax(180px, 1fr) auto; height: 50px; padding: 0 18px }
-.brand { gap: 9px; font-size: 19px; white-space: nowrap }
-.brand .logo { width: 12px; height: 12px; border-radius: 2px }
+/* Shell: a breadcrumb bar over a content column and a fixed inspector rail.
+   The bar's height is the rail's sticky offset, held in one token. */
+:root { --topbar-h: 50px; --rail-w: 300px }
+.topbar { grid-template-columns: minmax(0, 1fr) auto; height: var(--topbar-h); padding: 0 18px }
+.crumb { font-size: 15px }
+.brand { font-size: 15px; font-weight: 550; color: inherit; text-decoration: none }
+.brand:hover { text-decoration: underline; text-underline-offset: 3px }
+.brand .logo { width: 11px; height: 11px }
+/* No rule between wordmark and tag: inside a breadcrumb a vertical hairline
+   reads as another separator. */
 .brand small {
-  padding-left: 8px; border-left: 1px solid var(--border); color: var(--fg-subtle);
-  font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: .04em;
+  color: var(--fg-subtle); font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .04em;
 }
-.crumb { font-size: 16px }
+/* The run node is the one crumb you can act on, so it keeps its dashed rule
+   and caret before hover; the node you are standing on is the one in ink. */
+.crumb .run-history > button { color: var(--fg-muted); font-size: 15px; font-weight: 500 }
+.crumb .run-history > button:hover { color: var(--fg) }
 .tb-right { align-items: center; gap: 7px }
-.branch-readout { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+/* Both topbar controls are the same bordered pill. The theme button used to
+   be bare text, which gave a reader no way to know it was pressable. */
 .theme-cycle {
-  border: 0; background: transparent; color: var(--fg-subtle); cursor: pointer; font-size: 15px; padding: 7px;
+  border: 1px solid var(--border); border-radius: var(--r-pill); background: transparent;
+  color: var(--fg-subtle); cursor: pointer; font-size: 15px; padding: 5px 11px;
+  transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
-.theme-cycle:hover { color: var(--fg) }
-.askbtn { background: transparent; font-size: 16px; padding: 7px 11px }
+.theme-cycle:hover { color: var(--fg); border-color: var(--fg-subtle) }
+.askbtn { background: transparent; font-size: 16px; padding: 6px 13px }
 
+/* The rail is only as tall as a viewport, so the hairline between the two
+   columns is painted by the shell and runs the whole page instead of ending
+   where the pinned rail does. */
+/* The rail is read first and placed second: it comes before the workspace in
+   the DOM so keyboard and screen-reader order reach the context that frames
+   the evidence, and the grid puts it back in the right-hand column. */
+.app-shell {
+  flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); align-items: start;
+  grid-template-areas: "workspace rail";
+  background-image: linear-gradient(to right, var(--border), var(--border));
+  background-repeat: no-repeat; background-size: 1px 100%; background-position: right var(--rail-w) top;
+}
+.app-shell > .context-strip { grid-area: rail }
+.app-shell > main { grid-area: workspace }
+
+/* Inspector rail: the active model context, held beside the working paper
+   instead of scrolling away above it. Mono uppercase group labels, muted
+   keys, tabular mono values. */
 .context-strip {
-  position: sticky; top: 50px; z-index: 18; display: grid; grid-template-columns: 1.35fr 1.2fr 1.15fr 1.05fr 1.15fr;
-  min-height: 68px; border-bottom: 1px solid var(--border); background: var(--bg); padding: 0 18px;
+  position: sticky; top: var(--topbar-h); z-index: 18; align-self: start;
+  display: flex; flex-direction: column; gap: 22px;
+  min-height: calc(100vh - var(--topbar-h)); max-height: calc(100vh - var(--topbar-h)); overflow-y: auto;
+  background: var(--bg); padding: 18px;
 }
-.context-item {
-  min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px;
-  border-right: 1px solid var(--border-muted); padding: 8px 14px;
+.rail-group { min-width: 0 }
+.rail-group-label {
+  display: block; margin-bottom: 9px; color: var(--fg-subtle); font-family: var(--mono);
+  font-size: var(--label); font-weight: 600; letter-spacing: var(--label-track); text-transform: uppercase;
 }
-.context-item:first-child { padding-left: 0 }
-.context-item:last-child { border-right: 0; padding-right: 0 }
-.context-label { color: var(--fg-subtle); font-family: var(--mono); font-size: 13px; letter-spacing: .08em; text-transform: uppercase }
-.context-value { overflow: hidden; text-overflow: ellipsis; color: var(--fg); font-size: 16px; font-weight: 520; white-space: nowrap }
+.rail-rows { display: flex; flex-direction: column; gap: 7px }
+.rail-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+/* The key gives up width first, so a long guardrail sentence wraps and the
+   value it is measured against never breaks mid-word. */
+.rail-key { flex: 1 1 auto; color: var(--fg-muted); font-size: 13.5px; line-height: 1.4 }
+.rail-val {
+  flex: 0 1 auto; min-width: 0; color: var(--fg); font-family: var(--mono); font-size: 12.5px;
+  line-height: 1.4; text-align: right;
+}
+/* The only semantic colour in the rail, and only for declared constraints:
+   a guardrail that held, one that is actively binding, one nothing has
+   tripped while the run is still working. */
+.rail-val[data-state="passed"] { color: var(--ok) }
+.rail-val[data-state="enforced"] { color: var(--warn) }
+.rail-val[data-state="idle"] { color: var(--fg-muted) }
 
 /* Run framing */
 .run-view { width: min(2240px, 100%) }
@@ -92,8 +135,8 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .run-state strong { font-family: var(--mono); font-size: 17px; font-weight: 600 }
 .run-state span { color: var(--fg-subtle); font-family: var(--mono); font-size: 13.5px }
 .run-state .replay {
-  grid-row: 1 / 3; grid-column: 3; border: 1px solid var(--border); border-radius: var(--r-sm);
-  background: transparent; color: var(--fg-muted); cursor: pointer; font-size: 15px; padding: 7px 11px;
+  grid-row: 1 / 3; grid-column: 3; border: 1px solid var(--border); border-radius: var(--r-pill);
+  background: transparent; color: var(--fg-muted); cursor: pointer; font-size: 15px; padding: 7px 14px;
 }
 .run-state .replay:hover:not(:disabled) { border-color: var(--fg-subtle); color: var(--fg) }
 .run-state .replay:disabled { background: var(--bg-subtle); color: var(--fg-subtle); cursor: default }
@@ -195,7 +238,9 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
   font-size: 13px; padding: 5px 9px;
 }
 .evidence-pending.evidence-stale { color: var(--bad); cursor: pointer }
-.evidence-state button { justify-self: center; min-height: 38px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg); color: var(--fg); cursor: pointer; padding: 6px 12px; font: inherit }
+.evidence-pending.evidence-stale:hover { border-color: var(--bad) }
+.evidence-state button { justify-self: center; min-height: 38px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card); color: var(--fg); cursor: pointer; padding: 6px 16px; font: inherit }
+.evidence-state button:hover { border-color: var(--fg-subtle) }
 .evidence-resolve {
   min-height: inherit;
   opacity: 1;
@@ -209,31 +254,50 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .evidence-head { height: 94px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 10px }
 .evidence-head h2 { margin-top: 5px; font-size: 22px; font-weight: 580; line-height: 1.28 }
 .evidence-verdict { width: 220px; flex: 0 0 220px; text-align: right }
+/* The headline number is a point estimate, so it stays ink in every status.
+   The sentence under it is where the platform's judgment lives; a green or
+   red delta would read as a verdict the measurement cannot support. */
 .evidence-verdict strong { display: block; color: var(--fg); font-family: var(--mono); font-size: 18px }
 .evidence-verdict span { display: block; margin-top: 4px; color: var(--fg-subtle); font-size: 14px; line-height: 1.4 }
-.evidence-verdict.winner strong { color: var(--ok) }
-.evidence-verdict.scrapped strong { color: var(--bad) }
 .facts { height: 48px; gap: 8px 14px; margin-bottom: 12px; padding: 11px 0; border-block: 1px solid var(--border-muted); font-size: 14px }
 .facts b { font-size: 14px }
 .facts-unfit { align-content: center; color: var(--fg-subtle) }
-.evidence-tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--border); margin-bottom: 10px; scrollbar-width: thin }
-.evidence-tabs button { flex: 0 0 auto; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--fg-subtle); cursor: pointer; font-size: 15.5px; padding: 8px 10px }
-.evidence-tabs button[aria-selected="true"] { border-color: var(--brand); color: var(--fg); font-weight: 600 }
+/* Exclusive views are a segmented control: chip ground, and the selected
+   segment floats on it. Same shape as .chart-mode and .seg, nothing new. */
+.evidence-tabs {
+  display: flex; width: max-content; max-width: 100%; gap: 2px; overflow-x: auto;
+  border-radius: var(--r-ctl); background: var(--chipbg); padding: 2px; margin-bottom: 10px;
+  scrollbar-width: thin;
+}
+.evidence-tabs button {
+  flex: 0 0 auto; border: 0; border-radius: calc(var(--r-ctl) - 2px); background: transparent;
+  color: var(--fg-muted); cursor: pointer; font-size: 14.5px; padding: 6px 12px;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.evidence-tabs button:hover:not([aria-selected="true"]) { color: var(--fg) }
+.evidence-tabs button[aria-selected="true"] { background: var(--seg-active); color: var(--fg); font-weight: 600; box-shadow: var(--shadow-raise) }
 .focused-chart {
   overflow: visible;
 }
 .focused-chart .chart {
   display: grid;
   grid-template-columns: minmax(0, 1.9fr) minmax(280px, .82fr);
+  /* Card anatomy, top to bottom: question, provenance, chart, weak point.
+     Exact values follow outside the figure. Provenance and the weak point
+     span the full card so the reading order survives the diagnostics rail. */
   grid-template-areas:
     "title title"
+    "source source"
     "readout diagnostics"
     "plot diagnostics"
-    "legend diagnostics";
+    "legend diagnostics"
+    "weak weak";
   column-gap: 24px;
   align-items: start;
-  border: 0; border-radius: 0; background: transparent; padding: 0;
+  border: 0; border-radius: 0; background: transparent; padding: 0; box-shadow: none;
 }
+.focused-chart .chart > .chart-source { grid-area: source }
+.focused-chart .chart > .chart-weakness { grid-area: weak }
 .focused-chart .chart-title-row { grid-area: title }
 .focused-chart .chart-y-readout { grid-area: readout }
 .focused-chart .chart > svg { grid-area: plot; width: 100%; max-width: none; margin-inline: 0; cursor: crosshair; touch-action: none }
@@ -257,52 +321,106 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .chart-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-right: 36px }
 .chart-title-row > div:first-child { min-width: 0 }
 .chart-question { display: block; margin-bottom: 3px; color: var(--fg-muted); font-size: 14px; line-height: 1.35 }
-.chart-mode { flex: 0 0 auto; display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-subtle) }
-.chart-mode button { min-width: 72px; min-height: 38px; border: 0; border-radius: calc(var(--r-md) - 2px); background: transparent; color: var(--fg-muted); cursor: pointer; font: inherit; font-size: 14px }
-.chart-mode button[aria-pressed="true"] { background: var(--bg); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600 }
-.chart-y-readout { display: block; height: 18px; color: var(--fg-subtle); font-family: var(--mono); font-size: 12.5px }
+.chart-mode { flex: 0 0 auto; display: inline-flex; padding: 2px; border: 0; border-radius: var(--r-ctl); background: var(--chipbg) }
+.chart-mode button {
+  min-width: 72px; min-height: 38px; border: 0; border-radius: calc(var(--r-ctl) - 2px);
+  background: transparent; color: var(--fg-muted); cursor: pointer; font: inherit; font-size: 14px;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.chart-mode button:hover:not([aria-pressed="true"]) { color: var(--fg) }
+.chart-mode button[aria-pressed="true"] { background: var(--seg-active); color: var(--fg); box-shadow: var(--shadow-raise); font-weight: 600 }
+.chart-y-readout { display: block; height: 18px; color: var(--fg-subtle); font-family: var(--mono); font-size: var(--label) }
 .chart .selection-band { fill: color-mix(in srgb, var(--brand) 13%, transparent); stroke: var(--brand); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none }
+/* Semantic red marks a breach of a DECLARED constraint, which here means the
+   filed territory tolerance. A fold delta crossing zero is a point estimate
+   with spread, not a filed limit, so the folds chart draws its reference line
+   in the neutral zero-line treatment and never fills a bar red. */
 .chart .guardrail-line { stroke: var(--bad); stroke-width: 1.2; stroke-dasharray: 5 4; pointer-events: none }
-.chart .guardrail-label { fill: var(--bad); font-family: var(--mono); font-size: 11px }
-.chart .guardrail-breach { fill: var(--bad) !important }
-.chart-weakness { min-height: 38px; display: flex; align-items: baseline; gap: 9px; margin-top: 0; border-block: 1px solid var(--border-muted); padding: 9px 0; color: var(--fg-muted); font-size: 13.5px; line-height: 1.35 }
-.chart-weakness b { flex: 0 0 auto; color: var(--bad); font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase }
+.chart .guardrail-label { fill: var(--bad); font-family: var(--mono); font-size: var(--label) }
+.chart-workspace:not([data-kind="folds"]) .guardrail-breach { fill: var(--bad) }
+.chart-workspace[data-kind="folds"] .guardrail-line { stroke: var(--fg-subtle); stroke-width: 1; stroke-dasharray: 2 3 }
+.chart-workspace[data-kind="folds"] .guardrail-label { fill: var(--fg-subtle) }
+/* The weak point closes the card, one soft hairline under the chart. */
+.chart-weakness { min-height: 38px; display: flex; align-items: baseline; gap: 9px; margin-top: 10px; border-top: 1px solid var(--border-muted); padding: 9px 0 0; color: var(--fg-muted); font-size: 13.5px; line-height: 1.35 }
+/* The weak point sits beside the win on every chart surface. It is a label,
+   not an alarm, so it takes the mono label layer in ink. */
+.chart-weakness b { flex: 0 0 auto; color: var(--fg); font-family: var(--mono); font-size: var(--label); letter-spacing: var(--label-track); text-transform: uppercase }
 .chart-selection-slot { min-height: 120px; padding-top: 8px }
-.chart-selection-empty { min-height: 106px; display: grid; place-items: center; border: 1px dashed var(--border); color: var(--fg-subtle); font-family: var(--mono); font-size: 12.5px; text-align: center }
+.chart-selection-empty { min-height: 106px; display: grid; place-items: center; border: 1px solid var(--border-muted); border-radius: var(--r-ctl); color: var(--fg-subtle); font-family: var(--mono); font-size: 12.5px; text-align: center }
 .chart-selection-weak { align-content: center; gap: 7px; padding: 9px 11px }
 .chart-selection-weak .selection-values { justify-content: center }
-.pin-weakest { min-height: 38px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg); color: var(--fg-muted); cursor: pointer; padding: 6px 10px; font: inherit; font-family: var(--mono); font-size: 13px }
+.pin-weakest { min-height: 38px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card); color: var(--fg-muted); cursor: pointer; padding: 6px 14px; font: inherit; font-family: var(--mono); font-size: 13px }
 .pin-weakest:hover, .pin-weakest:focus-visible { border-color: var(--brand); color: var(--fg); outline: none }
 .empty-hint { color: var(--fg-subtle); font-size: 11px }
 .chart-full-diagnostics { margin-top: 10px }
-.chart-full-diagnostics .chart-weakness { min-height: 0; border-block: 0; border-top: 1px solid var(--border-muted); padding: 8px 0 6px }
+.chart-full-diagnostics .chart-weakness { min-height: 0; margin-top: 0; border-block: 0; border-top: 1px solid var(--border-muted); padding: 8px 0 6px }
 .chart-full-diagnostics .chart-selection-slot { min-height: 0; padding-top: 0 }
 .chart-full-diagnostics .chart-selection-empty, .chart-full-diagnostics .chart-selection { min-height: 72px }
-.chart-selection { min-height: 106px; border-left: 3px solid var(--brand); background: var(--bg-subtle); padding: 9px 11px }
+.chart-selection { min-height: 106px; border-left: 3px solid var(--brand); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; background: var(--bg-subtle); padding: 9px 11px }
 .selection-readout { display: flex; align-items: flex-start; gap: 14px }
+/* The diagnostics column floors at 280px; a row readout with atomic stat
+   spans overflows the box there. Stack the label and let stats wrap. */
+.chart-diagnostics .selection-readout { flex-direction: column; gap: 5px }
+.chart-diagnostics .selection-values { min-width: 0 }
+.chart-diagnostics .selection-values span { white-space: normal }
 .selection-label { flex: 0 0 auto; color: var(--fg); font-family: var(--mono); font-size: 16px; font-weight: 650 }
 .selection-values { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--fg-muted); font-family: var(--mono); font-size: 12.5px }
 .selection-values span { white-space: nowrap }
-.chart-source { margin-top: 6px; color: var(--fg-subtle); font-family: var(--mono); font-size: 12.5px }
+/* Provenance rides the artifact: mono label layer, mixed case, never removed.
+   It sits between the question and the chart, closed by a soft hairline. */
+.chart-source {
+  margin: 2px 0 10px; border-bottom: 1px solid var(--border-muted); padding-bottom: 8px;
+  color: var(--fg-muted); font-family: var(--mono); font-size: var(--label); line-height: 1.45;
+}
+.chart-full > .chart-source { margin: 4px 0 12px }
 .chart-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px }
-.chart-actions button { min-height: 38px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg); color: var(--fg-muted); cursor: pointer; padding: 6px 10px; font: inherit; font-size: 13.5px }
+.chart-actions button { min-height: 38px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card); color: var(--fg-muted); cursor: pointer; padding: 6px 14px; font: inherit; font-size: 13.5px }
 .chart-actions button:hover, .chart-actions button:focus-visible { border-color: var(--brand); color: var(--fg); outline: none }
 .chart-action-status { display: block; min-height: 16px; margin-top: 4px; color: var(--ok); font-family: var(--mono); font-size: 11.5px }
 .chart-notes { border-top: 1px solid var(--border-muted); color: var(--fg-subtle); font-size: 12.5px }
-.chart-notes summary { cursor: pointer; padding: 7px 0 }
 .exact-values tr.is-selected th, .exact-values tr.is-selected td { background: color-mix(in srgb, var(--brand) 12%, var(--bg)) }
 .exact-values tr.is-selected th:first-child { box-shadow: inset 3px 0 0 var(--brand); color: var(--fg) }
-.evidence-source { min-height: 32px; display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; color: var(--fg-subtle); font-family: var(--mono); font-size: 13px }
+.evidence-source { min-height: 32px; display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; color: var(--fg-muted); font-family: var(--mono); font-size: var(--label); line-height: 1.45 }
 .exact-values { margin-top: 10px; border-top: 1px solid var(--border-muted); color: var(--fg-muted); font-size: 14px }
-.exact-values summary { cursor: pointer; list-style-position: inside; padding: 7px 0 }
-.exact-scroll { max-height: 220px; overflow: auto; border: 1px solid var(--border-muted) }
+.exact-scroll { max-height: 220px; overflow: auto; border: 1px solid var(--border-muted); border-radius: var(--r-ctl) }
 .exact-values table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; text-align: right }
 .exact-values th, .exact-values td { border-bottom: 1px solid var(--border-muted); padding: 5px 7px; white-space: nowrap }
-.exact-values thead th { position: sticky; top: 0; background: var(--bg-subtle); color: var(--fg-muted); font-weight: 600 }
+/* The label treatment stays, but the ink does not: these headers name which
+   series each number belongs to, so they hold --fg-muted (4.6:1 light, 6.5:1
+   dark on --bg-subtle) rather than the subtle layer, which fell under 3:1. */
+.exact-values thead th { position: sticky; top: 0; background: var(--bg-subtle); color: var(--fg-muted); font-size: var(--label); font-weight: 600; letter-spacing: var(--label-track); text-transform: uppercase }
 .exact-values th:first-child { text-align: left }
 
+/* Every disclosure in the app wears the same caret, and the caret is drawn
+   before anyone interacts with it. A summary that looks like a heading is a
+   summary nobody opens. */
+.chart-notes > summary,
+.exact-values > summary,
+.review-ledger > summary {
+  display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none;
+  padding: 7px 0; color: var(--fg-muted); transition: color var(--t-fast) var(--ease);
+}
+.chart-notes > summary::-webkit-details-marker,
+.exact-values > summary::-webkit-details-marker,
+.review-ledger > summary::-webkit-details-marker { display: none }
+.chart-notes > summary::before,
+.exact-values > summary::before,
+.review-ledger > summary::before {
+  content: "\25B8"; flex: none; width: 9px; color: var(--fg-subtle); font-size: 10px; line-height: 1;
+  transition: transform var(--t-fast) var(--ease);
+}
+.chart-notes[open] > summary::before,
+.exact-values[open] > summary::before,
+.review-ledger[open] > summary::before { transform: rotate(90deg) }
+.chart-notes > summary:hover,
+.exact-values > summary:hover,
+.review-ledger > summary:hover { color: var(--fg) }
+.chart-notes > summary:hover::before,
+.exact-values > summary:hover::before,
+.review-ledger > summary:hover::before { color: var(--fg) }
+
 .saved-evidence { padding: 20px 0; border-bottom: 1px solid var(--border) }
-.saved-evidence-list { border: 1px solid var(--border) }
+.saved-evidence-list { border: 1px solid var(--border); border-radius: var(--r-ctl); overflow: hidden }
 .saved-evidence-row { display: grid; grid-template-columns: 1.2fr auto 1.4fr; gap: 7px 16px; padding: 11px 12px; border-bottom: 1px solid var(--border-muted); color: var(--fg-muted); text-decoration: none; font-size: 13.5px }
 .saved-evidence-row:last-child { border-bottom: 0 }
 .saved-evidence-row:hover { background: var(--bg-subtle) }
@@ -325,23 +443,25 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .review-metrics div { padding: 12px 14px; border-right: 1px solid var(--border-muted) }
 .review-metrics div:first-child { padding-left: 0 }
 .review-metrics div:last-child { border-right: 0 }
-.review-metrics span { display: block; color: var(--fg-subtle); font-size: 13px; text-transform: uppercase; letter-spacing: .07em }
+.review-metrics span { display: block; color: var(--fg-subtle); font-family: var(--mono); font-size: var(--label); text-transform: uppercase; letter-spacing: var(--label-track) }
 .review-metrics strong { display: block; margin-top: 5px; font-family: var(--mono); font-size: 18px; font-weight: 600 }
 .review-grid { display: grid; grid-template-columns: minmax(265px, .62fr) minmax(520px, 1.38fr); border-bottom: 1px solid var(--border) }
 .review-diff, .review-proof { min-width: 0; padding: 20px 0 }
 .review-diff { padding-right: 20px }
 .review-proof { border-left: 1px solid var(--border); padding-left: 20px }
 .diff-row { display: grid; grid-template-columns: 1fr; gap: 3px; border-top: 1px solid var(--border-muted); padding: 10px 0 }
-.diff-row > span { color: var(--fg-subtle); font-size: 13px; letter-spacing: .06em; text-transform: uppercase }
+.diff-row > span { color: var(--fg-subtle); font-family: var(--mono); font-size: var(--label); letter-spacing: var(--label-track); text-transform: uppercase }
 .diff-row del { color: var(--fg-subtle); font-size: 15px }
 .diff-row ins { color: var(--fg); font-size: 16px; font-weight: 550; text-decoration: none }
+/* The amber rule is the attention marker. The exposure figure beside it is a
+   measurement, so it stays ink rather than becoming a second warning light. */
 .weak-point { margin-top: 16px; border-left: 2px solid var(--warn); padding: 2px 0 2px 11px }
-.weak-point strong { display: block; margin: 5px 0 3px; color: var(--warn); font-family: var(--mono); font-size: 18px }
+.weak-point strong { display: block; margin: 5px 0 3px; color: var(--fg); font-family: var(--mono); font-size: 18px }
 .weak-point p { color: var(--fg-muted); font-size: 15px; line-height: 1.5 }
-.weak-open { min-height: 38px; margin-top: 8px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg); color: var(--fg-muted); cursor: pointer; padding: 6px 10px; font: inherit; font-size: 13.5px }
+.weak-open { min-height: 38px; margin-top: 8px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card); color: var(--fg-muted); cursor: pointer; padding: 6px 14px; font: inherit; font-size: 13.5px }
 .weak-open:hover, .weak-open:focus-visible { border-color: var(--warn); color: var(--fg); outline: none }
 .review-ledger { margin-top: 18px; border-top: 1px solid var(--border); color: var(--fg-muted) }
-.review-ledger summary { cursor: pointer; padding: 11px 0; font-family: var(--mono); font-size: 14px }
+.review-ledger summary { font-family: var(--mono); font-size: 14px }
 .review-ledger .led-row { grid-template-columns: 62px 88px 1fr; gap: 8px; padding: 9px 0; font-size: 14px }
 .review-ledger .lid { width: auto; font-size: 13px }
 .review-ledger .disp { width: auto; font-size: 12.5px }
@@ -352,37 +472,76 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 
 .guardrail-matrix { padding: 20px 0; border-bottom: 1px solid var(--border) }
 .guardrail-matrix > .workspace-heading > strong { color: var(--ok); font-family: var(--mono); font-size: 13px }
-.guardrail-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--border) }
+.guardrail-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--border); border-radius: var(--r-ctl); overflow: hidden }
 .guardrail-cell { min-width: 0; padding: 10px 12px; border-right: 1px solid var(--border-muted) }
 .guardrail-cell:last-child { border-right: 0 }
-.guardrail-cell summary { display: grid; grid-template-columns: auto 1fr; gap: 4px 7px; cursor: pointer; list-style: none }
+/* Each cell opens. Without a caret the whole checklist read as static text,
+   so the third column carries the same disclosure mark as every other one. */
+.guardrail-cell summary { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 7px; cursor: pointer; list-style: none }
 .guardrail-cell summary::-webkit-details-marker { display: none }
+.guardrail-cell summary::after {
+  content: "\25B8"; grid-column: 3; grid-row: 1 / 3; align-self: center;
+  color: var(--fg-subtle); font-size: 10px; line-height: 1;
+  transition: transform var(--t-fast) var(--ease);
+}
+.guardrail-cell[open] summary::after { transform: rotate(90deg) }
+.guardrail-cell summary:hover span, .guardrail-cell summary:hover::after { color: var(--fg) }
 .guardrail-cell summary i { grid-row: 1 / 3; color: var(--ok); font-family: var(--mono); font-style: normal }
 .guardrail-cell summary span { overflow: hidden; text-overflow: ellipsis; font-size: 14.5px; white-space: nowrap }
 .guardrail-cell summary b { color: var(--fg); font-family: var(--mono); font-size: 15px }
 .guardrail-cell .how { display: block; margin-top: 8px; color: var(--fg-muted); font-size: 14px; line-height: 1.5 }
 .guardrail-cell .how b { color: var(--fg); font-family: var(--mono) }
 
-.approval-gate {
-  display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 20px;
-  border-left: 3px solid var(--warn); background: var(--bg-subtle); padding: 14px 16px;
+/* The approval sheet: the one floating surface in the review, so it takes the
+   large shadow and the 14px surface radius. No semantic colour rides the
+   frame; the platform's judgment sentence carries the assessment. */
+.approval-sheet {
+  max-width: 620px; margin: 24px auto 0; border: 1px solid var(--border); border-radius: var(--r-surface);
+  background: var(--card); box-shadow: var(--shadow-lg); overflow: hidden;
 }
-.approval-gate > div:first-child > strong { display: block; margin-top: 4px; font-size: 18px }
-.approval-gate > div:first-child > span:last-child { display: block; margin-top: 4px; color: var(--fg-subtle); font-size: 14px }
-.approval-actions { display: flex; align-items: center; gap: 16px }
-.approval-actions label { display: flex; align-items: center; gap: 7px; color: var(--fg-muted); font-size: 15px; white-space: nowrap }
-.approval-actions input { width: 14px; height: 14px; accent-color: var(--brand) }
-.approval-actions button, .promote button {
-  border: 0; border-radius: var(--r-sm); background: var(--primary); color: var(--primary-fg);
-  cursor: pointer; font-size: 16px; font-weight: 560; padding: 10px 14px;
+.approval-body { padding: 18px 20px }
+.approval-title { display: block; margin-top: 4px; font-size: 18px }
+.approval-judgment { margin-top: 8px; color: var(--fg); font-size: 15px; line-height: 1.5 }
+.approval-judgment b { font-weight: 650 }
+/* Both populations get a labelled cell and a caption saying what they are. */
+.statpair {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 14px 0;
+  border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--border); overflow: hidden;
 }
-.approval-actions button:disabled { background: var(--z300); color: var(--z600); cursor: default }
-html.dark .approval-actions button:disabled { background: var(--z800); color: var(--z500) }
+.statpair > div { display: grid; gap: 2px; background: var(--card); padding: 10px 14px }
+.statpair .num { color: var(--fg); font-family: var(--mono); font-size: 19px }
+.statpair .cap { color: var(--fg-muted); font-size: 11.5px; line-height: 1.35 }
+.approval-bound { display: block; color: var(--fg-subtle); font-size: 14px }
+/* The acknowledgment sits on chip ground: a recorded input, not decoration. */
+.approval-ack { margin-top: 12px; border-radius: var(--r-ctl); background: var(--chipbg); padding: 10px 12px }
+.approval-ack label { display: flex; align-items: flex-start; gap: 9px; color: var(--fg); font-size: 14.5px; line-height: 1.4 }
+.approval-ack input { flex: none; width: 14px; height: 14px; margin-top: 2px; accent-color: var(--brand) }
+.approval-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  border-top: 1px solid var(--border); background: var(--bg-subtle); padding: 12px 20px;
+}
+.approval-who { color: var(--fg-muted); font-size: 12.5px }
+.approval-who b { color: var(--fg); font-weight: 600 }
+.approval-actions { display: flex; align-items: center; gap: 8px }
+/* Shape 3 of 3: the filled primary, ink on ground, one real action per view.
+   Hover walks the fill one step off its theme extreme, which lightens the
+   near-black light-theme ink and darkens the near-white dark-theme ink, so the
+   highest-stakes control in the app answers the pointer like every other one. */
+.approval-actions .btn-primary, .promote button {
+  border: 0; border-radius: var(--r-ctl); background: var(--primary); color: var(--primary-fg);
+  cursor: pointer; font: inherit; font-size: 16px; font-weight: 560; padding: 10px 16px;
+  transition: background var(--t-fast) var(--ease);
+}
+.approval-actions .btn-primary:hover:not(:disabled),
+.promote button:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 85%, var(--fg-subtle)) }
+.approval-actions .btn-primary:disabled { background: var(--z300); color: var(--z600); cursor: default }
+html.dark .approval-actions .btn-primary:disabled { background: var(--z800); color: var(--z500) }
+.approval-done { display: flex; align-items: center; gap: 14px; flex-wrap: wrap }
 .stamp { color: var(--ok); font-family: var(--mono); font-size: 16px }
 
 .promote {
-  margin-top: 16px; border: 1px solid var(--border); border-left: 3px solid var(--ok); border-radius: 0;
-  background: var(--bg); padding: 12px 14px;
+  margin-top: 16px; border: 1px solid var(--border); border-left: 3px solid var(--ok);
+  border-radius: var(--r-ctl); background: var(--card); box-shadow: var(--shadow); padding: 12px 14px;
 }
 .goal-bar > .promote {
   grid-area: decision; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto;
@@ -395,7 +554,10 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 .promote span { color: var(--fg-subtle); font-family: var(--mono); font-size: 13.5px }
 .banner { width: auto; max-width: none; margin: 0 18px; padding: 9px 0 }
 
-@media (min-width: 1241px) {
+/* Workspace breakpoints are stated against the content column, which the
+   inspector rail narrows by --rail-w: 1240px of measure now needs 1540px of
+   viewport. */
+@media (min-width: 1541px) {
   .goal-rails { align-items: flex-start; flex-direction: column; justify-content: center; gap: 4px }
   .goal-rails span {
     border: 0; border-radius: 0; padding: 0; font-size: 13.5px;
@@ -466,8 +628,7 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
   .evidence-focus.is-resolving .evidence-resolve { opacity: 1; filter: none }
 }
 
-@media (max-width: 1240px) {
-  .branch-readout { display: none }
+@media (max-width: 1540px) {
   .goal-bar {
     grid-template-columns: 1fr auto;
     grid-template-areas:
@@ -476,8 +637,10 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
       "rails rails";
   }
   .goal-rails { justify-content: flex-start }
+  /* Both tracks shrink rather than overflow: the rail owns 300px of the
+     viewport and the workspace has to live inside what is left. */
   .run-workspace {
-    grid-template-columns: 250px minmax(430px, 1fr);
+    grid-template-columns: minmax(0, 250px) minmax(0, 1fr);
     grid-template-areas:
       "ledger frontier"
       "evidence evidence";
@@ -488,15 +651,44 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
   .selected-evidence .evidence-focus { max-width: 900px; margin-inline: auto }
 }
 
+/* The decision package holds two hard tracks, ~785px of content before its
+   own padding, and the 300px rail is subtracted from the viewport above
+   900px. One column earns its keep well before the phone breakpoint. */
+@media (max-width: 1120px) {
+  .review-metrics { grid-template-columns: repeat(3, 1fr) }
+  .review-metrics div:nth-child(3) { border-right: 0 }
+  .review-metrics div:nth-child(n+4) { border-top: 1px solid var(--border-muted) }
+  .review-grid { grid-template-columns: 1fr }
+  .review-diff { padding-right: 0 }
+  .review-proof { border-left: 0; border-top: 1px solid var(--border); padding-left: 0 }
+}
+
+/* Below 900px the rail collapses back to a compact strip above the workspace:
+   the same groups and rows, laid out across instead of down. */
+@media (max-width: 900px) {
+  .app-shell { display: flex; flex-direction: column; background-image: none }
+  .context-strip {
+    position: static; align-self: stretch; display: grid; gap: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: 0; max-height: none; overflow: visible;
+    border-bottom: 1px solid var(--border); padding: 10px 18px;
+  }
+  .rail-group { border-right: 1px solid var(--border-muted); padding: 4px 14px }
+  .rail-group:first-child { padding-left: 0 }
+  .rail-group:last-child { border-right: 0; padding-right: 0 }
+  .rail-group-label { margin-bottom: 6px }
+  .rail-rows { gap: 4px }
+  .rail-key { font-size: 12.5px }
+  .rail-val { font-size: 12px }
+}
+
 @media (max-width: 820px) {
-  .topbar { grid-template-columns: auto 1fr; padding-inline: 12px }
-  .crumb { display: none }
+  .topbar { padding-inline: 12px }
   .tb-right { min-width: 0 }
-  .brand small, .theme-cycle, .kbd { display: none }
-  .context-strip { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 12px }
-  .context-item { border-bottom: 1px solid var(--border-muted); padding: 8px }
-  .context-item:nth-child(2n) { border-right: 0 }
-  .context-item:last-child { grid-column: 1 / -1; border-bottom: 0; padding: 8px }
+  /* The bar keeps the two crumbs that locate you; the wordmark is the one
+     node a reader can afford to lose on a phone. */
+  .brand, .brand + .crumb-sep, .theme-cycle, .kbd { display: none }
+  .context-strip { padding-inline: 12px }
   .run-view, .review-workspace, .review-loading { padding-inline: 12px }
   .goal-bar { grid-template-columns: 1fr auto; gap: 12px }
   .goal-copy strong { white-space: normal }
@@ -511,23 +703,25 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
   .frontier-panel { order: 1; border-left: 0 }
   .selected-evidence { order: 2 }
   .experiment-ledger { order: 3; border-top: 1px solid var(--border) }
-  .review-metrics { grid-template-columns: repeat(3, 1fr) }
-  .review-metrics div:nth-child(3) { border-right: 0 }
-  .review-metrics div:nth-child(n+4) { border-top: 1px solid var(--border-muted) }
-  .review-grid { grid-template-columns: 1fr }
-  .review-diff { padding-right: 0 }
-  .review-proof { border-left: 0; border-top: 1px solid var(--border); padding-left: 0 }
   .guardrail-grid { grid-template-columns: repeat(2, 1fr) }
   .guardrail-cell:nth-child(2) { border-right: 0 }
   .guardrail-cell:nth-child(n+3) { border-top: 1px solid var(--border-muted) }
-  .approval-gate, .approval-actions { align-items: flex-start; flex-direction: column }
-  .approval-gate { gap: 14px }
+  .approval-foot { align-items: flex-start; flex-direction: column }
+  .approval-actions { width: 100% }
+  .approval-actions .btn-primary { flex: 1 }
+  .statpair { grid-template-columns: 1fr }
   .saved-evidence-row { grid-template-columns: 1fr auto }
   .saved-evidence-row > span:nth-child(3) { grid-column: 1 / -1 }
 }
 
+/* Narrower than three readable columns, the strip stacks its groups */
+@media (max-width: 700px) {
+  .context-strip { grid-template-columns: 1fr; padding-block: 4px }
+  .rail-group { border-right: 0; border-bottom: 1px solid var(--border-muted); padding: 9px 0 }
+  .rail-group:last-child { border-bottom: 0 }
+}
+
 @media (max-width: 520px) {
-  .context-value { font-size: 15px; white-space: normal }
   .goal-bar {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -566,9 +760,9 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
    label. The record itself keeps a readable measure instead of full-bleed. */
 .agent-record > .workspace-heading { display: flex; align-items: center; justify-content: flex-start; gap: 18px }
 .record-toggle {
-  display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--r-pill);
   background: transparent; color: var(--fg-muted); cursor: pointer; font-family: var(--mono); font-size: 13px;
-  padding: 7px 11px; transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+  padding: 7px 14px; transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
 .record-toggle:hover { border-color: var(--fg-subtle); color: var(--fg) }
 .record-toggle i { font-style: normal; font-size: 11px }
@@ -576,11 +770,18 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 .agent-record-empty { color: var(--fg-subtle); font-size: 15px; padding: 12px 0 4px }
 .agent-record-list { list-style: none; margin-top: 10px }
 .agent-record-list li + li { border-top: 1px solid var(--border-muted) }
-.act-row { display: grid; grid-template-columns: 28px 52px 1fr; align-items: start; gap: 10px; padding: 10px 0 }
-.act-seq { color: var(--fg-subtle); font-family: var(--mono); font-size: 12.5px; padding-top: 3px }
+.act-row { display: grid; grid-template-columns: 26px 52px 1fr; align-items: start; gap: 10px; padding: 9px 0 }
+.act-seq { color: var(--fg-subtle); font-family: var(--mono); font-size: var(--label); letter-spacing: .04em; padding-top: 3px }
+/* One row in the run is irreversible and belongs to a person. It sits apart
+   from the agent's reversible trail: chip ground and an ink rule, no colour. */
+.agent-record-list li.act-human {
+  border-left: 2px solid var(--fg); border-radius: 0 var(--r-ctl) var(--r-ctl) 0;
+  background: var(--chipbg); padding-left: 10px;
+}
+.act-human .act-seq { color: var(--fg) }
 .act-actor {
-  display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: var(--r-full);
-  color: var(--fg-muted); font-family: var(--mono); font-size: 11.5px; letter-spacing: .05em; padding: 3px 0;
+  display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: var(--r-pill);
+  color: var(--fg-muted); font-family: var(--mono); font-size: var(--label); letter-spacing: var(--label-track); padding: 3px 0;
 }
 .act-actor.human { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); color: var(--warn) }
 .act-body { display: grid; gap: 4px; min-width: 0 }
@@ -590,7 +791,9 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 .act-target button {
   border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; padding: 0;
   text-decoration: underline; text-underline-offset: 3px;
+  transition: text-decoration-color var(--t-fast) var(--ease);
 }
+.act-target button:hover { text-decoration-color: var(--brand) }
 .act-status { color: var(--fg-subtle); font-family: var(--mono); font-size: 12.5px; font-style: normal; margin-left: auto; white-space: nowrap }
 .act-status.s-refuse, .act-status.s-revert { color: var(--warn) }
 .act-status.s-human { color: var(--fg); font-weight: 600 }
@@ -617,10 +820,9 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 
 /* The reconstruction pack: a bordered mono affordance, same family as
    .record-toggle, so it reads as pressable and not as body copy */
-.approval-done { display: flex; align-items: center; gap: 18px }
 .record-link {
-  display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--r-sm);
-  color: var(--fg-muted); font-family: var(--mono); font-size: 13px; padding: 7px 11px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--r-pill);
+  color: var(--fg-muted); font-family: var(--mono); font-size: 13px; padding: 7px 14px; text-decoration: none;
   transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
 .record-link:hover { border-color: var(--fg-subtle); color: var(--fg) }
@@ -628,7 +830,7 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 
 /* Run history: the breadcrumb's current-run segment opens the run index.
    The crumb's ellipsis overflow would clip the popover, so it stays visible;
-   the crumb text is short and the narrow layout hides the crumb entirely. */
+   the crumb text is short at every width now that narrow layouts keep it. */
 .crumb { overflow: visible; text-overflow: clip }
 .run-history { position: relative; display: inline-flex }
 .run-history > button {
@@ -637,13 +839,17 @@ html.dark .approval-actions button:disabled { background: var(--z800); color: va
 }
 .run-history > button:hover { border-bottom-color: var(--fg) }
 .run-history > button i { color: var(--fg-subtle); font-size: 10px; font-style: normal }
+/* A floating surface, so it takes the 14px radius and the large shadow. */
 .run-history-pop {
   position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; width: 430px; max-height: 420px; overflow-y: auto;
-  background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-sm);
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--fg) 12%, transparent); padding: 6px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r-surface);
+  box-shadow: var(--shadow-lg); padding: 6px;
 }
+/* Both of these are sentences, so they take the label layer's size and face
+   but not its uppercase: only true labels get uppercased. */
 .run-history-head, .run-history-empty {
-  color: var(--fg-subtle); display: block; font-family: var(--mono); font-size: 12.5px; padding: 6px 8px;
+  color: var(--fg-subtle); display: block; font-family: var(--mono); font-size: var(--label);
+  line-height: 1.45; padding: 6px 8px;
 }
 .run-history-pop a {
   display: grid; grid-template-columns: 62px 1fr auto; grid-template-rows: auto auto; align-items: baseline;
