@@ -891,7 +891,7 @@ export default function Chart({
                 className="act-primary"
                 onClick={() => {
                   context.onSave(makeSavedEvidence(chart, context, selection, mode));
-                  setActionStatus('Saved to human review');
+                  setActionStatus('Saved to final review');
                 }}
               >
                 Save to review
