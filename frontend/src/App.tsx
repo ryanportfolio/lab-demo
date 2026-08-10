@@ -30,13 +30,13 @@ import {
   type SavedChartEvidence,
 } from './chartWorkspace';
 
-type ThemePref = 'light' | 'dark' | 'night';
+type ThemePref = 'light' | 'dark' | 'night' | 'gold';
 type View = 'console' | 'review';
 
 function applyTheme(pref: ThemePref) {
   const root = document.documentElement;
   root.dataset.themePref = pref;
-  root.classList.remove('light', 'dark', 'night');
+  root.classList.remove('light', 'dark', 'night', 'gold');
   root.classList.add(pref);
   try {
     localStorage.setItem('plab-demo-theme', pref);
@@ -45,8 +45,9 @@ function applyTheme(pref: ThemePref) {
   }
 }
 
+const THEME_CYCLE: ThemePref[] = ['light', 'dark', 'night', 'gold'];
 const nextTheme = (theme: ThemePref): ThemePref =>
-  theme === 'light' ? 'dark' : theme === 'dark' ? 'night' : 'light';
+  THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length];
 
 export default function App() {
   const params = useMemo(() => new URLSearchParams(location.search), []);
@@ -62,7 +63,7 @@ export default function App() {
   // preference down to a concrete theme and stamped it on the root element.
   const [themePref, setThemePref] = useState<ThemePref>(() => {
     const pref = document.documentElement.dataset.themePref;
-    return pref === 'dark' || pref === 'night' ? pref : 'light';
+    return pref === 'dark' || pref === 'night' || pref === 'gold' ? pref : 'light';
   });
   const [selectedCode, setSelectedCode] = useState<string | null>(params.get('exp'));
   const [error, setError] = useState<string | null>(null);
@@ -365,13 +366,18 @@ export default function App() {
                   stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"
                 />
               </svg>
-            ) : (
+            ) : themePref === 'night' ? (
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M4.9 11.5a3.1 3.1 0 0 1 6.2 0" stroke="currentColor" strokeWidth="1.5" />
                 <path
                   d="M1.5 11.5h13M8 3.4v1.7M3.3 5.6l1.2 1.2M12.7 5.6l-1.2 1.2"
                   stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
                 />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.5" />
+                <circle cx="8" cy="8" r="2.6" fill="currentColor" />
               </svg>
             )}
           </button>

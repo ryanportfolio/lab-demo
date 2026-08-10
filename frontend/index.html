@@ -9,11 +9,11 @@
         try {
           var q = new URLSearchParams(location.search);
           var stored = q.get('theme') || localStorage.getItem('plab-demo-theme');
-          // Three concrete themes: light, dark, night. A first visit (or a
-          // legacy stored "system") resolves the OS preference once, then the
-          // toggle owns it.
+          // Four concrete themes: light, dark, night, gold. A first visit (or
+          // a legacy stored "system") resolves the OS preference once, then
+          // the toggle owns it.
           var theme =
-            stored === 'light' || stored === 'dark' || stored === 'night'
+            stored === 'light' || stored === 'dark' || stored === 'night' || stored === 'gold'
               ? stored
               : matchMedia('(prefers-color-scheme: dark)').matches
                 ? 'dark'

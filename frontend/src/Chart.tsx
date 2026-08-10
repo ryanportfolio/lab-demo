@@ -881,12 +881,14 @@ export default function Chart({
             <>
               <button
                 type="button"
+                className="act-primary"
                 onClick={() => context.onAsk(buildAgentAsk(chart, context, selection, mode))}
               >
                 Ask about selection
               </button>
               <button
                 type="button"
+                className="act-primary"
                 onClick={() => {
                   context.onSave(makeSavedEvidence(chart, context, selection, mode));
                   setActionStatus('Saved to human review');
