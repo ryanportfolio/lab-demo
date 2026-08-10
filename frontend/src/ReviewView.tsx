@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Review, Run } from './api';
 import AgentActionLog from './AgentActionLog';
 import EvidencePanel from './EvidencePanel';
@@ -10,9 +10,6 @@ interface Props {
   review: Review;
   plain: boolean;
   onBack: () => void;
-  onApprove: () => void;
-  approving: boolean;
-  error: string | null;
   savedEvidence: SavedChartEvidence[];
   onAsk: (ask: AgentAsk) => void;
   onSave: (evidence: SavedChartEvidence) => void;
@@ -35,26 +32,17 @@ export default function ReviewView({
   review,
   plain,
   onBack,
-  onApprove,
-  approving,
-  error,
   savedEvidence,
   onAsk,
   onSave,
 }: Props) {
-  const [acknowledged, setAcknowledged] = useState(false);
   const [weakFocusNonce, setWeakFocusNonce] = useState(0);
   const approved = review.status === 'approved';
   const winner = run.experiments.find((experiment) => experiment.code === review.winnerCode);
   const weakPoint = review.paragraphs.find((paragraph) => /exposure/i.test(paragraph));
   const weakValue = weakPoint?.match(/(\d+(?:\.\d+)?)%/)?.[1];
-  // The sheet leads with the platform's own assessment, verbatim. The weak
-  // point keeps its own home in the diff aside, so it is not repeated here.
-  const judgment = review.paragraphs.find((paragraph) => paragraph !== weakPoint);
   const relevantSaved = savedEvidence.filter((item) => item.runId === run.id);
   const otherSaved = savedEvidence.filter((item) => item.runId !== run.id);
-
-  useEffect(() => setAcknowledged(false), [review.id]);
 
   const dispositionClass = (disposition: string) =>
     disposition === 'Winner' ? 'win' : disposition === 'Absorbed' ? 'abs' : 'scr';
@@ -286,82 +274,6 @@ export default function ReviewView({
       </section>
 
       <AgentActionLog actions={run.actions} review />
-
-      {/* The human gate is the product's point, so it gets the most deliberate
-          surface in the app: the platform's own judgment sentence first, both
-          populations labeled, then the one irreversible action. */}
-      <section className="approval-gate approval-sheet" aria-label="Human approval">
-        <div className="approval-body">
-          <span className="eyebrow">Human-only action</span>
-          <strong className="approval-title">
-            {approved
-              ? `v${review.nextVersion} created with the run ledger attached`
-              : `Create v${review.nextVersion} from ${review.winnerCode}`}
-          </strong>
-          {judgment && (
-            <p className="approval-judgment">
-              {boldSpans(judgment).map((span, index) =>
-                typeof span === 'string' ? span : <b key={index}>{span.b}</b>,
-              )}
-            </p>
-          )}
-          <div className="statpair">
-            <div>
-              <span className="num">{fmtDelta(review.trainDelta)}</span>
-              <span className="cap">Train lift · random folds during the run</span>
-            </div>
-            <div>
-              <span className="num">{fmtDelta(review.holdoutDelta)}</span>
-              <span className="cap">Holdout lift · out of time, 2025 H2, never fit on</span>
-            </div>
-          </div>
-          <span className="approval-bound">The agent can request review. It cannot approve.</span>
-          {!approved && (
-            <div className="approval-ack">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={acknowledged}
-                  onChange={(event) => setAcknowledged(event.target.checked)}
-                />
-                I reviewed the sparse tail
-              </label>
-            </div>
-          )}
-        </div>
-        <div className="approval-foot">
-          <span className="approval-who">
-            Signing as <b>human</b> · approval is irreversible
-          </span>
-          {approved ? (
-            <div className="approval-done">
-              <span className="stamp" tabIndex={-1} id="rvStamp">Approved · v{review.nextVersion}</span>
-              <a
-                className="record-link"
-                href={`/record/${run.id}`}
-                target="_blank"
-                rel="noopener"
-                title="Standalone copy of this decision, served from the platform's records — printable, works without this app"
-              >
-                Decision record ↗
-              </a>
-            </div>
-          ) : (
-            <div className="approval-actions">
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={onApprove}
-                disabled={!acknowledged || approving}
-              >
-                {approving ? 'Creating version' : `Approve and create v${review.nextVersion}`}
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {error && <div className="banner" role="alert">{error}</div>}
     </main>
   );
 }

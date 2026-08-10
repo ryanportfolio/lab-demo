@@ -9,17 +9,16 @@
         try {
           var q = new URLSearchParams(location.search);
           var stored = q.get('theme') || localStorage.getItem('plab-demo-theme');
+          // Three concrete themes: light, dark, night. A first visit (or a
+          // legacy stored "system") resolves the OS preference once, then the
+          // toggle owns it.
           var theme =
-            stored === 'light' || stored === 'dark' || stored === 'system'
+            stored === 'light' || stored === 'dark' || stored === 'night'
               ? stored
-              : 'system';
-          var resolved =
-            theme === 'system'
-              ? matchMedia('(prefers-color-scheme: dark)').matches
+              : matchMedia('(prefers-color-scheme: dark)').matches
                 ? 'dark'
-                : 'light'
-              : theme;
-          document.documentElement.classList.add(resolved);
+                : 'light';
+          document.documentElement.classList.add(theme);
           document.documentElement.dataset.themePref = theme;
         } catch (e) {
           document.documentElement.classList.add('light');

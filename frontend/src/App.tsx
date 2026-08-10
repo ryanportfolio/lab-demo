@@ -15,6 +15,7 @@ import {
   type Run,
 } from './api';
 import AgentActionLog from './AgentActionLog';
+import ApprovalCard from './ApprovalCard';
 import AskPanel from './AskPanel';
 import ContextStrip from './ContextStrip';
 import EvidencePanel from './EvidencePanel';
@@ -29,20 +30,14 @@ import {
   type SavedChartEvidence,
 } from './chartWorkspace';
 
-type ThemePref = 'light' | 'dark' | 'system';
+type ThemePref = 'light' | 'dark' | 'night';
 type View = 'console' | 'review';
 
 function applyTheme(pref: ThemePref) {
   const root = document.documentElement;
   root.dataset.themePref = pref;
-  const resolved =
-    pref === 'system'
-      ? matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light'
-      : pref;
-  root.classList.remove('light', 'dark');
-  root.classList.add(resolved);
+  root.classList.remove('light', 'dark', 'night');
+  root.classList.add(pref);
   try {
     localStorage.setItem('plab-demo-theme', pref);
   } catch {
@@ -51,7 +46,7 @@ function applyTheme(pref: ThemePref) {
 }
 
 const nextTheme = (theme: ThemePref): ThemePref =>
-  theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
+  theme === 'light' ? 'dark' : theme === 'dark' ? 'night' : 'light';
 
 export default function App() {
   const params = useMemo(() => new URLSearchParams(location.search), []);
@@ -63,9 +58,12 @@ export default function App() {
       ? 'review'
       : 'console',
   );
-  const [themePref, setThemePref] = useState<ThemePref>(
-    (document.documentElement.dataset.themePref as ThemePref) ?? 'system',
-  );
+  // The boot script in index.html has already resolved a stored or OS
+  // preference down to a concrete theme and stamped it on the root element.
+  const [themePref, setThemePref] = useState<ThemePref>(() => {
+    const pref = document.documentElement.dataset.themePref;
+    return pref === 'dark' || pref === 'night' ? pref : 'light';
+  });
   const [selectedCode, setSelectedCode] = useState<string | null>(params.get('exp'));
   const [error, setError] = useState<string | null>(null);
   const [approveError, setApproveError] = useState<string | null>(null);
@@ -193,15 +191,6 @@ export default function App() {
   useEffect(() => {
     applyTheme(themePref);
   }, [themePref]);
-
-  useEffect(() => {
-    const media = matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => {
-      if (document.documentElement.dataset.themePref === 'system') applyTheme('system');
-    };
-    media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
-  }, []);
 
   const setView = useCallback((nextView: View) => {
     setViewState(nextView);
@@ -358,8 +347,8 @@ export default function App() {
             className="theme-cycle"
             type="button"
             onClick={() => setThemePref((theme) => nextTheme(theme))}
-            aria-label={`Theme: ${themePref}. Activate to cycle`}
-            title={`Theme · ${themePref}`}
+            aria-label={`Switch to ${nextTheme(themePref)} theme`}
+            title={`Switch to ${nextTheme(themePref)} theme`}
           >
             {themePref === 'light' ? (
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -378,8 +367,11 @@ export default function App() {
               </svg>
             ) : (
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M8 1.8a6.2 6.2 0 0 1 0 12.4Z" fill="currentColor" />
+                <path d="M4.9 11.5a3.1 3.1 0 0 1 6.2 0" stroke="currentColor" strokeWidth="1.5" />
+                <path
+                  d="M1.5 11.5h13M8 3.4v1.7M3.3 5.6l1.2 1.2M12.7 5.6l-1.2 1.2"
+                  stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                />
               </svg>
             )}
           </button>
@@ -409,7 +401,17 @@ export default function App() {
           reading order, because it frames the evidence that follows, and the
           shell grid places it in the right-hand column on a desktop. */}
       <div className="app-shell">
-        <ContextStrip dataset={dataset} run={run} view={view} />
+        <ContextStrip dataset={dataset} run={run} view={view}>
+          {view === 'review' && run && review && review.runId === run.id && (
+            <ApprovalCard
+              review={review}
+              runId={run.id}
+              onApprove={onApprove}
+              approving={approving}
+              error={approveError}
+            />
+          )}
+        </ContextStrip>
         {view === 'console' ? (
           <main className="run-view" id="workspace-main">
             <section className="goal-bar" aria-label="Agent goal and run status">
@@ -424,7 +426,7 @@ export default function App() {
                 <section className="promote" aria-label="Winner ready for review">
                   <div>
                     <span className="winner-mark" aria-hidden="true" />
-                    <strong>{winner.code} ready for human review</strong>
+                    <strong>{winner.code} ready for review</strong>
                     <span>
                       Gini {fmtGini(winner.gini ?? 0)} · {fmtDelta(winner.deltaGini ?? 0)} · {scrappedCount} failures retained
                     </span>
@@ -514,9 +516,6 @@ export default function App() {
             review={review}
             plain={false}
             onBack={() => setView('console')}
-            onApprove={onApprove}
-            approving={approving}
-            error={approveError}
             savedEvidence={savedEvidence}
             onAsk={askFromEvidence}
             onSave={saveEvidence}

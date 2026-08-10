@@ -57,6 +57,26 @@ html.dark {
   --shadow-lg: 0 2px 6px rgba(0, 0, 0, .45), 0 24px 60px rgba(0, 0, 0, .5);
   --shadow-raise: 0 1px 2px rgba(0, 0, 0, .5);
 }
+/* Night light: the light theme's structure on a warm #EEDFD3 ground with the
+   blue pulled out. Neutrals are warm browns, and the brand ramp swaps to a
+   terracotta so the accent stops fighting the point of the mode. Cards sit a
+   step lighter than the ground, like white on z50, so light-theme elevation
+   logic (seg-active = card) carries over unchanged. */
+html.night {
+  --bg: #eedfd3; --bg-subtle: #e6d4c4; --fg: #2e241c; --fg-muted: #6e5b4b; --fg-subtle: #937f6d;
+  --border: #dcc8b6; --border-muted: #e5d4c4; --card: #f6ece2; --primary: #362a20; --primary-fg: #f6ece2;
+  --ring: #937f6d; --ok: var(--green); --bad: var(--red); --warn: #b57400; --ci-text: var(--brand-600);
+  --brand: #a85f38; --brand-100: #ecd2c0; --brand-300: #cf9268; --brand-600: #8a4e2e; --brand-800: #4a2a19;
+  --chipbg: #e6d3c1;
+  --seg-active: var(--card);
+  --chart-base: #c9b09a; --chart-alt: #a98e75; --chart-exposure: #e2cfbd;
+  --shadow: 0 1px 2px rgba(62, 42, 26, .05), 0 8px 24px rgba(62, 42, 26, .07);
+  --shadow-lg: 0 2px 6px rgba(62, 42, 26, .06), 0 24px 60px rgba(62, 42, 26, .12);
+  --shadow-raise: 0 1px 2px rgba(62, 42, 26, .14);
+}
+/* The two grey one-offs that key on a theme class get warm counterparts. */
+html.night .folds i { background: #d6c0ab }
+html.night .approval-actions .btn-primary:disabled { background: #dcc8b6; color: #8a7360 }
 * { box-sizing: border-box; margin: 0; padding: 0 }
 /* Digits align wherever they stack: measures, ids, deltas, table columns. */
 html { font-family: var(--sans); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums }
