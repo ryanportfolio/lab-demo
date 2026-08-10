@@ -47,7 +47,6 @@ export default function ApprovalCard({ review, runId, onApprove, approving, erro
             <span className="cap">Holdout lift · out of time, 2025 H2, never fit on</span>
           </div>
         </div>
-        <span className="approval-bound">The agent can request review. It cannot approve.</span>
         {!approved && (
           <div className="approval-ack">
             <label>
