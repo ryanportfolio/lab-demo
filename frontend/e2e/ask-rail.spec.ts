@@ -119,6 +119,35 @@ test('right-click on a selected slice is the ask shortcut, on the big chart and 
   await expect(rail.locator('textarea')).toHaveValue(/Explain/);
 });
 
+test('the full view carries the comparison switch and lands a new turn at the top', async ({ page }) => {
+  await page.goto('/?theme=light&noanim=1');
+  await ready(page);
+
+  await page.locator('.selected-evidence .chart-workspace[data-kind="age_curve"] .expand').click();
+  const full = page.locator('.chart-full-split');
+  const rail = page.locator('.chart-studio-rail');
+  await expect(rail).toBeVisible();
+
+  // Level and Change are read where the chart is read largest
+  await expect(full).toHaveAttribute('data-mode', 'level');
+  await full.locator('.chart-mode button', { hasText: 'Change' }).click();
+  await expect(full).toHaveAttribute('data-mode', 'change');
+  await expect(page).toHaveURL(/mode=change/);
+
+  // a question sent from the composer puts its own turn at the top of the
+  // transcript, even when the answer is too short to fill the panel
+  await rail.locator('.ask-sugg button').first().click();
+  await expect(rail.locator('.ask-row.ai').first()).toBeVisible({ timeout: 15_000 });
+  await rail.locator('textarea').fill('What is the weather in Chicago tomorrow?');
+  await rail.locator('textarea').press('Enter');
+  await expect(rail.locator('.ask-turn')).toHaveCount(2, { timeout: 30_000 });
+  const offset = await rail.locator('.ask-turn').nth(1).evaluate((el) => {
+    const body = el.closest('.ask-body') as HTMLElement;
+    return el.getBoundingClientRect().top - body.getBoundingClientRect().top;
+  });
+  expect(offset).toBeLessThan(24);
+});
+
 test('keep going opens by default and stays folded once the reader folds it', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);
@@ -139,9 +168,16 @@ test('keep going opens by default and stays folded once the reader folds it', as
   await expect(rail).toBeVisible({ timeout: 20_000 });
   await expect(rail.locator('.ask-followups')).not.toHaveAttribute('open', '');
 
-  // and it opens again on demand
+  // and it opens again on demand, scrolling itself into view rather than
+  // unfolding below the fold
   await rail.locator('.ask-followups summary').click();
-  await expect(rail.locator('.ask-followups .ask-sugg button').first()).toBeVisible();
+  const last = rail.locator('.ask-followups .ask-sugg button').last();
+  await expect(last).toBeVisible();
+  const inView = await last.evaluate((el) => {
+    const body = el.closest('.ask-body') as HTMLElement;
+    return el.getBoundingClientRect().bottom <= body.getBoundingClientRect().bottom + 1;
+  });
+  expect(inView).toBe(true);
 });
 
 test('the seam between chart and rail drags, persists, and resets on double-click', async ({ page }) => {

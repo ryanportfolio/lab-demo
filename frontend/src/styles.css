@@ -468,7 +468,13 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart .legend button.off { opacity: .4; text-decoration: line-through }
 .chart-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(9, 9, 11, .45); display: flex; justify-content: center; align-items: center; padding: 4vh 18px; overscroll-behavior: contain }
 .chart-full { width: min(1150px, 96vw); max-height: 92vh; overflow: auto; overscroll-behavior: contain; margin: 0; border-radius: var(--r-surface); padding: 16px 20px 14px; box-shadow: var(--shadow-lg); animation: chartin .12s ease-out }
-.chart-full figcaption { font-size: 17px; padding-right: 48px }
+.chart-full figcaption { font-size: 17px }
+/* The Esc pill sits absolutely in the corner, so the header row keeps clear
+   of it rather than sliding under it. */
+.chart-full-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-right: 62px; min-height: 34px }
+.chart-full-head figcaption { min-width: 0 }
+.chart-full-head .chart-mode { margin: -3px 0 }
+.chart-full-head .chart-mode button { min-height: 32px; min-width: 66px; font-size: 13.5px }
 /* The plot cedes size before the sheet grows scrollbars: its width is capped
    so the resulting height (width times the frame ratio) plus the sheet's
    fixed content stays inside 92vh even on a short inner window. Width and
