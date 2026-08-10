@@ -503,6 +503,18 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .exact-tool:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px }
 .exact-tool[data-done] { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent) }
 
+/* The value grid selects like a spreadsheet: a press sweeps a block of cells,
+   so a drag must read as a range and not as prose. Vertical panning survives
+   for touch; the rectangle's rim is drawn per cell in the markup, where only
+   the outer edges of the block take a rule. */
+.value-grid { user-select: none; -webkit-user-select: none; touch-action: pan-y; cursor: cell }
+/* the tr carries its weight here on purpose: the swept block has to outrank
+   the selected-row tint it sits inside */
+.value-grid tr td[data-in-range], .value-grid tr th[data-in-range] {
+  background: color-mix(in srgb, var(--brand) 30%, var(--bg)); color: var(--fg);
+}
+.value-grid tr th[data-in-range] button { color: var(--fg) }
+
 /* interval and weight readouts stay subordinate to the value they qualify */
 .chart-table-pane td small, .exact-values td small { display: block; color: var(--fg-subtle); font-size: 11px; line-height: 1.3 }
 .chart-table-pane th small, .exact-values th small { display: block; font-weight: 500; letter-spacing: 0; text-transform: none }

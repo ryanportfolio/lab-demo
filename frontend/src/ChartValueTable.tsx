@@ -5,6 +5,7 @@
 // and copyable here, never hover-only.
 
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { fmtVal } from './Chart';
 import type { EvidenceChart } from './api';
 import {
@@ -95,6 +96,122 @@ export default function ChartValueTable({
     }
   };
 
+  // This is a spreadsheet in every way that matters, so it selects like one:
+  // press a cell and sweep a block, Shift extends the block from where it
+  // began. The rows a block covers are the chart's selection, so the two
+  // views never disagree about what is being read.
+  const columnCount = 1 + primary.length + (showDelta ? 1 : 0) + (secondary ? 1 : 0);
+  const [range, setRange] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(
+    null,
+  );
+  const anchor = useRef<{ r: number; c: number } | null>(null);
+  const dragging = useRef(false);
+  // the last selection this table pushed, so the chart's echo of it does not
+  // widen the block back out to every column
+  const pushed = useRef('');
+
+  const cellAt = (target: Element | null) => {
+    const cell = target?.closest('td[data-r], th[data-r]');
+    if (!cell) return null;
+    return { r: Number(cell.getAttribute('data-r')), c: Number(cell.getAttribute('data-c')) };
+  };
+
+  const sweep = (to: { r: number; c: number }) => {
+    const from = anchor.current ?? to;
+    setRange({
+      r1: Math.min(from.r, to.r),
+      r2: Math.max(from.r, to.r),
+      c1: Math.min(from.c, to.c),
+      c2: Math.max(from.c, to.c),
+    });
+    if (!onSelectionChange) return;
+    // a chart that takes no range follows the cell under the pointer instead
+    const start = contract.range ? xValues[Math.min(from.r, to.r)] : xValues[to.r];
+    const end = contract.range ? xValues[Math.max(from.r, to.r)] : xValues[to.r];
+    if (start == null || end == null) return;
+    const key = `${start}:${end}`;
+    if (key === pushed.current) return;
+    pushed.current = key;
+    onSelectionChange({ start, end });
+  };
+
+  const gridHandlers = {
+    onPointerDown: (event: ReactPointerEvent) => {
+      if (event.button !== 0) return;
+      const cell = cellAt(event.target as Element);
+      if (!cell) return;
+      // the press is a range gesture, not a text drag
+      event.preventDefault();
+      dragging.current = true;
+      if (!(event.shiftKey && anchor.current)) anchor.current = cell;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      sweep(cell);
+    },
+    onPointerMove: (event: ReactPointerEvent) => {
+      if (!dragging.current) return;
+      const cell = cellAt(document.elementFromPoint(event.clientX, event.clientY));
+      if (cell) sweep(cell);
+    },
+    onPointerUp: (event: ReactPointerEvent) => {
+      dragging.current = false;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    },
+    onPointerCancel: () => {
+      dragging.current = false;
+    },
+  };
+
+  // chart→table: a selection made on the plot lights the same rows, whole width
+  useEffect(() => {
+    if (dragging.current) return;
+    if (!selected) {
+      setRange(null);
+      pushed.current = '';
+      anchor.current = null;
+      return;
+    }
+    const key = `${selected.start}:${selected.end}`;
+    if (key === pushed.current) return;
+    pushed.current = key;
+    const r1 = xValues.findIndex((x) => x >= selected.start);
+    let r2 = -1;
+    xValues.forEach((x, index) => {
+      if (x <= selected.end) r2 = index;
+    });
+    if (r1 < 0 || r2 < r1) {
+      setRange(null);
+      return;
+    }
+    anchor.current = { r: r1, c: 0 };
+    setRange({ r1, r2, c1: 0, c2: columnCount - 1 });
+  }, [selected?.start, selected?.end, columnCount]);
+
+  const inRange = (r: number, c: number) =>
+    !!range && r >= range.r1 && r <= range.r2 && c >= range.c1 && c <= range.c2;
+
+  // The block reads as one rectangle: only the outer edges of the range are
+  // drawn, so the border traces the selection rather than every cell in it.
+  const cellAttrs = (
+    r: number,
+    c: number,
+  ): { [key: `data-${string}`]: string | number | undefined; style?: CSSProperties } => {
+    if (!inRange(r, c)) return { 'data-r': r, 'data-c': c };
+    const edges = [
+      r === range!.r1 && 'inset 0 1px 0 0 var(--brand)',
+      r === range!.r2 && 'inset 0 -1px 0 0 var(--brand)',
+      c === range!.c1 && 'inset 1px 0 0 0 var(--brand)',
+      c === range!.c2 && 'inset -1px 0 0 0 var(--brand)',
+    ].filter(Boolean);
+    return {
+      'data-r': r,
+      'data-c': c,
+      'data-in-range': '',
+      style: edges.length ? { boxShadow: edges.join(', ') } : undefined,
+    };
+  };
+
   const deltaValue = (x: number): number | null => {
     if (!showDelta) return null;
     const base = at(baseline!, x);
@@ -107,15 +224,20 @@ export default function ChartValueTable({
       : cand.y - base.y;
   };
 
-  const deltaCell = (x: number) => {
+  const deltaCell = (x: number, r: number) => {
     if (!showDelta) return null;
+    const attrs = cellAttrs(r, primary.length + 1);
     const value = deltaValue(x);
-    if (value == null) return <td />;
+    if (value == null) return <td {...attrs} />;
     const text =
       comparison!.change === 'percent'
         ? `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
         : `${value >= 0 ? '+' : ''}${fmtVal(value)}`;
-    return <td className="delta">{text}</td>;
+    return (
+      <td className="delta" {...attrs}>
+        {text}
+      </td>
+    );
   };
 
   // Taking the numbers out is part of reading them. One shape serves both
@@ -253,7 +375,7 @@ export default function ChartValueTable({
   );
 
   const table = (
-    <table>
+    <table className="value-grid" {...(onSelectionChange ? gridHandlers : {})}>
       <thead>
         <tr>
           <th>{chart.xLabel}</th>
@@ -271,14 +393,14 @@ export default function ChartValueTable({
         </tr>
       </thead>
       <tbody ref={bodyRef}>
-        {xValues.map((x) => (
+        {xValues.map((x, r) => (
           <tr
             key={x}
             data-x={x}
             aria-selected={isSelected(x) || undefined}
             className={isSelected(x) ? 'is-selected' : undefined}
           >
-            <th scope="row">
+            <th scope="row" {...cellAttrs(r, 0)}>
               {onSelectionChange ? (
                 <button
                   type="button"
@@ -290,11 +412,12 @@ export default function ChartValueTable({
                 (labels.get(x) ?? fmtVal(x))
               )}
             </th>
-            {primary.map((series) => {
+            {primary.map((series, index) => {
               const point = at(series, x);
-              if (!point) return <td key={series.label} />;
+              const attrs = cellAttrs(r, index + 1);
+              if (!point) return <td key={series.label} {...attrs} />;
               return (
-                <td key={series.label}>
+                <td key={series.label} {...attrs}>
                   {fmtVal(point.y)}
                   {point.se != null && (
                     <small>
@@ -305,17 +428,18 @@ export default function ChartValueTable({
                 </td>
               );
             })}
-            {deltaCell(x)}
+            {deltaCell(x, r)}
             {secondary &&
               (() => {
+                const attrs = cellAttrs(r, columnCount - 1);
                 const point = at(secondary, x);
-                if (!point) return <td />;
+                if (!point) return <td {...attrs} />;
                 const share =
                   secondary.label === 'Earned exposure' && secondaryTotal > 0
                     ? ` · ${((100 * point.y) / secondaryTotal).toFixed(1)}%`
                     : '';
                 return (
-                  <td className="weight">
+                  <td className="weight" {...attrs}>
                     {secondary.label === 'Earned exposure'
                       ? point.y.toLocaleString('en-US', { maximumFractionDigits: 0 })
                       : point.y.toFixed(1)}

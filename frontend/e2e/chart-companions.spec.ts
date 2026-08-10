@@ -101,6 +101,58 @@ test('the companion strip names version, window, and the CI method while bands a
   await expect(companion).not.toContainText('±2 SE from the final fit weights');
 });
 
+test('the value grid sweeps a block of cells and the chart takes its rows', async ({ page }) => {
+  await page.goto(AGE);
+  const card = page.locator('.selected-evidence .chart-workspace');
+  await expect(card).toBeVisible({ timeout: 90_000 });
+  const panel = page.locator('.selected-evidence');
+  await panel.locator('.exact-values summary').click();
+
+  const cell = (x: number, c: number) =>
+    panel.locator(`.value-grid tr[data-x="${x}"] [data-c="${c}"]`);
+
+  // the table scrolls inside a short window and its header sticks to the
+  // top of it, so the sweep is centred: both ends on screen, neither under
+  // the header
+  await panel
+    .locator('.value-grid tr[data-x="32"]')
+    .evaluate((row) => row.scrollIntoView({ block: 'center' }));
+
+  // press a cell and sweep: the block is the rectangle between the two cells
+  const from = (await cell(31, 1).boundingBox())!;
+  const to = (await cell(33, 2).boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  await page.mouse.up();
+
+  await expect(cell(31, 1)).toHaveAttribute('data-in-range', '');
+  await expect(cell(33, 2)).toHaveAttribute('data-in-range', '');
+  // outside the swept columns and rows, nothing is in the block
+  await expect(cell(32, 0)).not.toHaveAttribute('data-in-range', '');
+  await expect(cell(34, 1)).not.toHaveAttribute('data-in-range', '');
+  // no browser text selection was made in the process
+  expect(await page.evaluate(() => String(getSelection()))).toBe('');
+
+  // and the rows it covers are the chart's selection
+  await expect(card.locator('.selection-label')).toContainText('31–33');
+  await expect(page).toHaveURL(/sel=31(%3A|:)33/);
+
+  // a single press collapses the block and the chart with it
+  await cell(50, 2).click();
+  await expect(cell(50, 2)).toHaveAttribute('data-in-range', '');
+  await expect(cell(50, 1)).not.toHaveAttribute('data-in-range', '');
+  await expect(card.locator('.selection-label')).toContainText('50');
+
+  // chart→table: a selection made on the plot lights those rows whole-width
+  await page.goto(`${AGE}&sel=60:62`);
+  await expect(page.locator('.selected-evidence .chart-workspace')).toBeVisible({ timeout: 90_000 });
+  await panel.locator('.exact-values summary').click();
+  await expect(cell(61, 0)).toHaveAttribute('data-in-range', '');
+  await expect(cell(61, 2)).toHaveAttribute('data-in-range', '');
+  await expect(cell(63, 2)).not.toHaveAttribute('data-in-range', '');
+});
+
 test('the value table leaves as tab-separated text and as a CSV file', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(AGE);
