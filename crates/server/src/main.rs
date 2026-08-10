@@ -3,6 +3,7 @@
 //! one, and hiding a button is not the mechanism.
 
 mod context;
+mod exhibit;
 mod record;
 mod runsvc;
 mod schema;

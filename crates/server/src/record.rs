@@ -38,6 +38,9 @@ pub struct RecordData {
     pub generated_at: String,
     pub review: Review,
     pub actions: Vec<RecordAction>,
+    /// sign-off exhibits rendered inside the approval transaction; None on
+    /// approvals that predate them
+    pub exhibits: Option<serde_json::Value>,
 }
 
 pub async fn record_handler(
@@ -131,6 +134,12 @@ async fn load_record(pool: &PgPool, run_id: i64) -> Result<Option<RecordData>, s
         )
         .collect();
 
+    let exhibits: Option<(Option<serde_json::Value>,)> =
+        sqlx::query_as("SELECT exhibits FROM reviews WHERE run_id = $1")
+            .bind(run_id)
+            .fetch_optional(pool)
+            .await?;
+
     Ok(Some(RecordData {
         run_id,
         goal,
@@ -140,6 +149,7 @@ async fn load_record(pool: &PgPool, run_id: i64) -> Result<Option<RecordData>, s
         generated_at,
         review,
         actions,
+        exhibits: exhibits.and_then(|(e,)| e),
     }))
 }
 
@@ -273,6 +283,44 @@ pub fn render_record(d: &RecordData) -> String {
     }
     html.push_str("<p class=\"when\">Frozen inside the approval transaction — recorded at sign-off, not assembled later.</p></section>");
 
+    // 3b — the decision evidence, compiled to static exhibits at sign-off.
+    // The SVG below is a stored string: rendered once inside the approval
+    // transaction from the run's frozen evidence, then never recomputed. A
+    // renderer bug at sign-off stays in the record, exactly like a typo in
+    // the signed summary would — the record shows what was signed.
+    html.push_str("<section class=\"exhibits\"><h2>Decision evidence</h2>");
+    match d.exhibits.as_ref().and_then(|e| e["exhibits"].as_array()) {
+        Some(list) if !list.is_empty() => {
+            for ex in list {
+                html.push_str(&format!(
+                    "<figure><figcaption>{}</figcaption>{}{}",
+                    esc(ex["title"].as_str().unwrap_or_default()),
+                    ex["svg"].as_str().unwrap_or_default(),
+                    ex["table"].as_str().unwrap_or_default(),
+                ));
+                let note = ex["note"].as_str().unwrap_or_default();
+                if !note.is_empty() {
+                    html.push_str(&format!("<p class=\"xh-note\">{}</p>", esc(note)));
+                }
+                html.push_str("</figure>");
+            }
+            html.push_str(&format!(
+                "<p class=\"when\">Rendered from the run's frozen evidence inside the approval transaction at sign-off{} — recorded at sign-off, not reconstructed at read time.</p>",
+                d.approved_at
+                    .as_deref()
+                    .map(|a| format!(" ({})", esc(a)))
+                    .unwrap_or_default()
+            ));
+        }
+        _ => {
+            html.push_str(
+                "<p>This approval predates sign-off exhibits; the frozen numbers live in the \
+                 platform's evidence records.</p>",
+            );
+        }
+    }
+    html.push_str("</section>");
+
     // 4 — what the reviewer was told
     html.push_str("<section><h2>What the reviewer was told</h2>");
     for p in &r.paragraphs {
@@ -351,6 +399,7 @@ pub fn render_record(d: &RecordData) -> String {
          <li><b>Agent action record</b> — written during the run, one row per action, as it happened.</li>\
          <li><b>Review narrative, guardrails, ledger</b> — written when the review was opened.</li>\
          <li><b>The decision</b> — frozen inside the approval transaction at sign-off.</li>\
+         <li><b>Decision evidence</b> — static exhibits rendered from the run's frozen evidence inside the same approval transaction, stored as data.</li>\
          <li><b>Status</b> — the only live fact, checked when this document was generated.</li>\
          </ul></section>",
     );
@@ -384,6 +433,13 @@ td{padding:7px 10px 7px 0;border-bottom:1px solid #e4e1d8;vertical-align:top}\
 .refusal{color:#8a4a12}\
 .provenance ul{padding-left:1.2em}\
 .provenance li{margin:.4em 0}\
+.exhibits figure{margin:1.4em 0}\
+.exhibits figcaption{font-weight:600;margin-bottom:.5em}\
+.exhibits svg{width:100%;height:auto;background:#fffefb;border:1px solid #e4e1d8}\
+.xh-table{margin-top:.7em;font-size:.8rem}\
+.xh-table td,.xh-table th{text-align:right}\
+.xh-table th:first-child,.xh-table td:first-child{text-align:left}\
+.xh-note{font-size:.85rem;color:#55524a}\
 @media print{body{background:#fff}article{max-width:none;padding:0}}\
 </style>";
 
@@ -470,7 +526,38 @@ mod tests {
                     at: "10:02:11".into(),
                 },
             ],
+            exhibits: None,
         }
+    }
+
+    #[test]
+    fn exhibits_render_inline_with_their_footnote() {
+        let mut d = data("active", true);
+        let chart = serde_json::json!({
+            "kind": "age_curve",
+            "title": "Driver age relativity",
+            "x_label": "Driver age",
+            "y_label": "Relativity",
+            "notes": ["one note"],
+            "series": [{"label": "Fitted spline", "style": "line", "points": [
+                {"x": 20.0, "y": 1.8, "se": 0.04}, {"x": 45.0, "y": 1.0}, {"x": 80.0, "y": 1.3, "se": 0.09}
+            ]}]
+        });
+        d.exhibits = Some(crate::exhibit::build_exhibits(
+            &serde_json::json!({"charts": [chart], "lift": []}),
+            "EXP-07",
+        ));
+        let html = render_record(&d);
+        assert!(html.contains("<svg"), "stored SVG embeds inline");
+        assert!(html.contains("recorded at sign-off, not reconstructed at read time"));
+        assert!(html.contains("Driver age relativity"));
+        assert!(html.contains("xh-table"));
+    }
+
+    #[test]
+    fn missing_exhibits_fall_back_honestly() {
+        let html = render_record(&data("active", true));
+        assert!(html.contains("predates sign-off exhibits"));
     }
 
     #[test]

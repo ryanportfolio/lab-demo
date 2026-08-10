@@ -103,6 +103,11 @@ test('a replaced approval keeps its frozen decision-time record', async ({ page 
   expect(html).toContain('Agent action record');
   expect(html).toContain('irreversible');
   expect(html).not.toContain('<script');
+  // sign-off exhibits: the decision evidence rides the record as stored SVG
+  expect(html).toContain('Decision evidence');
+  expect(html).toContain('<svg');
+  expect(html).toContain('recorded at sign-off, not reconstructed at read time');
+  expect(html).toContain('xh-table');
 
   // A run with no approved review gets an honest 404, not an empty shell
   const missing = await page.request.get('/record/999999');
