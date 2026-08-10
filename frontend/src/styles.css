@@ -405,6 +405,11 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart-full .notes { font-size: 13.5px }
 .chart-full .chart-close { position: absolute; top: 12px; right: 14px; font-family: var(--mono); font-size: 12px; color: var(--fg-subtle); background: var(--card); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px 10px; cursor: pointer }
 .chart-full .chart-close:hover { color: var(--fg); border-color: var(--fg-subtle) }
-.chart-hint { display: block; margin-top: 10px; font-size: 12px; color: var(--fg-subtle); font-family: var(--mono) }
+/* Rides the full-view header's empty space, beside the Esc pill. Falls back
+   into the flow when the sheet is too narrow to fit it beside the title. */
+.chart-hint { display: block; position: absolute; top: 19px; right: 72px; font-size: 12px; color: var(--fg-subtle); font-family: var(--mono); text-align: right }
+@media (max-width: 1100px) {
+  .chart-hint { position: static; margin: 2px 0 8px; text-align: left }
+}
 body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 @keyframes chartin { from { opacity: 0; transform: scale(.985) } }
