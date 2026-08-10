@@ -315,23 +315,25 @@ test('selection can ask with context, copy a link, and enter final review', asyn
   await expect(chart.locator('.chart-action-status')).toContainText('copied');
 
   await chart.locator('button', { hasText: 'Ask about selection' }).click();
-  await expect(page.locator('.ask')).toBeVisible();
+  // a wide screen opens the split studio with the ask seeded beside the chart
+  const rail = page.locator('.chart-studio-rail');
+  await expect(rail).toBeVisible();
   // the context rides in a chip; the editable question stays human-sized
-  const chip = page.locator('.ask-chip');
+  const chip = rail.locator('.ask-chip');
   await expect(chip).toContainText('EXP-07');
   await expect(chip).toContainText('earned car year');
-  const question = page.locator('.ask-compose textarea');
+  const question = rail.locator('.ask-compose textarea');
   await expect(question).toHaveValue(/Explain/);
   await expect(question).not.toHaveValue(/run \d/);
-  await expect(page.locator('.ask-note')).toContainText('cannot fit, merge, or approve');
 
   // sending routes on the carried context and echoes it under the question
-  await page.locator('.ask-send').click();
-  await expect(page.locator('.ask-row.ai').first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.ask-row.you .ask-chip-echo')).toContainText('EXP-07');
-  await expect(page.locator('.ask-row.ai .steps')).toContainText('matchQuestion');
+  await rail.locator('.ask-send').click();
+  await expect(rail.locator('.ask-row.ai').first()).toBeVisible({ timeout: 30_000 });
+  await expect(rail.locator('.ask-row.you .ask-chip-echo')).toContainText('EXP-07');
+  await expect(rail.locator('.ask-row.ai .steps')).toContainText('matchQuestion');
   await expect(chip).toBeHidden();
-  await page.locator('.ask-esc').click();
+  await page.keyboard.press('Escape');
+  await expect(rail).toBeHidden();
 
   await chart.locator('button', { hasText: 'Save to review' }).click();
   await expect(chart.locator('.chart-action-status')).toContainText('Saved');

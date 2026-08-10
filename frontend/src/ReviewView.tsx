@@ -13,6 +13,7 @@ interface Props {
   savedEvidence: SavedChartEvidence[];
   onAsk: (ask: AgentAsk) => void;
   onSave: (evidence: SavedChartEvidence) => void;
+  onCite?: (code: string) => void;
 }
 
 function How({ text }: { text: string }) {
@@ -35,6 +36,7 @@ export default function ReviewView({
   savedEvidence,
   onAsk,
   onSave,
+  onCite,
 }: Props) {
   const [weakFocusNonce, setWeakFocusNonce] = useState(0);
   const approved = review.status === 'approved';
@@ -208,6 +210,8 @@ export default function ReviewView({
             focused
             onAsk={onAsk}
             onSave={onSave}
+            onCite={onCite}
+            askReady
             baseVersion={run.baseModelVersion}
             weakFocus={{
               text: weakPoint ?? 'sparse tail exposure',

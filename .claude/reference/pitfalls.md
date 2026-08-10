@@ -95,3 +95,12 @@ Rule: full-suite runs belong on a local backend (or a throwaway deployment).
 Against the live proxy, run only the read-only specs you need, expect a
 handful of extra runs/approvals if a mutating spec is included, and warn
 anyone concurrently using the app.
+
+## 2026-08-09 · StrictMode kills "skip the first effect run" refs
+
+`main.tsx` wraps the app in `React.StrictMode`, so every mount effect runs
+twice in dev (and under vite-served Playwright). A `useRef(true)`-guarded
+"skip the initial run" effect fires its body on the second invocation — this
+silently closed the chart studio right after a `?full=1` load. Compare
+against a `usePrevious`-style ref of the actual dependency instead
+(see `EvidencePanel.tsx`, `prevCode`).
