@@ -403,7 +403,28 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
    answer scrolls under it, and the next question pushes it off. The shadow
    is a solid block, not an effect: it covers the panel's own top padding so
    nothing slides through the gap above a stuck question. */
-.ask-row.you { position: sticky; top: 0; z-index: 2; background: var(--card); box-shadow: 0 -14px 0 0 var(--card) }
+.ask-row.you {
+  position: sticky; top: 0; z-index: 2; background: var(--card);
+  box-shadow: 0 -14px 0 0 var(--card);
+  /* --handoff runs 0 to 1 over the last header's worth of scroll before the
+     next question takes the edge, so the outgoing one leaves rather than
+     vanishes between two frames */
+  opacity: calc(1 - var(--handoff, 0) * .8);
+  transform: translateY(calc(var(--handoff, 0) * -6px));
+}
+/* A held question is a different thing from one scrolling past: it carries a
+   hairline and a soft lift, faded in so taking the edge reads as an event. */
+.ask-row.you::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -9px; height: 9px;
+  background: linear-gradient(
+    to bottom,
+    var(--border) 0 1px,
+    color-mix(in srgb, var(--fg) 7%, transparent) 1px,
+    transparent 100%
+  );
+  opacity: 0; transition: opacity var(--t-normal) var(--ease);
+}
+.ask-row.you[data-held]::after { opacity: 1 }
 .ask-row.you .bubble { border: 1px solid var(--border); border-radius: var(--r-md); padding: 9px 12px; background: var(--chipbg); color: var(--fg); font-weight: 500 }
 /* The question is a block the mark sits beside; the answer is the surface
    itself, so its mark moves to the right edge and the text runs full width.
@@ -558,8 +579,21 @@ body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 .snav[data-collapsed] { width: 46px }
 .snav-top { display: flex; align-items: center; gap: 6px; padding: 10px 10px 8px }
 .snav[data-collapsed] .snav-top { justify-content: center; padding: 10px 0 8px }
-.snav-toggle, .snav-density { flex: none; font: inherit; font-size: 13px; font-family: var(--mono); min-width: 26px; min-height: 26px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--fg-muted); cursor: pointer }
+.snav-toggle, .snav-density { flex: none; display: grid; place-items: center; font: inherit; font-size: 13px; font-family: var(--mono); min-width: 26px; min-height: 26px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--fg-muted); cursor: pointer }
 .snav-toggle:hover, .snav-density:hover { background: var(--chipbg); color: var(--fg) }
+.snav-top .hint-host { display: flex; min-width: 0 }
+.snav-top .hint-host:nth-child(2) { flex: 1 }
+
+/* Instant tooltip: the browser's own is a second late and paints in the OS's
+   colours. This one is the theme's, on the first frame of hover. */
+.hint {
+  position: fixed; z-index: 90; pointer-events: none; max-width: 260px;
+  padding: 5px 9px; border-radius: var(--r-sm); border: 1px solid var(--border);
+  background: var(--card); color: var(--fg); box-shadow: var(--shadow-lg);
+  font-size: 12px; line-height: 1.35; white-space: nowrap;
+}
+.hint[data-placement="bottom"] { transform: translateX(-50%) }
+.hint[data-placement="right"] { transform: translateY(-50%) }
 .snav-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--r-pill); padding: 5px 11px; color: var(--fg-subtle) }
 .snav-search:focus-within { border-color: var(--fg-subtle) }
 .snav-search svg { flex: none }
@@ -579,6 +613,7 @@ body.chartfull .ask-esc { opacity: .3; pointer-events: none }
 .snav-sect:hover .snav-chev, .snav-sect:focus-visible .snav-chev { opacity: 1 }
 .snav-group[data-closed] .snav-chev { transform: rotate(-90deg); opacity: 1 }
 .snav-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--fg-subtle); padding: 12px 8px 5px }
+.snav-rule { border: 0; border-top: 1px solid var(--border); margin: 10px 8px 2px }
 .snav-item { display: flex; align-items: flex-start; gap: 2px; border-radius: var(--r-sm) }
 .snav-item:hover, .snav-item[data-active] { background: var(--chipbg) }
 .snav-open { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 8px; text-align: left; border: 0; background: transparent; color: var(--fg); font: inherit; padding: 6px 0 6px 8px; border-radius: var(--r-sm); cursor: pointer }

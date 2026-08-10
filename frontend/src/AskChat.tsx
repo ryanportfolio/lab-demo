@@ -134,6 +134,50 @@ export default function AskChat({
     };
   }, [pin]);
 
+  // The handoff from one stuck question to the next is the moment a reader can
+  // lose their place, so it is drawn rather than left to happen: the held
+  // question is marked while it holds, and it fades and lifts as the next one
+  // pushes it out, instead of being replaced between two frames.
+  useEffect(() => {
+    const el = body.current;
+    if (!el) return;
+    let frame = 0;
+    const paint = () => {
+      frame = 0;
+      const turns = Array.from(el.querySelectorAll<HTMLElement>('.ask-turn'));
+      const edge = el.getBoundingClientRect().top;
+      turns.forEach((turn, index) => {
+        const question = turn.querySelector<HTMLElement>('.ask-row.you');
+        if (!question) return;
+        const height = question.offsetHeight || 1;
+        const offset = turn.getBoundingClientRect().top - edge;
+        const next = turns[index + 1];
+        const nextOffset = next ? next.getBoundingClientRect().top - edge : Infinity;
+        // held once its turn's top passes the edge, until the next turn
+        // reaches it
+        const held = offset <= 1 && nextOffset > 0;
+        // and shoved over the last header's worth of scroll before that
+        const shove = nextOffset < height ? 1 - Math.max(nextOffset, 0) / height : 0;
+        if (held) question.setAttribute('data-held', 'true');
+        else question.removeAttribute('data-held');
+        question.style.setProperty('--handoff', shove.toFixed(3));
+      });
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(paint);
+    };
+    paint();
+    el.addEventListener('scroll', schedule, { passive: true });
+    const observer = new ResizeObserver(schedule);
+    observer.observe(el);
+    Array.from(el.children).forEach((child) => observer.observe(child));
+    return () => {
+      el.removeEventListener('scroll', schedule);
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [answers, open]);
+
   // Unfolding brings the questions into view rather than growing a panel
   // below the fold: the reader asked to see them, not to go looking
   useEffect(() => {

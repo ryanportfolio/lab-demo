@@ -7,9 +7,16 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchEvidence, type Experiment, type EvidenceChart } from './api';
 import { contractFor } from './chartWorkspace';
 import { chartsFromEvidence } from './evidenceCharts';
+import Hint from './Hint';
 
 type Density = 'compact' | 'info' | 'rich';
 const DENSITIES: Density[] = ['compact', 'info', 'rich'];
+/** what each density actually shows, since "compact" alone says nothing */
+const DENSITY_LABEL: Record<Density, string> = {
+  compact: 'titles only',
+  info: 'titles and source',
+  rich: 'titles, source, and question',
+};
 
 interface NavPrefs {
   density: Density;
@@ -102,6 +109,8 @@ export default function StudioNav({
       .toLowerCase()
       .includes(needle);
 
+  const nextDensity = DENSITIES[(DENSITIES.indexOf(density) + 1) % DENSITIES.length];
+
   const verdict = (experiment: Experiment) =>
     experiment.status === 'winner' ? 'win' : experiment.status === 'scrapped' ? 'scr' : 'abs';
 
@@ -126,18 +135,20 @@ export default function StudioNav({
             <span className="snav-q">{contractFor(chart).question}</span>
           </span>
         </button>
-        <button
-          type="button"
-          className="snav-star"
-          data-on={pinned || undefined}
-          aria-pressed={pinned}
-          aria-label={`${pinned ? 'Unpin' : 'Pin'} ${chart.title}`}
-          onClick={() =>
-            setPins((prev) => (pinned ? prev.filter((p) => p !== key) : [...prev, key]))
-          }
-        >
-          ★
-        </button>
+        <Hint text={pinned ? 'Unpin from the top of the list' : 'Pin to the top of the list'}>
+          <button
+            type="button"
+            className="snav-star"
+            data-on={pinned || undefined}
+            aria-pressed={pinned}
+            aria-label={`${pinned ? 'Unpin' : 'Pin'} ${chart.title}`}
+            onClick={() =>
+              setPins((prev) => (pinned ? prev.filter((p) => p !== key) : [...prev, key]))
+            }
+          >
+            ★
+          </button>
+        </Hint>
       </div>
     );
   };
@@ -163,42 +174,58 @@ export default function StudioNav({
   return (
     <div className="snav" data-collapsed={collapsed || undefined} data-density={density}>
       <div className="snav-top">
-        <button
-          type="button"
-          className="snav-toggle"
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? 'Expand the chart list' : 'Collapse the chart list'}
-          onClick={() => setCollapsed((prev) => !prev)}
-        >
-          ⟨⟩
-        </button>
+        <Hint text={collapsed ? 'Show the chart list' : 'Hide the chart list'}>
+          <button
+            type="button"
+            className="snav-toggle"
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expand the chart list' : 'Collapse the chart list'}
+            onClick={() => setCollapsed((prev) => !prev)}
+          >
+            {/* the panel this button governs, drawn as itself: a frame with
+                its left column filled */}
+            <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+              <rect
+                x="1.5"
+                y="2.5"
+                width="13"
+                height="11"
+                rx="2"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.3"
+              />
+              <path d="M6 2.5v11" stroke="currentColor" strokeWidth="1.3" />
+              <rect x="2.2" y="3.2" width="3.1" height="9.6" rx="1" fill="currentColor" />
+            </svg>
+          </button>
+        </Hint>
         {!collapsed && (
           <>
-            <label className="snav-search">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                <circle cx="5" cy="5" r="3.6" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M8 8l2.6 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-              <input
-                value={filter}
-                placeholder="Search charts"
-                aria-label="Search charts in this run"
-                onChange={(event) => setFilter(event.target.value)}
-              />
-            </label>
-            <button
-              type="button"
-              className="snav-density"
-              title={`Row density: ${density} — click to change`}
-              aria-label={`Row density: ${density}. Click to change`}
-              onClick={() =>
-                setDensity(
-                  (prev) => DENSITIES[(DENSITIES.indexOf(prev) + 1) % DENSITIES.length],
-                )
-              }
-            >
-              Aa
-            </button>
+            <Hint text="Search every chart in this run">
+              <label className="snav-search">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <circle cx="5" cy="5" r="3.6" stroke="currentColor" strokeWidth="1.4" />
+                  <path d="M8 8l2.6 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+                <input
+                  value={filter}
+                  placeholder="Search charts"
+                  aria-label="Search charts in this run"
+                  onChange={(event) => setFilter(event.target.value)}
+                />
+              </label>
+            </Hint>
+            <Hint text={`Row detail: ${DENSITY_LABEL[density]} · click for ${DENSITY_LABEL[nextDensity]}`}>
+              <button
+                type="button"
+                className="snav-density"
+                aria-label={`Row detail: ${DENSITY_LABEL[density]}. Click for ${DENSITY_LABEL[nextDensity]}`}
+                onClick={() => setDensity(nextDensity)}
+              >
+                Aa
+              </button>
+            </Hint>
           </>
         )}
       </div>
@@ -208,6 +235,9 @@ export default function StudioNav({
             {!charts && <div className="snav-empty">Reading run artifacts</div>}
             {pinnedRows.length > 0 && <div className="snav-label">Pinned</div>}
             {pinnedRows}
+            {/* the pinned few are a copy of rows that also live below, so the
+                list says plainly where that section ends */}
+            {pinnedRows.length > 0 && <hr className="snav-rule" />}
             {charts &&
               experiments
                 .filter((experiment) => experiment.status !== 'running')
