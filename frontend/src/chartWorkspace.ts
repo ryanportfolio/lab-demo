@@ -398,6 +398,29 @@ export function buildAgentAsk(
   };
 }
 
+/**
+ * The same carried ask for a chart with no workspace context — the mini
+ * charts an answer draws. Provenance is whatever the answer cited.
+ */
+export function buildChartAsk(
+  chart: EvidenceChart,
+  selection: ChartSelection,
+  mode: ChartMode,
+  source?: string | null,
+): AgentAsk {
+  const label = selectionLabel(chart, selection);
+  const question = `Explain ${label} in ${chart.title.toLowerCase()}. What is weak here and what should be checked next?`;
+  const context = [
+    source,
+    chart.title,
+    label,
+    mode === 'change' ? 'change view' : 'level view',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return { question, context, send: `${question} Context: ${context}.` };
+}
+
 export function makeSavedEvidence(
   chart: EvidenceChart,
   context: ChartWorkspaceContext,

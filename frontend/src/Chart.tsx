@@ -14,6 +14,7 @@ import { createPortal } from 'react-dom';
 import type { EvidenceChart, EvidenceSeries } from './api';
 import {
   buildAgentAsk,
+  buildChartAsk,
   contractFor,
   displayChart,
   isSecondarySeries,
@@ -24,6 +25,7 @@ import {
   weakActionLabel,
   weakestSelection,
   weakPoint,
+  type AgentAsk,
   type ChartContract,
   type ChartMode,
   type ChartSelection,
@@ -378,6 +380,9 @@ function Plot({
         // Preventing the native default here stops SVG ticks/axis labels from becoming
         // blue-selected when the pointer crosses them.
         event.preventDefault();
+        // Only the primary button draws: a right-click must not move the
+        // pinned selection it is about to ask about
+        if (event.button !== 0) return;
         const index = nearestIndex(event.clientX);
         if (index == null) return;
         svgRef.current?.focus();
@@ -724,6 +729,8 @@ export default function Chart({
   onExpandedChange,
   askRail,
   sideNav,
+  onAskSelection,
+  askSource = null,
 }: {
   chart: EvidenceChart;
   plain: boolean;
@@ -738,6 +745,10 @@ export default function Chart({
   askRail?: ReactNode;
   /** chart navigator docked on the studio's left edge */
   sideNav?: ReactNode;
+  /** ask path for charts without a workspace context (an answer's mini charts) */
+  onAskSelection?: (ask: AgentAsk) => void;
+  /** provenance for the context chip when there is no workspace context */
+  askSource?: string | null;
 }) {
   const contract = useMemo(() => contractFor(chart), [chart]);
   const [localSelection, setLocalSelection] = useState<ChartSelection | null>(null);
@@ -778,6 +789,71 @@ export default function Chart({
     () => (weakSelection ? selectionValues(shown, weakSelection) : []),
     [shown, weakSelection],
   );
+
+  // One ask path per chart: the workspace context's when it has one, the
+  // caller-supplied loose path otherwise (an answer's mini charts)
+  const askFromSelection = (pinned: ChartSelection) => {
+    if (context) {
+      context.onAsk(buildAgentAsk(chart, context, pinned, mode));
+      // outside the studio the surface the ask lands on is elsewhere, so the
+      // dialog stands down; the studio keeps its split up
+      if (!askRail) setExpanded(false);
+    } else if (onAskSelection) {
+      onAskSelection(buildChartAsk(chart, pinned, mode, askSource));
+      setExpanded(false);
+    }
+  };
+  const canAsk = Boolean(context || onAskSelection);
+  // Right-click on a chart with a pinned selection is the ask shortcut;
+  // without one the native menu is left alone
+  const contextMenu = canAsk && selection
+    ? (event: React.MouseEvent) => {
+        event.preventDefault();
+        askFromSelection(selection);
+      }
+    : undefined;
+
+  // The studio split is user-sized: dragging the seam trades chart room for
+  // rail room. Saved on this browser like the navigator's preferences.
+  const [railWidth, setRailWidth] = useState<number>(() => {
+    try {
+      const stored = Number(localStorage.getItem('plab-studio-rail-width'));
+      return Number.isFinite(stored) && stored > 0 ? stored : 490;
+    } catch {
+      return 490;
+    }
+  });
+  const clampRail = (width: number) =>
+    // the rail keeps a readable floor and always leaves the navigator plus a
+    // usable plot standing
+    Math.max(360, Math.min(width, Math.max(360, window.innerWidth - 620)));
+  const persistRail = (width: number) => {
+    try {
+      localStorage.setItem('plab-studio-rail-width', String(Math.round(width)));
+    } catch {
+      /* private browsing: the width just does not stick */
+    }
+  };
+  const startRailDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    handle.setAttribute('data-drag', 'true');
+    let latest = railWidth;
+    const move = (ev: PointerEvent) => {
+      latest = clampRail(window.innerWidth - ev.clientX);
+      setRailWidth(latest);
+    };
+    const stop = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeAttribute('data-drag');
+      persistRail(latest);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', stop, { once: true });
+    handle.addEventListener('pointercancel', stop, { once: true });
+  };
 
   useEffect(() => setHidden(new Set()), [mode, chart.kind]);
 
@@ -915,6 +991,15 @@ export default function Chart({
               <button type="button" onClick={copyLink}>Copy evidence link</button>
             </>
           )}
+          {!context && onAskSelection && (
+            <button
+              type="button"
+              className="act-primary"
+              onClick={() => askFromSelection(selection)}
+            >
+              Ask about selection
+            </button>
+          )}
           <button type="button" className="act-clear" onClick={() => setSelection(null)}>
             Clear
           </button>
@@ -963,7 +1048,12 @@ export default function Chart({
   }
 
   return (
-    <figure className="chart chart-workspace" data-kind={chart.kind} data-mode={mode}>
+    <figure
+      className="chart chart-workspace"
+      data-kind={chart.kind}
+      data-mode={mode}
+      onContextMenu={contextMenu}
+    >
       <div className="chart-title-row">
         <div>
           <span className="chart-question">{contract.question}</span>
@@ -1044,6 +1134,7 @@ export default function Chart({
               aria-modal="true"
               aria-label={chart.title}
               onMouseDown={(e) => e.stopPropagation()}
+              onContextMenu={contextMenu}
             >
               <figcaption>{chart.title}</figcaption>
               {/* The source line rides every chart surface, full view included. */}
@@ -1063,7 +1154,8 @@ export default function Chart({
                   sheet ends at the notes and fits 1080p without scrolling. */}
               <span className="chart-hint">
                 Hover previews · Enter pins · arrow keys walk the axis
-                {contract.range ? ' · Shift plus arrow selects a range' : ''} · Esc closes
+                {contract.range ? ' · Shift plus arrow selects a range' : ''}
+                {canAsk ? ' · right-click asks about the selection' : ''} · Esc closes
               </span>
               {/* a phone squeezes the wide frame into unreadable text, so the
                   full view keeps the card geometry there */}
@@ -1086,13 +1178,38 @@ export default function Chart({
               {plain && <div className="gloss">{chart.gloss}</div>}
             </figure>
             {askRail && (
-              <aside
-                className="chart-studio-rail"
-                aria-label="Ask beside this chart"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                {askRail}
-              </aside>
+              <>
+                {/* the seam is the sizer: drag trades chart room for rail
+                    room, double-click restores the default, arrows nudge */}
+                <div
+                  className="studio-resize"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize the ask rail"
+                  tabIndex={0}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={startRailDrag}
+                  onDoubleClick={() => {
+                    setRailWidth(490);
+                    persistRail(490);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                    e.preventDefault();
+                    const next = clampRail(railWidth + (e.key === 'ArrowLeft' ? 24 : -24));
+                    setRailWidth(next);
+                    persistRail(next);
+                  }}
+                />
+                <aside
+                  className="chart-studio-rail"
+                  style={{ flexBasis: clampRail(railWidth) }}
+                  aria-label="Ask beside this chart"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  {askRail}
+                </aside>
+              </>
             )}
           </div>,
           document.body,
