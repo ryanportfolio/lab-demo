@@ -69,7 +69,10 @@ html.night {
   --brand: #a85f38; --brand-100: #ecd2c0; --brand-300: #cf9268; --brand-600: #8a4e2e; --brand-800: #4a2a19;
   --chipbg: #e6d3c1;
   --seg-active: var(--card);
-  --chart-base: #c9b09a; --chart-alt: #a98e75; --chart-exposure: #e2cfbd;
+  /* Exposure bars sit farther from the warm ground than the light theme's
+     z200-on-white, because the brand-tinted selection band otherwise swamps
+     the few points of separation they had. */
+  --chart-base: #c9b09a; --chart-alt: #a98e75; --chart-exposure: #d9bfa4;
   --shadow: 0 1px 2px rgba(62, 42, 26, .05), 0 8px 24px rgba(62, 42, 26, .07);
   --shadow-lg: 0 2px 6px rgba(62, 42, 26, .06), 0 24px 60px rgba(62, 42, 26, .12);
   --shadow-raise: 0 1px 2px rgba(62, 42, 26, .14);
@@ -87,7 +90,7 @@ html.gold {
   --brand: #8f7420; --brand-100: #f0e7ae; --brand-300: #c2a844; --brand-600: #745d18; --brand-800: #3e300a;
   --chipbg: #e4d775;
   --seg-active: var(--card);
-  --chart-base: #cdbf62; --chart-alt: #a89a45; --chart-exposure: #e3d778;
+  --chart-base: #cdbf62; --chart-alt: #a89a45; --chart-exposure: #d5c353;
   --shadow: 0 1px 2px rgba(58, 52, 10, .05), 0 8px 24px rgba(58, 52, 10, .07);
   --shadow-lg: 0 2px 6px rgba(58, 52, 10, .06), 0 24px 60px rgba(58, 52, 10, .12);
   --shadow-raise: 0 1px 2px rgba(58, 52, 10, .14);
