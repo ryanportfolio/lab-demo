@@ -36,18 +36,36 @@ pub struct Pt {
     pub y: f64,
     /// tick label when the x axis is categorical
     pub label: Option<String>,
+    /// Wald standard error on the LOG scale for this point's value, from the
+    /// final IRLS weights. Every chart value carrying an se is multiplicative
+    /// (a relativity or frequency ratio), so the renderer draws the band as
+    /// y * exp(+/-2 se): asymmetric and always positive. None = no band.
+    /// The same convention is documented on the frontend Pt type; change both
+    /// together or nowhere.
+    pub se: Option<f64>,
 }
 
 impl Pt {
     pub fn xy(x: f64, y: f64) -> Self {
-        Pt { x, y, label: None }
+        Pt {
+            x,
+            y,
+            label: None,
+            se: None,
+        }
     }
     pub fn labelled(x: f64, y: f64, label: impl Into<String>) -> Self {
         Pt {
             x,
             y,
             label: Some(label.into()),
+            se: None,
         }
+    }
+    pub fn with_se(mut self, se: Option<f64>) -> Self {
+        // a zero-width band is a claim of exactness; keep exact points bandless
+        self.se = se.filter(|s| s.is_finite() && *s > 0.0);
+        self
     }
 }
 
@@ -96,6 +114,19 @@ pub struct FitFacts {
     pub aic: f64,
     /// NB2 dispersion when the family was refit, absent for Poisson
     pub alpha: Option<f64>,
+    /// earned car years behind the train fit
+    pub train_exposure: f64,
+    /// claims behind the train fit
+    pub train_claims: f64,
+    /// half-year periods the fit trained on, e.g. "2023H1 to 2025H1"
+    pub train_window: String,
+    /// the out-of-time holdout period, e.g. "2025H2"
+    pub holdout_window: String,
+    /// mean earned car years in one fold's validation slice
+    pub fold_val_exposure: f64,
+    /// ridge needed to invert the information matrix; > 0 means the standard
+    /// errors come from a ridged system and are biased small
+    pub cov_ridge: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -182,9 +213,11 @@ fn age_exposure(rows: &[&PolicyRow]) -> Vec<Pt> {
 pub fn age_curve_chart_with_exposure(
     spline_beta: &[f64],
     band_beta: &[f64],
+    spline_cov: Option<&nalgebra::DMatrix<f64>>,
+    band_se: Option<&[f64]>,
     rows: &[&PolicyRow],
 ) -> Chart {
-    let mut c = age_curve_chart(spline_beta, band_beta);
+    let mut c = age_curve_chart(spline_beta, band_beta, spline_cov, band_se);
     // Exposure rides on its own axis behind the curve, so a reader can see
     // how much book sits under each part of the shape
     c.series.insert(
@@ -198,25 +231,44 @@ pub fn age_curve_chart_with_exposure(
     c
 }
 
-pub fn age_curve_chart(spline_beta: &[f64], band_beta: &[f64]) -> Chart {
+pub fn age_curve_chart(
+    spline_beta: &[f64],
+    band_beta: &[f64],
+    spline_cov: Option<&nalgebra::DMatrix<f64>>,
+    band_se: Option<&[f64]>,
+) -> Chart {
     let ref_basis = natural_basis(45.0, &AGE_KNOTS);
     let ref_log: f64 = ref_basis.iter().zip(spline_beta).map(|(b, c)| b * c).sum();
+    // se of the curve at one age: contrast v = basis(age) - basis(45) over the
+    // spline coefficients alone (the contrast is zero on every other column,
+    // so the spline sub-block of the covariance is exact, not an approximation)
+    let point_se = |basis: &[f64]| -> Option<f64> {
+        let cov = spline_cov?;
+        if cov.nrows() != spline_beta.len() {
+            return None;
+        }
+        let v = nalgebra::DVector::from_iterator(
+            basis.len(),
+            basis.iter().zip(&ref_basis).map(|(b, r)| b - r),
+        );
+        Some((v.transpose() * cov * v)[(0, 0)].max(0.0).sqrt())
+    };
     let mut curve = Vec::new();
     let mut step = Vec::new();
     for age in 18..=90u8 {
         let basis = natural_basis(age as f64, &AGE_KNOTS);
         let lp: f64 = basis.iter().zip(spline_beta).map(|(b, c)| b * c).sum();
-        curve.push(Pt::xy(age as f64, (lp - ref_log).exp()));
+        curve.push(Pt::xy(age as f64, (lp - ref_log).exp()).with_se(point_se(&basis)));
         // v12 bands: 35 to 54 is the reference, so its coefficient is zero
         let band = age_band(age);
-        let coef = match band {
-            0 => band_beta[0],
-            1 => band_beta[1],
-            2 => 0.0,
-            3 => band_beta[2],
-            _ => band_beta[3],
+        let (coef, coef_se) = match band {
+            0 => (band_beta[0], band_se.map(|s| s[0])),
+            1 => (band_beta[1], band_se.map(|s| s[1])),
+            2 => (0.0, None),
+            3 => (band_beta[2], band_se.map(|s| s[2])),
+            _ => (band_beta[3], band_se.map(|s| s[3])),
         };
-        step.push(Pt::xy(age as f64, coef.exp()));
+        step.push(Pt::xy(age as f64, coef.exp()).with_se(coef_se));
     }
     let knots = AGE_KNOTS
         .iter()
@@ -270,7 +322,7 @@ pub fn age_curve_chart(spline_beta: &[f64], band_beta: &[f64]) -> Chart {
 
 /// Observed frequency by prior accident count, with the exposure behind each
 /// count, next to the fitted relativity of the capped factor.
-pub fn accidents_chart(rows: &[&PolicyRow], capped_coef: f64) -> Chart {
+pub fn accidents_chart(rows: &[&PolicyRow], capped_coef: f64, coef_se: Option<f64>) -> Chart {
     let max_k = 5usize;
     let mut exp = vec![0.0; max_k + 1];
     let mut clm = vec![0.0; max_k + 1];
@@ -295,8 +347,13 @@ pub fn accidents_chart(rows: &[&PolicyRow], capped_coef: f64) -> Chart {
         })
         .collect();
     let base = observed[0].y.max(1e-9);
+    // band treats the observed base rate as fixed: the se scales with the
+    // capped count, so the band fans out toward the capped tail
     let fitted: Vec<Pt> = (0..=max_k)
-        .map(|k| Pt::xy(k as f64, (capped_coef * k.min(3) as f64).exp() * base))
+        .map(|k| {
+            let kk = k.min(3) as f64;
+            Pt::xy(k as f64, (capped_coef * kk).exp() * base).with_se(coef_se.map(|s| kk * s))
+        })
         .collect();
     let share: Vec<Pt> = (0..=max_k)
         .map(|k| Pt::xy(k as f64, 100.0 * exp[k] / total))
@@ -340,7 +397,12 @@ pub fn accidents_chart(rows: &[&PolicyRow], capped_coef: f64) -> Chart {
 
 /// Filed against blended territory relativities, sorted by movement. This is
 /// the direct movement reading: the relativities themselves move.
-pub fn territory_chart(filed: &[f64], blended: &[f64]) -> Chart {
+pub fn territory_chart(
+    filed: &[f64],
+    blended: &[f64],
+    blend_se: Option<&[f64]>,
+    zone_exposure: Option<&[f64]>,
+) -> Chart {
     let mut idx: Vec<usize> = (0..filed.len()).collect();
     idx.sort_by(|a, b| {
         let ma = (blended[*a] / filed[*a] - 1.0).abs();
@@ -349,10 +411,20 @@ pub fn territory_chart(filed: &[f64], blended: &[f64]) -> Chart {
     });
     let mut filed_pts = Vec::new();
     let mut blend_pts = Vec::new();
+    let mut share_pts = Vec::new();
+    let total_exp: f64 = zone_exposure.map(|e| e.iter().sum()).unwrap_or(0.0);
     for (rank, z) in idx.iter().enumerate() {
         let code = plab_core::zone_code(*z as u8);
+        // filed values are constants from the manual page: no se, on purpose
         filed_pts.push(Pt::labelled(rank as f64, filed[*z], code.clone()));
-        blend_pts.push(Pt::labelled(rank as f64, blended[*z], code));
+        blend_pts.push(
+            Pt::labelled(rank as f64, blended[*z], code.clone()).with_se(blend_se.map(|s| s[*z])),
+        );
+        if let Some(e) = zone_exposure {
+            if total_exp > 0.0 {
+                share_pts.push(Pt::labelled(rank as f64, 100.0 * e[*z] / total_exp, code));
+            }
+        }
     }
     let worst = idx[0];
     let worst_move = 100.0 * (blended[worst] / filed[worst] - 1.0);
@@ -366,18 +438,27 @@ pub fn territory_chart(filed: &[f64], blended: &[f64]) -> Chart {
         title: "Filed against blended relativity".into(),
         x_label: "Zones, sorted by movement".into(),
         y_label: "Relativity".into(),
-        series: vec![
-            Series {
+        series: {
+            let mut s = Vec::new();
+            if !share_pts.is_empty() {
+                s.push(Series {
+                    label: "Share of exposure".into(),
+                    style: Style::Bar,
+                    points: share_pts,
+                });
+            }
+            s.push(Series {
                 label: "Filed".into(),
                 style: Style::Dot,
                 points: filed_pts,
-            },
-            Series {
+            });
+            s.push(Series {
                 label: "Blended".into(),
                 style: Style::Dot,
                 points: blend_pts,
-            },
-        ],
+            });
+            s
+        },
         notes: vec![
             format!(
                 "Largest movement {:.1}% on {}",
@@ -385,6 +466,8 @@ pub fn territory_chart(filed: &[f64], blended: &[f64]) -> Chart {
                 plab_core::zone_code(worst as u8)
             ),
             format!("{over} of {} zones move past the 5% limit", filed.len()),
+            "Filed values are manual-page constants, so only the blended estimate carries a standard error"
+                .into(),
         ],
         gloss: "Each pair is one zone: where it sits in the filed table, and where this experiment would move it. These multipliers are on file with the regulator, so moving them is a filing question, not a modelling one.".into(),
     }
@@ -398,13 +481,19 @@ pub fn count_dist_chart(
     mu_nb: &[f64],
     alpha: f64,
     aic_delta: f64,
+    exposure: Option<&[f64]>,
 ) -> Chart {
     let n = y.len() as f64;
     let mut observed = vec![0.0; 4];
-    for v in y {
+    let mut exp_share = vec![0.0; 4];
+    for (i, v) in y.iter().enumerate() {
         let k = (*v as usize).min(3);
         observed[k] += 1.0;
+        if let Some(e) = exposure {
+            exp_share[k] += e[i];
+        }
     }
+    let exp_total: f64 = exp_share.iter().sum();
     for o in observed.iter_mut() {
         *o = 100.0 * *o / n;
     }
@@ -449,23 +538,34 @@ pub fn count_dist_chart(
         title: "Share of policies by claim count".into(),
         x_label: "Claims in the year".into(),
         y_label: "Share of policies, percent".into(),
-        series: vec![
-            Series {
+        series: {
+            let mut s = Vec::new();
+            if exposure.is_some() && exp_total > 0.0 {
+                let shares: Vec<f64> =
+                    exp_share.iter().map(|e| 100.0 * e / exp_total).collect();
+                s.push(Series {
+                    label: "Share of exposure".into(),
+                    style: Style::Bar,
+                    points: mk(&shares),
+                });
+            }
+            s.push(Series {
                 label: "Observed".into(),
                 style: Style::Bar,
                 points: mk(&observed),
-            },
-            Series {
+            });
+            s.push(Series {
                 label: "Poisson".into(),
                 style: Style::Dot,
                 points: mk(&pois),
-            },
-            Series {
+            });
+            s.push(Series {
                 label: "NB2".into(),
                 style: Style::Dot,
                 points: mk(&nb),
-            },
-        ],
+            });
+            s
+        },
         notes: vec![
             format!("Fitted dispersion alpha {alpha:.3}, AIC change {aic_delta:+.0}"),
             format!(
@@ -647,6 +747,7 @@ pub fn segment_effects_chart(
     names: &[String],
     x: &nalgebra::DMatrix<f64>,
     beta: &[f64],
+    covariance: Option<&nalgebra::DMatrix<f64>>,
     zone_log: &[f64],
     in_segment: impl Fn(&PolicyRow) -> bool,
     segment_label: &str,
@@ -688,6 +789,10 @@ pub fn segment_effects_chart(
 
     let mut seg_sum = vec![0.0f64; groups.len()];
     let mut book_sum = vec![0.0f64; groups.len()];
+    // exposure-weighted column means feed the contrast vectors the SEs need
+    let p = names.len();
+    let mut seg_x = vec![0.0f64; p];
+    let mut book_x = vec![0.0f64; p];
     let (mut seg_exp, mut book_exp) = (0.0f64, 0.0f64);
     for (i, r) in rows.iter().enumerate() {
         let e = r.earned_exposure;
@@ -699,10 +804,13 @@ pub fn segment_effects_chart(
         for (j, n) in names.iter().enumerate() {
             let Some(g) = group_of(n) else { continue };
             let gi = groups.iter().position(|x| *x == g).unwrap();
-            let v = x[(i, j)] * beta[j];
+            let xv = x[(i, j)];
+            let v = xv * beta[j];
             book_sum[gi] += v * e;
+            book_x[j] += xv * e;
             if seg {
                 seg_sum[gi] += v * e;
+                seg_x[j] += xv * e;
             }
         }
         let gi = groups.len() - 1;
@@ -713,6 +821,36 @@ pub fn segment_effects_chart(
         }
     }
 
+    // se of one group's log contribution: contrast c[j] = seg mean - book mean
+    // over that group's columns, then sqrt(c' Sigma c). The territory group is
+    // a frozen filed table, a constant with no sampling error, so it gets none.
+    let group_se = |gi: usize| -> Option<f64> {
+        let cov = covariance?;
+        if cov.nrows() != p || groups[gi] == "territory" {
+            return None;
+        }
+        let mut c = nalgebra::DVector::zeros(p);
+        for (j, n) in names.iter().enumerate() {
+            if group_of(n).map(|g| g == groups[gi]).unwrap_or(false) {
+                c[j] = seg_x[j] / seg_exp.max(1e-12) - book_x[j] / book_exp.max(1e-12);
+            }
+        }
+        Some((c.transpose() * cov * c)[(0, 0)].max(0.0).sqrt())
+    };
+    let total_se = || -> Option<f64> {
+        let cov = covariance?;
+        if cov.nrows() != p {
+            return None;
+        }
+        let mut c = nalgebra::DVector::zeros(p);
+        for (j, n) in names.iter().enumerate() {
+            if group_of(n).is_some() {
+                c[j] = seg_x[j] / seg_exp.max(1e-12) - book_x[j] / book_exp.max(1e-12);
+            }
+        }
+        Some((c.transpose() * cov * c)[(0, 0)].max(0.0).sqrt())
+    };
+
     let mut points = Vec::new();
     let mut total = 0.0;
     for gi in 0..groups.len() {
@@ -721,7 +859,7 @@ pub fn segment_effects_chart(
             continue;
         }
         total += d;
-        points.push(Pt::labelled(points.len() as f64, d.exp(), groups[gi]));
+        points.push(Pt::labelled(points.len() as f64, d.exp(), groups[gi]).with_se(group_se(gi)));
     }
     points.sort_by(|a, b| {
         (b.y - 1.0)
@@ -732,7 +870,8 @@ pub fn segment_effects_chart(
     for (i, p) in points.iter_mut().enumerate() {
         p.x = i as f64;
     }
-    let combined = Pt::labelled(points.len() as f64, total.exp(), "all factors");
+    let combined =
+        Pt::labelled(points.len() as f64, total.exp(), "all factors").with_se(total_se());
     points.push(combined);
 
     let biggest = points
@@ -761,6 +900,18 @@ pub fn segment_effects_chart(
         "Contributions are exposure weighted on the log scale, so the parts multiply to the whole"
             .into(),
     );
+    notes.push(format!(
+        "This segment holds {:.1}% of book exposure ({:.0} of {:.0} earned car years)",
+        100.0 * seg_exp / book_exp.max(1e-12),
+        seg_exp,
+        book_exp
+    ));
+    if covariance.is_some() {
+        notes.push(
+            "The territory bar reads from the frozen filed table, a constant, so it carries no standard error"
+                .into(),
+        );
+    }
 
     Chart {
         kind: "segment_effects".into(),
@@ -856,6 +1007,7 @@ mod tests {
             &names,
             &x,
             &beta,
+            None,
             &zone_log,
             |row| row.driver_age <= 24,
             "young drivers",
@@ -874,7 +1026,7 @@ mod tests {
     fn age_curve_is_one_at_the_reference() {
         let spline = vec![0.4, -0.2, 0.1, 0.05];
         let bands = vec![0.5, 0.2, 0.1, 0.3];
-        let c = age_curve_chart(&spline, &bands);
+        let c = age_curve_chart(&spline, &bands, None, None);
         let curve = &c.series[1].points;
         let at45 = curve.iter().find(|p| p.x == 45.0).unwrap();
         assert!((at45.y - 1.0).abs() < 1e-12, "spline normalized at age 45");
@@ -889,7 +1041,7 @@ mod tests {
     fn count_shares_sum_to_one_hundred() {
         let y = vec![0.0, 1.0, 0.0, 2.0, 0.0, 0.0, 3.0, 1.0];
         let mu: Vec<f64> = y.iter().map(|_| 0.4).collect();
-        let c = count_dist_chart(&y, &mu, &mu, 0.5, -100.0);
+        let c = count_dist_chart(&y, &mu, &mu, 0.5, -100.0, None);
         for s in &c.series {
             let sum: f64 = s.points.iter().map(|p| p.y).sum();
             assert!(
@@ -904,9 +1056,122 @@ mod tests {
     fn territory_chart_leads_with_the_worst_zone() {
         let filed = vec![1.0, 1.0, 1.0];
         let blended = vec![1.02, 1.20, 0.99];
-        let c = territory_chart(&filed, &blended);
+        let c = territory_chart(&filed, &blended, None, None);
         assert_eq!(c.series[0].points[0].label.as_deref(), Some("T-102"));
         assert!(c.notes[0].contains("20.0%"), "notes: {:?}", c.notes);
+    }
+
+    /// With a spline covariance supplied, the curve's band is absent exactly
+    /// at the age-45 reference (the contrast is zero there, and a zero-width
+    /// band would claim exactness) and present everywhere else.
+    #[test]
+    fn age_curve_band_vanishes_only_at_the_reference() {
+        let spline = vec![0.4, -0.2, 0.1, 0.05];
+        let bands = vec![0.5, 0.2, 0.1, 0.3];
+        let cov = nalgebra::DMatrix::<f64>::identity(4, 4) * 0.01;
+        let c = age_curve_chart(&spline, &bands, Some(&cov), Some(&[0.02; 4]));
+        let curve = &c.series[1].points;
+        let at45 = curve.iter().find(|p| p.x == 45.0).unwrap();
+        assert!(at45.se.is_none(), "reference age must carry no band");
+        let with_se = curve.iter().filter(|p| p.se.is_some()).count();
+        assert!(
+            with_se >= curve.len() - 2,
+            "nearly every other age carries an se, got {with_se}"
+        );
+        // step series: reference band exact, others carry the coefficient se
+        let step = &c.series[0].points;
+        assert!(step.iter().find(|p| p.x == 45.0).unwrap().se.is_none());
+        assert_eq!(step.iter().find(|p| p.x == 20.0).unwrap().se, Some(0.02));
+    }
+
+    /// Territory blend se follows the delta method through the credibility
+    /// blend: se_ln_b = Z r se / b, checked against a hand computation.
+    #[test]
+    fn territory_blend_se_matches_hand_computation() {
+        let raw_norm = [1.2f64];
+        let exposure = [400.0f64];
+        let se_ln = [0.1f64];
+        let k = 1500.0;
+        let got = crate::filing::blend_se_ln(&raw_norm, &exposure, &se_ln, k)[0];
+        let z = (400.0f64 / 1900.0).sqrt();
+        let b = z * 1.2 + (1.0 - z);
+        let want = z * 1.2 * 0.1 / b;
+        assert!((got - want).abs() < 1e-12, "{got} vs {want}");
+    }
+
+    /// Exposure share rides territory and count_dist as a secondary series
+    /// and sums to 100.
+    #[test]
+    fn exposure_shares_sum_to_one_hundred() {
+        let c = territory_chart(&[1.0, 1.0], &[1.1, 0.9], None, Some(&[750.0, 250.0]));
+        let share = c
+            .series
+            .iter()
+            .find(|s| s.label == "Share of exposure")
+            .expect("territory gains an exposure series");
+        let sum: f64 = share.points.iter().map(|p| p.y).sum();
+        assert!((sum - 100.0).abs() < 1e-9);
+
+        let y = vec![0.0, 1.0, 0.0, 2.0];
+        let mu: Vec<f64> = y.iter().map(|_| 0.4).collect();
+        let e = vec![1.0, 0.5, 0.25, 0.25];
+        let c = count_dist_chart(&y, &mu, &mu, 0.5, -100.0, Some(&e));
+        let share = c
+            .series
+            .iter()
+            .find(|s| s.label == "Share of exposure")
+            .expect("count_dist gains an exposure series");
+        let sum: f64 = share.points.iter().map(|p| p.y).sum();
+        assert!((sum - 100.0).abs() < 1e-9);
+    }
+
+    /// segment_effects with a covariance: every model bar carries an se, the
+    /// frozen territory bar does not, and the exposure note names the share.
+    #[test]
+    fn segment_effects_ses_skip_the_filed_territory_bar() {
+        let r = rows(600);
+        let refs: Vec<&PolicyRow> = r.iter().collect();
+        let names: Vec<String> = ["intercept", "age_young", "veh_age_mid", "homeowner"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let mut x = nalgebra::DMatrix::zeros(refs.len(), names.len());
+        for (i, row) in refs.iter().enumerate() {
+            x[(i, 0)] = 1.0;
+            x[(i, 1)] = (row.driver_age <= 24) as u8 as f64;
+            x[(i, 2)] = (row.vehicle_age >= 4 && row.vehicle_age <= 7) as u8 as f64;
+            x[(i, 3)] = (i % 3 == 0) as u8 as f64;
+        }
+        let beta = [-2.4, 0.55, 0.08, -0.2];
+        let cov = nalgebra::DMatrix::<f64>::identity(4, 4) * 0.004;
+        let zone_log: Vec<f64> = (0..plab_core::N_ZONES)
+            .map(|z| (z as f64 * 0.01) - 0.15)
+            .collect();
+        let c = segment_effects_chart(
+            &refs,
+            &names,
+            &x,
+            &beta,
+            Some(&cov),
+            &zone_log,
+            |row| row.driver_age <= 24,
+            "young drivers",
+        );
+        let pts = &c.series[0].points;
+        for p in pts {
+            match p.label.as_deref() {
+                Some("territory") => {
+                    assert!(p.se.is_none(), "filed territory bar must stay exact")
+                }
+                Some(_) => assert!(p.se.is_some(), "model bar {:?} should carry an se", p.label),
+                None => {}
+            }
+        }
+        assert!(
+            c.notes.iter().any(|n| n.contains("% of book exposure")),
+            "notes: {:?}",
+            c.notes
+        );
     }
 
     #[test]
@@ -928,9 +1193,14 @@ mod tests {
         let r = rows(200);
         let refs: Vec<&PolicyRow> = r.iter().collect();
         let charts = vec![
-            age_curve_chart(&[0.4, -0.2, 0.1, 0.05], &[0.5, 0.2, 0.1, 0.3]),
-            accidents_chart(&refs, 0.18),
-            territory_chart(&[1.0, 1.1], &[1.05, 1.0]),
+            age_curve_chart(&[0.4, -0.2, 0.1, 0.05], &[0.5, 0.2, 0.1, 0.3], None, None),
+            accidents_chart(&refs, 0.18, Some(0.03)),
+            territory_chart(
+                &[1.0, 1.1],
+                &[1.05, 1.0],
+                Some(&[0.0, 0.04]),
+                Some(&[900.0, 100.0]),
+            ),
             missingness_charts(&refs).remove(0),
         ];
         for c in charts {

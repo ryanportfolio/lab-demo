@@ -474,6 +474,22 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 /* colour only: .off owns text-decoration, so hover must not fight it */
 .chart .legend button:hover:not(:disabled) { color: var(--fg) }
 .chart .legend button:disabled { cursor: default }
+/* ±2 SE: the band is geometry at low opacity, never a verdict color; the
+   toggle reads as a view control, not another series */
+.chart .se-band { opacity: .14; stroke: none }
+.chart .se-whisker { stroke-width: 1; opacity: .55 }
+.chart .legend .se-toggle {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--label);
+  letter-spacing: .06em;
+  color: var(--fg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 1px 8px;
+}
+.chart .legend .se-toggle[aria-pressed="false"]:not(:disabled) { color: var(--fg-subtle); border-style: dashed }
+.chart .legend .se-toggle:disabled { color: var(--fg-subtle); border-color: var(--border-muted); opacity: .6 }
 .chart .legend button.off { opacity: .4; text-decoration: line-through }
 .chart-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(9, 9, 11, .45); display: flex; justify-content: center; align-items: center; padding: 4vh 18px; overscroll-behavior: contain }
 .chart-full { width: min(1150px, 96vw); max-height: 92vh; overflow: auto; overscroll-behavior: contain; margin: 0; border-radius: var(--r-surface); padding: 16px 20px 14px; box-shadow: var(--shadow-lg); animation: chartin .12s ease-out }

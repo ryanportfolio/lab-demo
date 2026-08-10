@@ -70,6 +70,10 @@ pub struct Pt {
     pub y: f64,
     /// tick label when the x axis is categorical
     pub label: Option<String>,
+    /// Wald standard error on the log scale; the console draws the band as
+    /// y * exp(+/-2 se). Absent on exact values and on runs recorded before
+    /// standard errors shipped.
+    pub se: Option<f64>,
 }
 
 #[derive(SimpleObject, Clone)]
@@ -110,6 +114,16 @@ pub struct FitFacts {
     pub deviance: f64,
     pub aic: f64,
     pub alpha: Option<f64>,
+    /// Option-typed provenance facts: absent on runs recorded before chart
+    /// companions shipped
+    pub train_exposure: Option<f64>,
+    pub train_claims: Option<f64>,
+    pub train_window: Option<String>,
+    pub holdout_window: Option<String>,
+    pub fold_val_exposure: Option<f64>,
+    /// ridge needed to invert the information matrix; > 0 means standard
+    /// errors come from a ridged system and are biased small
+    pub cov_ridge: Option<f64>,
 }
 
 /// What the platform kept from one experiment's fits. The agent's contract
@@ -513,6 +527,9 @@ pub fn chart_from_json(v: &serde_json::Value) -> EvidenceChart {
                                         x: pt["x"].as_f64().unwrap_or(0.0),
                                         y: pt["y"].as_f64().unwrap_or(0.0),
                                         label: pt["label"].as_str().map(String::from),
+                                        // pre-upgrade evidence rows simply
+                                        // lack the key: degrades to None
+                                        se: pt["se"].as_f64(),
                                     })
                                     .collect()
                             })
@@ -537,6 +554,18 @@ pub fn evidence_from_json(code: &str, v: &serde_json::Value) -> Evidence {
             deviance: f["deviance"].as_f64().unwrap_or(0.0),
             aic: f["aic"].as_f64().unwrap_or(0.0),
             alpha: f["alpha"].as_f64(),
+            train_exposure: f.get("train_exposure").and_then(|v| v.as_f64()),
+            train_claims: f.get("train_claims").and_then(|v| v.as_f64()),
+            train_window: f
+                .get("train_window")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+            holdout_window: f
+                .get("holdout_window")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+            fold_val_exposure: f.get("fold_val_exposure").and_then(|v| v.as_f64()),
+            cov_ridge: f.get("cov_ridge").and_then(|v| v.as_f64()),
         }),
         lift: v["lift"]
             .as_array()
