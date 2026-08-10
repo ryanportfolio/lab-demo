@@ -79,6 +79,9 @@ test('the context expert answers from artifacts and cites them', async ({
   await expect(page.locator('.ask-row.ai .bubble')).toBeVisible({
     timeout: 30_000,
   });
+  // the read trace is folded away until asked for
+  await expect(page.locator('.step').first()).toBeHidden();
+  await page.locator('.steps > summary').first().click();
   await expect(page.locator('.step').first()).toBeVisible();
   await expect(page.locator('.ask-row.ai .chart svg').first()).toBeVisible();
   const steps = await page.locator('.step code').allInnerTexts();

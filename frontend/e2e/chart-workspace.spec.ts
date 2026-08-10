@@ -330,7 +330,11 @@ test('selection can ask with context, copy a link, and enter final review', asyn
   await rail.locator('.ask-send').click();
   await expect(rail.locator('.ask-row.ai').first()).toBeVisible({ timeout: 30_000 });
   await expect(rail.locator('.ask-row.you .ask-chip-echo')).toContainText('EXP-07');
-  await expect(rail.locator('.ask-row.ai .steps')).toContainText('matchQuestion');
+  // the trace opens on demand and names the tools the answer was read with
+  const trace = rail.locator('.ask-row.ai .steps').first();
+  await expect(trace.locator('.step').first()).toBeHidden();
+  await trace.locator('summary').click();
+  await expect(trace).toContainText('matchQuestion');
   await expect(chip).toBeHidden();
   await page.keyboard.press('Escape');
   await expect(rail).toBeHidden();

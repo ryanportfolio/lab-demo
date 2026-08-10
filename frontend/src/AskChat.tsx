@@ -281,15 +281,26 @@ export default function AskChat({
             <div className="ask-row ai">
               <span className="who">AI</span>
               <div className="bubble">
-                <div className="steps">
-                  {a.steps.map((s, k) => (
-                    <div className="step" key={k}>
-                      <code>{s.tool}</code>
-                      <span className="target">{s.target}</span>
-                      <span className="ok">{s.status}</span>
-                    </div>
-                  ))}
-                </div>
+                {/* The read trace is provenance, not the answer: it folds
+                    away by default and opens when the reader wants to audit */}
+                <details className="steps">
+                  <summary>
+                    <span className="steps-chev" aria-hidden="true" />
+                    <span className="steps-title">How this was read</span>
+                    <span className="steps-count">
+                      {a.steps.length} {a.steps.length === 1 ? 'step' : 'steps'}
+                    </span>
+                  </summary>
+                  <div className="steps-list">
+                    {a.steps.map((s, k) => (
+                      <div className="step" key={k}>
+                        <code>{s.tool}</code>
+                        <span className="target">{s.target}</span>
+                        <span className="ok">{s.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
                 {a.paragraphs.map((p, k) => (
                   <p key={k}>{p}</p>
                 ))}
