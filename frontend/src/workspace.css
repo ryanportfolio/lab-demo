@@ -470,7 +470,9 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .review-version i { color: var(--fg-subtle); font-style: normal }
 .review-version > strong { font-size: 22px }
 .review-version .status { margin-left: 8px }
-.review-metrics { display: grid; grid-template-columns: repeat(5, 1fr); border-block: 1px solid var(--border) }
+/* Seven readings, one band: a wrapped seventh cell left a half-empty second
+   row that read as a missing metric rather than a full one */
+.review-metrics { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-block: 1px solid var(--border) }
 .review-metrics div { padding: 12px 14px; border-right: 1px solid var(--border-muted) }
 .review-metrics div:first-child { padding-left: 0 }
 .review-metrics div:last-child { border-right: 0 }
@@ -695,6 +697,14 @@ html.dark .approval-actions .btn-primary:disabled { background: var(--z800); col
   .selected-evidence { border-top: 1px solid var(--border); border-right: 0 }
   .selected-evidence:has(.evidence-focus) { box-shadow: inset 0 2px 0 var(--brand) }
   .selected-evidence .evidence-focus { max-width: 900px; margin-inline: auto }
+}
+
+/* Seven across needs about 175px a cell before "0.236 → 0.249" starts
+   clipping. Below that the band folds to four and four, not five and two. */
+@media (max-width: 1400px) and (min-width: 1121px) {
+  .review-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)) }
+  .review-metrics div:nth-child(4) { border-right: 0 }
+  .review-metrics div:nth-child(n+5) { border-top: 1px solid var(--border-muted) }
 }
 
 /* The decision package holds two hard tracks, ~785px of content before its
