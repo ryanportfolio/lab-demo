@@ -121,7 +121,7 @@ export default function StudioNav({
           <span className="snav-t">
             <b>{chart.title}</b>
             <small>
-              {experiment.code} · run {runId} · BI claims / earned car year
+              <b>{experiment.code}</b> · run {runId} · BI claims / earned car year
             </small>
             <span className="snav-q">{contractFor(chart).question}</span>
           </span>
