@@ -24,7 +24,6 @@
   --label: 11px; --label-track: .12em;
   /* Shell geometry: the breadcrumb bar's height is the inspector rail's sticky
      offset, so the two never have to be kept in sync by hand. */
-  --topbar-h: 52px; --rail-w: 300px;
   --t-fast: .15s; --t-normal: .2s; --t-slow: .3s; --ease: cubic-bezier(.23, 1, .32, 1);
   --sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

@@ -78,3 +78,20 @@ background Monitor's shell — is what holds it busy.
 Rule: `cd` out of the worktree (and stop monitors rooted in it) before
 `rm -rf`; recreate with `git worktree add`; verify `Dockerfile` (or
 `railway.json`) exists in the worktree before `railway up`.
+
+### 2026-08-09: Playwright suite against the live-proxy preview mutates and loads production
+
+Symptom: while the suite runs, anyone using the app (or a live-proxied local
+preview) sees multi-second lag; afterwards the backend has new runs and
+approvals.
+
+Cause: the e2e specs click Replay (a full 7-experiment server-side run) and
+Approve. Through `PLAB_API_TARGET=<live>` those land on the production
+database and pin its CPU mid-run. The specs also assume run state (e.g.
+agent-record needs the newest run unapproved), so shared-state ordering makes
+results flaky across workers and sessions.
+
+Rule: full-suite runs belong on a local backend (or a throwaway deployment).
+Against the live proxy, run only the read-only specs you need, expect a
+handful of extra runs/approvals if a mutating spec is included, and warn
+anyone concurrently using the app.

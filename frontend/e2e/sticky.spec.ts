@@ -47,7 +47,9 @@ test('active model context stays pinned beside the working paper while it scroll
   const after = await context.boundingBox();
   const bar = await topbar.boundingBox();
   expect(after).not.toBeNull();
-  expect(after!.y).toBe(before!.y);
+  // Sub-pixel tolerance: at the exact bottom of a fractional-height page the
+  // sticky rail is capped by its container's fractional end (~0.36px early).
+  expect(Math.abs(after!.y - before!.y)).toBeLessThanOrEqual(1);
   expect(after!.y).toBeGreaterThanOrEqual(bar!.y + bar!.height - 2);
   expect(after!.y).toBeLessThan(bar!.y + bar!.height + 8);
 

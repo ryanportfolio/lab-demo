@@ -357,6 +357,11 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .chart-full-diagnostics .chart-selection-empty, .chart-full-diagnostics .chart-selection { min-height: 72px }
 .chart-selection { min-height: 106px; border-left: 3px solid var(--brand); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; background: var(--bg-subtle); padding: 9px 11px }
 .selection-readout { display: flex; align-items: flex-start; gap: 14px }
+/* The diagnostics column floors at 280px; a row readout with atomic stat
+   spans overflows the box there. Stack the label and let stats wrap. */
+.chart-diagnostics .selection-readout { flex-direction: column; gap: 5px }
+.chart-diagnostics .selection-values { min-width: 0 }
+.chart-diagnostics .selection-values span { white-space: normal }
 .selection-label { flex: 0 0 auto; color: var(--fg); font-family: var(--mono); font-size: 16px; font-weight: 650 }
 .selection-values { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--fg-muted); font-family: var(--mono); font-size: 12.5px }
 .selection-values span { white-space: nowrap }

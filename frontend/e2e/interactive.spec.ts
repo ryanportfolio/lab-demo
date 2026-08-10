@@ -153,6 +153,11 @@ test('the hover readout shows the stored artifact values exactly', async ({
 test('evidence changes without collapsing or remounting the current artifact', async ({
   page,
 }) => {
+  // Reserved geometry lives in the wide branch, where the evidence column is
+  // stretched by the ledger/frontier row. The inspector rail moved that branch
+  // from 1241px to 1541px of viewport, so this contract is asserted there; in
+  // the stacked branch the panel takes intrinsic height with nothing below it.
+  await page.setViewportSize({ width: 1600, height: 1400 });
   await page.goto('/?theme=light');
   await expect(page.locator('.promote')).toBeVisible({ timeout: 90_000 });
   await page.waitForTimeout(950);

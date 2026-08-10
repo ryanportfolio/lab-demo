@@ -27,11 +27,14 @@ test('a run leaves an agent record that survives into review and approval', asyn
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
-  // Runs from before action capture show an honest empty state; replay to
-  // record a fresh run rather than fabricating history for old ones. The
-  // panel stays open across the replay (component state, not DOM toggling).
+  // Replay a fresh run unconditionally: the assertions below need a run whose
+  // review is not yet approved (no human action in the record), and against a
+  // shared backend the newest run may already carry an approval. Replaying
+  // also covers pre-action-capture runs, whose record shows an honest empty
+  // state. The panel stays open across the replay (component state, not DOM
+  // toggling).
   await expect(record.locator('.agent-record-empty, .act-row').first()).toBeVisible();
-  if ((await record.locator('.agent-record-empty').count()) > 0) {
+  if (await page.locator('.replay').isEnabled()) {
     await page.locator('.replay').click();
     await ready(page);
   }
