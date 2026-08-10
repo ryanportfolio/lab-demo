@@ -1,6 +1,6 @@
 # Prediction Lab product context
 
-Last verified: 2026-08-10, per the adjudicated meta-review `final/2026-08-10T02-46-43Z--meta-review-r04--claude-fable-5/` (supersedes r03 as the calibration anchor) and the canon-replication delta `final/2026-08-10T19-14-49Z--canon-replication-delta-r01--claude-fable-5/`. Treat release details as time-sensitive and recheck official sources before making current-state claims.
+Last verified: 2026-08-10, per **meta-review-r05** `final/2026-08-10T18-56-36Z--meta-review-r05--claude-fable-5/` (the citable canon, independently checked by the r05-verification-audit at `19-09-14Z`). Caution: two parallel meta-review-r04 directories exist with colliding `L3-*` numbering — cite only the r04b (`02-47-50Z`) → r05 lineage; the `02-46-43Z` copy and the `canon-replication-delta-r01` are consistent corroborating annexes, not citation sources. Treat release details as time-sensitive and recheck official sources before making current-state claims.
 
 ## Product promise
 

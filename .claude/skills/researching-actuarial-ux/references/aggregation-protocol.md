@@ -19,7 +19,9 @@ The manifest artifact must also declare, non-optionally:
 - **SHA-256 for every input file**, computed at read time.
 - **A no-modification statement** covering all input files. If new evidence must be attached to a raw run after its completion, never alter the body: append a dated, clearly demarcated, non-blind-labeled addendum, and note in the manifest that the run's file hash changed.
 
-These four fields exist because their absence forced expensive reconstruction in a later review (meta-review-r04, 2026-08-10): three of four audited passes lacked input hashes, their own model, or a blindness statement.
+These four fields exist because their absence forced expensive reconstruction in a later review cycle (meta-review-r04/r05, 2026-08-10): three of four audited passes lacked input hashes, their own model, or a blindness statement.
+
+**Collision guard:** before starting, list the target `synthesis/` (names only — listing preserves blindness) and reserve your output directory immediately. If a same-scope synthesis appears mid-flight, stop publishing a competitor and switch to audit/annex mode against it. Parallel sessions have produced duplicate syntheses, duplicate reviews, and thrice-reused run IDs in one day (2026-08-10).
 
 ## 2. Build master ledgers
 
