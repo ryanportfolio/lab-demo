@@ -900,7 +900,9 @@ export default function Chart({
               <button type="button" onClick={copyLink}>Copy evidence link</button>
             </>
           )}
-          <button type="button" onClick={() => setSelection(null)}>Clear</button>
+          <button type="button" className="act-clear" onClick={() => setSelection(null)}>
+            Clear
+          </button>
         </div>
         <span className="chart-action-status" role={live ? 'status' : undefined}>
           {actionStatus}
