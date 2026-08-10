@@ -100,23 +100,60 @@ test('an evidence link carries the placement it was copied at', async ({ page })
   await expect(full.locator('.chart-table-pane')).toBeVisible();
 });
 
-test('a pinned row narrows the copy to the selection', async ({ page, context }) => {
+test('pinning a late point marks its row without moving the table', async ({ page }) => {
+  // the regression: the table chased the selection, so pinning near the end
+  // of a 73-row axis threw it a thousand pixels down under a reader who was
+  // still looking at the chart
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto(`${AGE}&full=1&tbl=below`);
+  const full = page.locator('.chart-full');
+  await expect(full).toBeVisible({ timeout: 90_000 });
+  const scroller = full.locator('.exact-scroll');
+  await expect(scroller).toBeVisible();
+
+  const before = await page.evaluate(() => ({
+    page: window.scrollY,
+    sheet: document.querySelector('.chart-full')!.scrollTop,
+    table: document.querySelector('.chart-full .exact-scroll')!.scrollTop,
+  }));
+
+  // press near the right end of the axis: a high age, far down the table
+  const plot = full.locator('.chart-full-body > svg');
+  const box = (await plot.boundingBox())!;
+  await plot.click({ position: { x: box.width * 0.93, y: box.height * 0.5 } });
+
+  const marked = full.locator('.exact-scroll tr[aria-selected="true"]').first();
+  await expect(marked).toHaveCount(1);
+  expect(Number(await marked.getAttribute('data-x'))).toBeGreaterThan(70);
+
+  // the row is marked where it sits; nothing scrolled to meet it
+  const after = await page.evaluate(() => ({
+    page: window.scrollY,
+    sheet: document.querySelector('.chart-full')!.scrollTop,
+    table: document.querySelector('.chart-full .exact-scroll')!.scrollTop,
+  }));
+  expect(after.table).toBe(before.table);
+  expect(after.sheet).toBe(before.sheet);
+  expect(after.page).toBe(before.page);
+});
+
+test('the copy takes the whole table whatever is pinned', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(`${AGE}&sel=70:70`);
   const panel = page.locator('.selected-evidence');
   await expect(panel.locator('.chart-workspace')).toBeVisible({ timeout: 90_000 });
   await panel.locator('.exact-values summary').click();
 
-  // pinning is an act of narrowing, and the button says what it will take
-  const copy = panel.locator('.exact-tool', { hasText: /^Copy 1 row$/ });
+  // the button offers one thing and says one thing, pinned or not
+  const copy = panel.locator('.exact-tool', { hasText: /^Copy$/ });
   await expect(copy).toBeVisible();
   await copy.click();
   const pasted: string = await page.evaluate(() => navigator.clipboard.readText());
   const lines = pasted.split('\r\n');
-  expect(lines).toHaveLength(3); // provenance, header, the pinned row
-  expect(lines[0]).toContain('1 of');
-  expect(lines[0]).toContain('selected');
-  expect(lines[2].startsWith('70\t')).toBe(true);
+  expect(lines[0]).not.toContain('selected');
+  // provenance, header, and a row for every age the table lists
+  const rows = await panel.locator('.exact-values tbody tr').count();
+  expect(lines).toHaveLength(rows + 2);
 });
 
 test('the full view survives a reload with the studio open', async ({ page }) => {
