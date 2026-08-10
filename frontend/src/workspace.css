@@ -357,8 +357,27 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .chart-full-diagnostics { margin-top: 10px }
 .chart-full-diagnostics .chart-weakness { min-height: 0; margin-top: 0; border-block: 0; border-top: 1px solid var(--border-muted); padding: 8px 0 6px }
 .chart-full-diagnostics .chart-selection-slot { min-height: 0; padding-top: 0 }
-.chart-full-diagnostics .chart-selection-empty, .chart-full-diagnostics .chart-selection { min-height: 72px }
-.chart-selection { min-height: 106px; border-left: 3px solid var(--brand); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; background: var(--bg-subtle); padding: 9px 11px }
+.chart-full-diagnostics .chart-selection-empty { min-height: 72px }
+/* The full view is wide, so the pinned readout is one strip: label and stats
+   read left, actions sit right, nothing stacks into empty rows. */
+.chart-full-diagnostics .chart-selection {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; min-height: 0;
+}
+.chart-full-diagnostics .selection-readout { flex: 1 1 auto; align-items: baseline }
+.chart-full-diagnostics .chart-actions { margin-top: 0 }
+.chart-full-diagnostics .chart-actions .act-primary { flex: 0 1 auto }
+.chart-full-diagnostics .chart-action-status { flex-basis: 100%; text-align: right }
+.chart-full-diagnostics .chart-action-status:empty { display: none }
+/* The pinned box sizes to its content: the slot underneath reserves the
+   column height, so an actionless readout (ask-panel charts) is a tight
+   strip instead of a mostly-empty block. */
+.chart-selection { position: relative; border-left: 3px solid var(--brand); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; background: var(--bg-subtle); padding: 9px 11px }
+/* Clearing is housekeeping, not a peer of the evidence actions: it rides the
+   readout's top right corner as a small quiet pill, out of the actions row. */
+.chart-actions .act-clear {
+  position: absolute; top: 7px; right: 8px; min-height: 0; padding: 3px 11px; font-size: 12.5px;
+}
+.chart-selection .selection-readout { padding-right: 62px }
 .selection-readout { display: flex; align-items: flex-start; gap: 14px }
 /* The diagnostics column floors at 280px; a row readout with atomic stat
    spans overflows the box there. Stack the label and let stats wrap. */
@@ -366,7 +385,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .chart-diagnostics .selection-values { min-width: 0 }
 .chart-diagnostics .selection-values span { white-space: normal }
 .selection-label { flex: 0 0 auto; color: var(--fg); font-family: var(--mono); font-size: 16px; font-weight: 650 }
-.selection-values { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--fg-muted); font-family: var(--mono); font-size: 12.5px }
+.selection-values { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--fg-muted); font-family: var(--mono); font-size: 14px }
 .selection-values span { white-space: nowrap }
 /* Provenance rides the artifact: mono label layer, mixed case, never removed.
    It sits between the question and the chart, closed by a soft hairline. */
@@ -388,7 +407,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .chart-actions .act-primary:hover, .chart-actions .act-primary:focus-visible {
   border-color: var(--brand); background: color-mix(in srgb, var(--brand) 20%, var(--card)); color: var(--ci-text);
 }
-.chart-action-status { display: block; min-height: 16px; margin-top: 4px; color: var(--ok); font-family: var(--mono); font-size: 11.5px }
+.chart-action-status { display: block; min-height: 16px; margin-top: 4px; color: var(--ok); font-family: var(--mono); font-size: 12.5px }
 .chart-notes { border-top: 1px solid var(--border-muted); color: var(--fg-subtle); font-size: 12.5px }
 .exact-values tr.is-selected th, .exact-values tr.is-selected td { background: color-mix(in srgb, var(--brand) 12%, var(--bg)) }
 .exact-values tr.is-selected th:first-child { box-shadow: inset 3px 0 0 var(--brand); color: var(--fg) }
