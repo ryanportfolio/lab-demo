@@ -1027,6 +1027,12 @@ export default function Chart({
               >
                 Esc
               </button>
+              {/* Interaction hint lives in the header's empty space so the
+                  sheet ends at the notes and fits 1080p without scrolling. */}
+              <span className="chart-hint">
+                Hover previews · Enter pins · arrow keys walk the axis
+                {contract.range ? ' · Shift plus arrow selects a range' : ''} · Esc closes
+              </span>
               {/* a phone squeezes the wide frame into unreadable text, so the
                   full view keeps the card geometry there */}
               <Plot
@@ -1046,10 +1052,6 @@ export default function Chart({
               </div>
               {notes}
               {plain && <div className="gloss">{chart.gloss}</div>}
-              <span className="chart-hint">
-                Hover previews · Enter pins · arrow keys walk the axis
-                {contract.range ? ' · Shift plus arrow selects a range' : ''} · Esc closes
-              </span>
             </figure>
           </div>,
           document.body,
