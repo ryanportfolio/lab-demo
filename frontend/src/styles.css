@@ -442,6 +442,18 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .chart-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(9, 9, 11, .45); display: flex; justify-content: center; align-items: center; padding: 4vh 18px; overscroll-behavior: contain }
 .chart-full { width: min(1150px, 96vw); max-height: 92vh; overflow: auto; overscroll-behavior: contain; margin: 0; border-radius: var(--r-surface); padding: 16px 20px 14px; box-shadow: var(--shadow-lg); animation: chartin .12s ease-out }
 .chart-full figcaption { font-size: 17px; padding-right: 48px }
+/* The plot cedes size before the sheet grows scrollbars: its width is capped
+   so the resulting height (width times the frame ratio) plus the sheet's
+   fixed content stays inside 92vh even on a short inner window. Width and
+   height shrink together, so the element box keeps the viewBox ratio and the
+   pointer-to-axis math, which divides by rect width, stays exact. */
+.chart-full > svg {
+  width: min(100%, max(520px, calc((92vh - 430px) * 920 / 470)));
+  margin-inline: auto;
+}
+.chart-full > svg[data-tall-frame] {
+  width: min(100%, max(520px, calc((92vh - 430px) * 920 / 540)));
+}
 .chart-full .notes { font-size: 13.5px }
 .chart-full .chart-close { position: absolute; top: 12px; right: 14px; font-family: var(--mono); font-size: 12px; color: var(--fg-subtle); background: var(--card); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px 10px; cursor: pointer }
 .chart-full .chart-close:hover { color: var(--fg); border-color: var(--fg-subtle) }

@@ -368,6 +368,7 @@ function Plot({
     <svg
       ref={svgRef}
       viewBox={`0 0 ${W} ${H}`}
+      data-tall-frame={longLabels || undefined}
       role="img"
       aria-label={`${chart.title}. ${contract.question} ${chart.notes.join('. ')}`}
       preserveAspectRatio="xMidYMid meet"

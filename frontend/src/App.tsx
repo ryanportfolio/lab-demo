@@ -258,9 +258,12 @@ export default function App() {
     setSelectedCode(code);
     updateEvidenceUrl({ exp: code, chart: null, mode: null, selection: null });
     requestAnimationFrame(() => {
+      const staticFrame =
+        document.documentElement.classList.contains('no-anim') ||
+        matchMedia('(prefers-reduced-motion: reduce)').matches;
       document.getElementById('selected-evidence')?.scrollIntoView({
         block: 'center',
-        behavior: 'smooth',
+        behavior: staticFrame ? 'auto' : 'smooth',
       });
     });
   }, []);
@@ -513,7 +516,10 @@ export default function App() {
               </section>
             </div>
 
-            <AgentActionLog actions={run?.actions ?? []} onSelectExperiment={chooseExperiment} />
+            {/* The record sits at the bottom of the page, so following one of
+                its experiment links also travels to the evidence it changed —
+                selection alone would happen invisibly above the fold. */}
+            <AgentActionLog actions={run?.actions ?? []} onSelectExperiment={revealExperiment} />
 
           </main>
         ) : run && review && review.runId === run.id ? (
