@@ -220,6 +220,25 @@ test('a new question lands at the top from any scroll position, and stays stuck 
   expect(stuckOffset).toBeGreaterThanOrEqual(-2);
   expect(stuckOffset).toBeLessThan(16);
   await expect(first.locator('.ask-row.you .bubble')).toBeVisible();
+  // a held question says so, so the handoff can be drawn rather than guessed
+  await expect(first.locator('.ask-row.you')).toHaveAttribute('data-held', 'true');
+
+  // and it fades out as the next question comes up to take the edge
+  const second = rail.locator('.ask-turn').nth(1);
+  const secondTop = await turnOffset(1);
+  await bodyEl.evaluate((el, d) => el.scrollBy({ top: d - 26 }), secondTop);
+  await page.waitForTimeout(200);
+  const fade = await first.locator('.ask-row.you').evaluate((el) => ({
+    handoff: Number(getComputedStyle(el).getPropertyValue('--handoff')),
+    opacity: Number(getComputedStyle(el).opacity),
+  }));
+  expect(fade.handoff).toBeGreaterThan(0);
+  expect(fade.opacity).toBeLessThan(0.95);
+  // once it has gone, the next question holds the edge instead
+  await bodyEl.evaluate((el) => el.scrollBy({ top: 60 }));
+  await page.waitForTimeout(200);
+  await expect(second.locator('.ask-row.you')).toHaveAttribute('data-held', 'true');
+  await expect(first.locator('.ask-row.you')).not.toHaveAttribute('data-held', 'true');
 
   // and the next question takes the top edge from it
   await bodyEl.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));

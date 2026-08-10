@@ -74,6 +74,41 @@ test('search filters, pins float, density is user-set, and all of it persists', 
   await expect(page.locator('.snav-label', { hasText: 'Pinned' })).toBeVisible({ timeout: 20_000 });
 });
 
+test('pinned rows are closed by a rule, and the controls name themselves on hover', async ({ page }) => {
+  await openStudio(page);
+  const nav = page.locator('.snav');
+  await expect(nav.locator('.snav-sect', { hasText: 'EXP-01' })).toBeVisible({ timeout: 20_000 });
+
+  // no pins, no divider; a pin brings the section and the rule with it
+  await expect(nav.locator('.snav-rule')).toHaveCount(0);
+  await nav.locator('.snav-item').first().locator('.snav-star').click();
+  await expect(nav.locator('.snav-label', { hasText: 'Pinned' })).toBeVisible();
+  const rule = nav.locator('.snav-rule');
+  await expect(rule).toHaveCount(1);
+  // it sits under the pinned rows and above the first experiment group
+  const order = await nav.locator('.snav-list').evaluate((list) => {
+    const kids = Array.from(list.children);
+    return {
+      rule: kids.findIndex((k) => k.classList.contains('snav-rule')),
+      label: kids.findIndex((k) => k.classList.contains('snav-label')),
+      group: kids.findIndex((k) => k.classList.contains('snav-group')),
+    };
+  });
+  expect(order.label).toBeLessThan(order.rule);
+  expect(order.rule).toBeLessThan(order.group);
+
+  // tooltips are the app's own and arrive at once, not after the browser's wait
+  await nav.locator('.snav-toggle').hover();
+  await expect(page.locator('.hint')).toHaveText('Hide the chart list', { timeout: 400 });
+  await nav.locator('.snav-density').hover();
+  await expect(page.locator('.hint')).toContainText('Row detail: titles only', { timeout: 400 });
+  await nav.locator('.snav-item').first().locator('.snav-star').hover();
+  await expect(page.locator('.hint')).toContainText('Unpin', { timeout: 400 });
+  // and they leave with the pointer
+  await page.locator('.chart-full-split figcaption').hover();
+  await expect(page.locator('.hint')).toHaveCount(0);
+});
+
 test('the navigator collapses to a strip and starts collapsed on tighter viewports', async ({ page }) => {
   await openStudio(page);
   const nav = page.locator('.snav');
