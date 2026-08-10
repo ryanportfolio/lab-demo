@@ -209,7 +209,7 @@ test('expanded method notes stay in document flow above evidence provenance', as
 
   const focusBox = await focused.boundingBox();
   const notesBox = await focused.locator('.chart-notes').boundingBox();
-  const sourceBox = await page.locator('.selected-evidence .evidence-source').boundingBox();
+  const sourceBox = await page.locator('.selected-evidence .exact-values').boundingBox();
   expect(notesBox!.y + notesBox!.height).toBeLessThanOrEqual(focusBox!.y + focusBox!.height + 1);
   expect(sourceBox!.y).toBeGreaterThanOrEqual(focusBox!.y + focusBox!.height - 1);
 });

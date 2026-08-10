@@ -2,16 +2,16 @@
 //! support. Poisson and NB2 families. nalgebra Cholesky solves the normal
 //! equations; a tiny escalating ridge covers near-singular designs.
 
-use crate::metrics::{
-    aic, nb2_deviance, nb2_loglik, poisson_deviance, poisson_loglik,
-};
+use crate::metrics::{aic, nb2_deviance, nb2_loglik, poisson_deviance, poisson_loglik};
 use nalgebra::{DMatrix, DVector};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Family {
     Poisson,
     /// NB2 with dispersion alpha: Var = mu (1 + alpha mu)
-    NegBinomial { alpha: f64 },
+    NegBinomial {
+        alpha: f64,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -25,18 +25,46 @@ pub struct Fit {
     pub n_params: usize,
     pub iterations: usize,
     pub converged: bool,
+    /// (XᵀWX)⁻¹ at the converged weights — the Wald covariance of beta.
+    /// Recomputed after the loop: the in-loop XᵀWX is one iteration stale.
+    /// For NB2 this is conditional on the fitted alpha (understates the
+    /// dispersion-estimation uncertainty). None only if even the ridged
+    /// system failed to invert.
+    pub covariance: Option<DMatrix<f64>>,
+    /// Ridge that was needed to invert the information matrix; 0.0 means the
+    /// clean system inverted. A ridged covariance is biased small — disclose
+    /// wherever the SEs are shown.
+    pub cov_ridge: f64,
+}
+
+impl Fit {
+    /// One standard error per coefficient: sqrt of the covariance diagonal.
+    pub fn beta_se(&self) -> Option<Vec<f64>> {
+        let cov = self.covariance.as_ref()?;
+        Some(
+            (0..cov.nrows())
+                .map(|j| cov[(j, j)].max(0.0).sqrt())
+                .collect(),
+        )
+    }
+
+    /// Var(cᵀβ) = cᵀ Σ c for a contrast vector c (spline point SEs, group
+    /// contributions). Returns None when the covariance is unavailable or
+    /// the contrast length mismatches.
+    pub fn contrast_var(&self, c: &DVector<f64>) -> Option<f64> {
+        let cov = self.covariance.as_ref()?;
+        if c.len() != cov.nrows() {
+            return None;
+        }
+        Some((c.transpose() * cov * c)[(0, 0)].max(0.0))
+    }
 }
 
 const MAX_ITER: usize = 50;
 const TOL: f64 = 1e-9;
 const MU_FLOOR: f64 = 1e-10;
 
-pub fn fit_glm(
-    x: &DMatrix<f64>,
-    y: &[f64],
-    offset: &[f64],
-    family: Family,
-) -> Result<Fit, String> {
+pub fn fit_glm(x: &DMatrix<f64>, y: &[f64], offset: &[f64], family: Family) -> Result<Fit, String> {
     let n = x.nrows();
     let p = x.ncols();
     if y.len() != n || offset.len() != n {
@@ -124,6 +152,7 @@ pub fn fit_glm(
     let loglik = loglik_of(family, y, &mu);
     // NB2 spends one extra parameter on alpha
     let n_params = p + matches!(family, Family::NegBinomial { .. }) as usize;
+    let (covariance, cov_ridge) = information_inverse(x, &mu, family);
     Ok(Fit {
         aic: aic(loglik, n_params),
         beta,
@@ -134,7 +163,62 @@ pub fn fit_glm(
         n_params,
         iterations,
         converged,
+        covariance,
+        cov_ridge,
     })
+}
+
+/// (XᵀWX)⁻¹ at the given (converged) mu, with the same escalating-ridge
+/// rescue the solver uses. Returns the ridge that was needed.
+fn information_inverse(
+    x: &DMatrix<f64>,
+    mu: &[f64],
+    family: Family,
+) -> (Option<DMatrix<f64>>, f64) {
+    let n = x.nrows();
+    let p = x.ncols();
+    let mut xtwx = DMatrix::<f64>::zeros(p, p);
+    for i in 0..n {
+        let mi = mu[i].max(MU_FLOOR);
+        let wi = match family {
+            Family::Poisson => mi,
+            Family::NegBinomial { alpha } => mi / (1.0 + alpha * mi),
+        };
+        let xi = x.row(i);
+        for a in 0..p {
+            let xa = xi[a];
+            if xa == 0.0 {
+                continue;
+            }
+            let wxa = wi * xa;
+            for b in a..p {
+                xtwx[(a, b)] += wxa * xi[b];
+            }
+        }
+    }
+    for a in 0..p {
+        for b in (a + 1)..p {
+            xtwx[(b, a)] = xtwx[(a, b)];
+        }
+    }
+    let mut ridge = 0.0;
+    loop {
+        let mut m = xtwx.clone();
+        if ridge > 0.0 {
+            for a in 0..p {
+                m[(a, a)] += ridge;
+            }
+        }
+        match m.cholesky() {
+            Some(ch) => return (Some(ch.inverse()), ridge),
+            None => {
+                ridge = if ridge == 0.0 { 1e-8 } else { ridge * 100.0 };
+                if ridge > 1.0 {
+                    return (None, ridge);
+                }
+            }
+        }
+    }
 }
 
 fn deviance_of(family: Family, y: &[f64], mu: &[f64]) -> f64 {
@@ -153,13 +237,16 @@ fn loglik_of(family: Family, y: &[f64], mu: &[f64]) -> f64 {
 
 /// Fit NB2 with dispersion estimated by golden-section search on ln alpha,
 /// maximizing the profile log likelihood.
-pub fn fit_nb2_profile(
-    x: &DMatrix<f64>,
-    y: &[f64],
-    offset: &[f64],
-) -> Result<(Fit, f64), String> {
+pub fn fit_nb2_profile(x: &DMatrix<f64>, y: &[f64], offset: &[f64]) -> Result<(Fit, f64), String> {
     let profile = |ln_alpha: f64| -> Result<f64, String> {
-        let f = fit_glm(x, y, offset, Family::NegBinomial { alpha: ln_alpha.exp() })?;
+        let f = fit_glm(
+            x,
+            y,
+            offset,
+            Family::NegBinomial {
+                alpha: ln_alpha.exp(),
+            },
+        )?;
         Ok(f.loglik)
     };
 
@@ -236,10 +323,76 @@ mod tests {
             y[i] = rng.poisson(mu) as f64;
         }
         let fit = fit_glm(&x, &y, &offset, Family::Poisson).unwrap();
-        assert!(fit.converged, "did not converge in {} iters", fit.iterations);
+        assert!(
+            fit.converged,
+            "did not converge in {} iters",
+            fit.iterations
+        );
         assert!((fit.beta[0] - b0).abs() < 0.05, "b0 {}", fit.beta[0]);
         assert!((fit.beta[1] - b1).abs() < 0.05, "b1 {}", fit.beta[1]);
         assert!((fit.beta[2] - b2).abs() < 0.05, "b2 {}", fit.beta[2]);
+    }
+
+    /// Intercept-only Poisson: XᵀWX = Σμ = Σy at the MLE, so
+    /// se(β₀) = 1/√(Σy) exactly.
+    #[test]
+    fn intercept_only_covariance_closed_form() {
+        let y = vec![0.0, 1.0, 0.0, 2.0, 1.0, 0.0, 3.0, 0.0];
+        let exposure = [0.5, 1.0, 0.25, 1.0, 0.75, 1.0, 1.0, 0.5];
+        let offset: Vec<f64> = exposure.iter().map(|e: &f64| e.ln()).collect();
+        let x = DMatrix::from_element(y.len(), 1, 1.0);
+        let fit = fit_glm(&x, &y, &offset, Family::Poisson).unwrap();
+        assert_eq!(fit.cov_ridge, 0.0, "clean system should not need a ridge");
+        let se = fit.beta_se().expect("covariance should exist")[0];
+        let expected = 1.0 / y.iter().sum::<f64>().sqrt();
+        assert!((se - expected).abs() < 1e-8, "se {se} vs {expected}");
+        // contrast_var with the unit vector reproduces the diagonal
+        let c = DVector::from_element(1, 1.0);
+        let v = fit.contrast_var(&c).unwrap();
+        assert!((v.sqrt() - se).abs() < 1e-12);
+    }
+
+    /// The planted-coefficient sim's errors should sit inside 3 SE, and SEs
+    /// should shrink like 1/sqrt(n).
+    #[test]
+    fn coefficient_errors_within_wald_ses() {
+        use plab_datagen::rng::Rng;
+        let run = |n: usize, seed: u64| {
+            let mut rng = Rng::new(seed);
+            let (b0, b1, b2) = (-2.0, 0.6, -0.3);
+            let mut x = DMatrix::zeros(n, 3);
+            let mut y = vec![0.0; n];
+            let mut offset = vec![0.0; n];
+            for i in 0..n {
+                let x1 = rng.normal();
+                let x2 = if rng.chance(0.4) { 1.0 } else { 0.0 };
+                let exposure = 0.3 + 0.7 * rng.f64();
+                x[(i, 0)] = 1.0;
+                x[(i, 1)] = x1;
+                x[(i, 2)] = x2;
+                offset[i] = exposure.ln();
+                let mu = (b0 + b1 * x1 + b2 * x2).exp() * exposure;
+                y[i] = rng.poisson(mu) as f64;
+            }
+            let fit = fit_glm(&x, &y, &offset, Family::Poisson).unwrap();
+            let se = fit.beta_se().expect("covariance should exist");
+            for (j, b) in [b0, b1, b2].iter().enumerate() {
+                assert!(
+                    (fit.beta[j] - b).abs() < 3.0 * se[j],
+                    "coef {j}: {} vs {b}, se {}",
+                    fit.beta[j],
+                    se[j]
+                );
+            }
+            se[0]
+        };
+        let se_small = run(10_000, 21);
+        let se_large = run(40_000, 22);
+        let ratio = se_small / se_large;
+        assert!(
+            (ratio - 2.0).abs() < 0.35,
+            "se should shrink ~1/sqrt(n): ratio {ratio}"
+        );
     }
 
     /// On overdispersed (gamma-mixed) counts, profile NB2 recovers a positive

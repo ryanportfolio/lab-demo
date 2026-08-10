@@ -28,6 +28,12 @@ export interface Pt {
   x: number;
   y: number;
   label: string | null;
+  /** Wald standard error on the LOG scale; the band renders as
+   *  y * exp(+/-2 se) (asymmetric, always positive). Absent/null on exact
+   *  values, on frontend-derived points, and on runs recorded before
+   *  standard errors shipped. The same convention is documented on the Rust
+   *  Pt type; change both together or nowhere. */
+  se?: number | null;
 }
 export interface EvidenceSeries {
   label: string;
@@ -60,6 +66,15 @@ export interface FitFacts {
   deviance: number;
   aic: number;
   alpha: number | null;
+  /** provenance facts; null on runs recorded before chart companions shipped */
+  trainExposure: number | null;
+  trainClaims: number | null;
+  trainWindow: string | null;
+  holdoutWindow: string | null;
+  foldValExposure: number | null;
+  /** ridge needed to invert the information matrix; > 0 means the standard
+   *  errors come from a ridged system and are biased small */
+  covRidge: number | null;
 }
 export interface Evidence {
   code: string;
@@ -294,7 +309,7 @@ export async function approveReview(reviewId: string): Promise<number> {
 
 const CHART_FIELDS = `
   kind title xLabel yLabel notes gloss
-  series { label style points { x y label } }
+  series { label style points { x y label se } }
 `;
 
 export async function fetchEvidence(
@@ -305,7 +320,10 @@ export async function fetchEvidence(
     `query($runId: ID!, $code: String!) {
       evidence(runId: $runId, code: $code) {
         code
-        facts { rows params iterations converged gini baselineGini deviance aic alpha }
+        facts {
+          rows params iterations converged gini baselineGini deviance aic alpha
+          trainExposure trainClaims trainWindow holdoutWindow foldValExposure covRidge
+        }
         lift { decile exposure actual predicted baselineActual }
         foldDeltas
         charts { ${CHART_FIELDS} }

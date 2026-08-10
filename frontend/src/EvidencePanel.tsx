@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AskChat from './AskChat';
-import Chart, { fmtVal } from './Chart';
+import Chart from './Chart';
+import ChartValueTable from './ChartValueTable';
 import {
   fetchEvidence,
   type Evidence,
@@ -37,57 +38,6 @@ function tabLabel(chart: EvidenceChart): string {
   return labels[chart.kind] ?? chart.title.replace(/^Change in /, '').split(' by ')[0];
 }
 
-function ExactValues({
-  chart,
-  selection,
-}: {
-  chart: EvidenceChart;
-  selection: ChartSelection | null;
-}) {
-  const xValues = Array.from(
-    new Set(chart.series.flatMap((series) => series.points.map((point) => point.x))),
-  ).sort((a, b) => a - b);
-  const labels = new Map<number, string>();
-  chart.series.forEach((series) =>
-    series.points.forEach((point) => {
-      if (point.label != null && !labels.has(point.x)) labels.set(point.x, point.label);
-    }),
-  );
-
-  const selected = selection ? normalizeSelection(selection) : null;
-
-  return (
-    <details className="exact-values">
-      <summary>Exact values</summary>
-      <div className="exact-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>{chart.xLabel}</th>
-              {chart.series.map((series) => (
-                <th key={series.label}>{series.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {xValues.map((x) => (
-              <tr
-                key={x}
-                className={selected && x >= selected.start && x <= selected.end ? 'is-selected' : undefined}
-              >
-                <th>{labels.get(x) ?? fmtVal(x)}</th>
-                {chart.series.map((series) => {
-                  const point = series.points.find((item) => Math.abs(item.x - x) < 1e-9);
-                  return <td key={series.label}>{point ? fmtVal(point.y) : ''}</td>;
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </details>
-  );
-}
 
 export default function EvidencePanel({
   runId,
@@ -441,6 +391,19 @@ export default function EvidencePanel({
                         denominator: 'earned car year',
                         model: `v${baseVersion} candidate comparison`,
                         baseVersion,
+                        // the companion strip's facts ride the evidence the
+                        // panel already fetched; older runs simply lack them
+                        provenance: evidence.facts
+                          ? {
+                              trainWindow: evidence.facts.trainWindow,
+                              holdoutWindow: evidence.facts.holdoutWindow,
+                              trainRows: evidence.facts.rows,
+                              trainExposure: evidence.facts.trainExposure,
+                              trainClaims: evidence.facts.trainClaims,
+                              foldValExposure: evidence.facts.foldValExposure,
+                              covRidge: evidence.facts.covRidge,
+                            }
+                          : undefined,
                         // On a wide screen an ask opens the split studio with
                         // the question seeded beside the chart; narrow screens
                         // keep the palette
@@ -494,11 +457,22 @@ export default function EvidencePanel({
                 }
               />
             </div>
-            <div className="evidence-source">
-              <span>{shownCode} · run {runId}</span>
-              <span>{activeChart.xLabel} / {activeChart.yLabel}</span>
-            </div>
-            <ExactValues chart={displayedChart ?? activeChart} selection={selection} />
+            <ChartValueTable
+              chart={displayedChart ?? activeChart}
+              contract={contractFor(activeChart)}
+              mode={mode}
+              selection={selection}
+              onSelectionChange={(next) => {
+                setSelection(next);
+                updateEvidenceUrl({
+                  exp: shownCode,
+                  chart: activeChart.kind,
+                  mode: mode === contractFor(activeChart).defaultMode ? null : mode,
+                  selection: next,
+                });
+              }}
+              variant="details"
+            />
           </>
         ) : (
           <div className="evidence-state">No chart artifact for this stopped experiment</div>

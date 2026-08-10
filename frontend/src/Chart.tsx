@@ -12,6 +12,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { EvidenceChart, EvidenceSeries } from './api';
+import ChartCompanion from './ChartCompanion';
+import ChartValueTable from './ChartValueTable';
 import {
   buildAgentAsk,
   buildChartAsk,
@@ -138,6 +140,7 @@ function Plot({
   hidden,
   big,
   autoFocus,
+  showSe,
 }: {
   chart: EvidenceChart;
   contract: ChartContract;
@@ -147,6 +150,8 @@ function Plot({
   hidden: Set<string>;
   big: boolean;
   autoFocus?: boolean;
+  /** render ±2 SE bands for points that carry a standard error */
+  showSe?: boolean;
 }) {
   const G = big ? FULL : CARD;
   const PAD = G.PAD;
@@ -188,9 +193,26 @@ function Plot({
   const xMin = categorical ? Math.min(...allXAll) : Math.min(...allX);
   const xMax = categorical ? Math.max(...allXAll) : Math.max(...allX);
 
+  // the band convention, shared with the backend Pt type: se is the log-scale
+  // Wald standard error and the interval is y * exp(±2 se)
+  const bandLo = (p: { y: number; se?: number | null }) =>
+    p.y * Math.exp(-2 * (p.se ?? 0));
+  const bandHi = (p: { y: number; se?: number | null }) =>
+    p.y * Math.exp(2 * (p.se ?? 0));
+  const banded = (s: EvidenceSeries) =>
+    !!showSe && s.points.some((p) => p.se != null);
+
   const values = primary.flatMap((s) => s.points.map((p) => p.y));
   if (rel) values.push(1);
   else values.push(0);
+  // the frame includes the bands, so an interval never clips at the edge
+  primary.filter(banded).forEach((s) =>
+    s.points.forEach((p) => {
+      if (p.se != null) {
+        values.push(bandLo(p), bandHi(p));
+      }
+    }),
+  );
   const activeGuardrail =
     contract.guardrail &&
     (contract.guardrail.applies === 'both' || contract.guardrail.applies === mode)
@@ -322,10 +344,15 @@ function Plot({
           const p = at(s, hx);
           if (!p) return [];
           const sec = isSecondary(s.label);
+          // a banded point reads out its interval, not just its center
+          const interval =
+            showSe && p.se != null
+              ? ` (${fmtVal(bandLo(p))} to ${fmtVal(bandHi(p))})`
+              : '';
           return [
             {
               label: s.label,
-              v: sec ? p.y.toFixed(1) : fmtVal(p.y),
+              v: sec ? p.y.toFixed(1) : `${fmtVal(p.y)}${interval}`,
               col: color(s),
               style: s.style,
             },
@@ -515,6 +542,85 @@ function Plot({
           ))}
           </>
         )}
+      </g>
+
+      {/* ±2 SE bands sit behind the evidence marks: geometry carries the
+          uncertainty, never a verdict color. Lines and steps get an area
+          band; dots and bars get whiskers at each banded point. */}
+      <g className="chart-layer chart-layer-uncertainty">
+        {showSe &&
+          primary.filter(banded).map((s) => {
+            const c = color(s);
+            const pts = s.points.filter((p) => p.se != null);
+            if (s.style === 'line' || s.style === 'step') {
+              const run = s.points.filter((p) => p.se != null);
+              if (run.length < 2) return null;
+              const upper =
+                s.style === 'step'
+                  ? run
+                      .map((p, i) => {
+                        const prev = run[i - 1];
+                        return i === 0
+                          ? `M${sx(p.x)},${sy(bandHi(p))}`
+                          : `L${sx(p.x)},${sy(bandHi(prev))} L${sx(p.x)},${sy(bandHi(p))}`;
+                      })
+                      .join(' ')
+                  : run
+                      .map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.x)},${sy(bandHi(p))}`)
+                      .join(' ');
+              const rev = [...run].reverse();
+              const lower =
+                s.style === 'step'
+                  ? rev
+                      .map((p, i) => {
+                        const prev = rev[i - 1];
+                        return i === 0
+                          ? `L${sx(p.x)},${sy(bandLo(p))}`
+                          : `L${sx(p.x)},${sy(bandLo(prev))} L${sx(p.x)},${sy(bandLo(p))}`;
+                      })
+                      .join(' ')
+                  : rev
+                      .map((p) => `L${sx(p.x)},${sy(bandLo(p))}`)
+                      .join(' ');
+              return (
+                <path
+                  key={`band-${s.label}`}
+                  className="se-band"
+                  d={`${upper} ${lower} Z`}
+                  fill={c}
+                />
+              );
+            }
+            return (
+              <g key={`band-${s.label}`} className="se-whiskers">
+                {pts.map((p, i) => {
+                  const group = categorical ? barsAt(p.x) : barSeries;
+                  const off =
+                    s.style === 'bar'
+                      ? (categorical
+                          ? -((group.length * barW) / 2) + group.indexOf(s) * barW
+                          : -barW / 2) +
+                        barW / 2
+                      : 0;
+                  const wx = sx(p.x) + off;
+                  return (
+                    <g key={i}>
+                      <line
+                        className="se-whisker"
+                        x1={wx}
+                        x2={wx}
+                        y1={sy(bandLo(p))}
+                        y2={sy(bandHi(p))}
+                        stroke={c}
+                      />
+                      <line className="se-whisker" x1={wx - 3} x2={wx + 3} y1={sy(bandLo(p))} y2={sy(bandLo(p))} stroke={c} />
+                      <line className="se-whisker" x1={wx - 3} x2={wx + 3} y1={sy(bandHi(p))} y2={sy(bandHi(p))} stroke={c} />
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })}
       </g>
 
       {/* the line every relativity chart is read against */}
@@ -762,6 +868,18 @@ export default function Chart({
     else setLocalExpanded(next);
   };
   const [actionStatus, setActionStatus] = useState('');
+  // ±2 SE bands default on: uncertainty is context a reader opts out of,
+  // never context they must remember to ask for
+  const [showSe, setShowSe] = useState(true);
+  // the studio's side table defaults open: exact values are evidence, not an
+  // extra. The preference persists like the seam width does.
+  const [tableOpen, setTableOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('plab-chart-table-open') !== '0';
+    } catch {
+      return true;
+    }
+  });
   // the wide frame follows the viewport while the full view is open, so a
   // window dragged narrow reflows instead of keeping unreadable text
   const [wide, setWide] = useState(true);
@@ -922,6 +1040,28 @@ export default function Chart({
   }, [expanded]);
 
   const visPrim = primaryAll.filter((s) => !hidden.has(s.label)).length;
+  // whether the displayed chart carries any standard error at all; the change
+  // view strips them (dependent fits), so the toggle disables itself there
+  // with its reason instead of disappearing
+  const hasSe = shown.series.some((s) => s.points.some((p) => p.se != null));
+  const seToggle = (
+    <button
+      type="button"
+      className="se-toggle"
+      aria-pressed={hasSe && showSe}
+      disabled={!hasSe}
+      title={
+        hasSe
+          ? 'Wald ±2 standard errors from the final fit weights, log scale'
+          : mode === 'change'
+            ? 'No standard errors on the change view: it compares two dependent fits'
+            : 'No standard errors on this chart'
+      }
+      onClick={() => setShowSe((v) => !v)}
+    >
+      ±2 SE
+    </button>
+  );
   const legend = (
     <div className="legend">
       {shown.series.map((s) => (
@@ -947,6 +1087,7 @@ export default function Chart({
           {s.label}
         </button>
       ))}
+      {seToggle}
     </div>
   );
 
@@ -1093,11 +1234,14 @@ export default function Chart({
       {/* Card anatomy: question, provenance, chart, weak point, exact values.
           Provenance rides above the artifact so the source is read before the
           shape, not discovered under it. */}
-      <div className="chart-source">
-        {context
-          ? `${context.code} · run ${context.runId} · ${context.target} / ${context.denominator}`
-          : `${chart.xLabel} / ${shown.yLabel}`}
-      </div>
+      <ChartCompanion
+        chart={shown}
+        context={context}
+        mode={mode}
+        bandsShown={hasSe && showSe}
+        full={false}
+        askSource={askSource ?? undefined}
+      />
       <span className="chart-y-readout">{shown.yLabel}</span>
       <Plot
         chart={shown}
@@ -1107,6 +1251,7 @@ export default function Chart({
         onSelectionChange={setSelection}
         hidden={hidden}
         big={widePlot}
+        showSe={hasSe && showSe}
       />
       <button
         type="button"
@@ -1162,12 +1307,17 @@ export default function Chart({
                 <figcaption>{chart.title}</figcaption>
                 {modeControl}
               </div>
-              {/* The source line rides every chart surface, full view included. */}
-              <div className="chart-source">
-                {context
-                  ? `${context.code} · run ${context.runId} · ${context.target} / ${context.denominator}`
-                  : `${chart.xLabel} / ${shown.yLabel}`}
-              </div>
+              {/* The companion rides every chart surface, full view included:
+                  source, version, window, population, and the CI method while
+                  bands are up. */}
+              <ChartCompanion
+                chart={shown}
+                context={context}
+                mode={mode}
+                bandsShown={hasSe && showSe}
+                full
+                askSource={askSource ?? undefined}
+              />
               <button
                 type="button"
                 className="chart-close"
@@ -1182,16 +1332,53 @@ export default function Chart({
               </span>
               {/* a phone squeezes the wide frame into unreadable text, so the
                   full view keeps the card geometry there */}
-              <Plot
-                chart={shown}
-                contract={contract}
-                mode={mode}
-                selection={selection}
-                onSelectionChange={setSelection}
-                hidden={hidden}
-                big={wide}
-                autoFocus
-              />
+              <div className="chart-full-body">
+                <Plot
+                  chart={shown}
+                  contract={contract}
+                  mode={mode}
+                  selection={selection}
+                  onSelectionChange={setSelection}
+                  hidden={hidden}
+                  big={wide}
+                  autoFocus
+                  showSe={hasSe && showSe}
+                />
+                {/* the exact-value twin: same selection, second view. Wide
+                    frames only; narrow ones keep the collapsed card table */}
+                {wide && tableOpen && (
+                  <aside className="chart-table-pane" aria-label="Exact values beside the chart">
+                    <ChartValueTable
+                      chart={shown}
+                      contract={contract}
+                      mode={mode}
+                      selection={selection}
+                      onSelectionChange={setSelection}
+                      hidden={hidden}
+                      variant="pane"
+                    />
+                  </aside>
+                )}
+                {wide && (
+                  <button
+                    type="button"
+                    className="chart-table-toggle"
+                    aria-pressed={tableOpen}
+                    title={tableOpen ? 'Hide the value table' : 'Show exact values beside the chart'}
+                    onClick={() => {
+                      const next = !tableOpen;
+                      setTableOpen(next);
+                      try {
+                        localStorage.setItem('plab-chart-table-open', next ? '1' : '0');
+                      } catch {
+                        /* private browsing: the preference just does not stick */
+                      }
+                    }}
+                  >
+                    {tableOpen ? 'Hide values' : 'Values'}
+                  </button>
+                )}
+              </div>
               {legend}
               <div className="chart-full-diagnostics">
                 <div className="chart-weakness"><b>Weakest</b>{weakness}</div>
