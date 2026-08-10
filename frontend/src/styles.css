@@ -368,7 +368,11 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
 .ask-send:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
 .ask-esc { font: inherit; font-size: 12.5px; font-family: var(--mono); color: var(--fg-subtle); background: transparent; border: 1px solid var(--border); border-radius: var(--r-pill); padding: 2px 9px; cursor: pointer }
 .ask-esc:hover { color: var(--fg); border-color: var(--fg-subtle) }
-.ask-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px; display: flex; flex-direction: column; gap: 16px }
+/* The browser's own scroll anchoring competes with the pin that holds a new
+   question at the top: when content above the viewport settles, Chrome nudges
+   scrollTop to keep what it thinks the reader was looking at. This panel
+   decides where it sits. */
+.ask-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-anchor: none; overscroll-behavior: contain; padding: 14px; display: flex; flex-direction: column; gap: 16px }
 .ask-intro p { font-size: 14.5px; color: var(--fg-muted); line-height: 1.55 }
 .ask-wait { margin-top: 10px; color: var(--warn) }
 .ask-sugg { display: flex; flex-direction: column; gap: 6px; margin-top: 12px }
@@ -395,6 +399,11 @@ html.dark { --chart-base: var(--z600); --chart-band: var(--brand-600); --chart-a
    a neutral mark, the answer is open text under a brand-tinted one */
 .ask-row.ai .who { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--ci-text) }
 .ask-row .bubble { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.55 }
+/* The question a transcript is being read against stays on screen while its
+   answer scrolls under it, and the next question pushes it off. The shadow
+   is a solid block, not an effect: it covers the panel's own top padding so
+   nothing slides through the gap above a stuck question. */
+.ask-row.you { position: sticky; top: 0; z-index: 2; background: var(--card); box-shadow: 0 -14px 0 0 var(--card) }
 .ask-row.you .bubble { border: 1px solid var(--border); border-radius: var(--r-md); padding: 9px 12px; background: var(--chipbg); color: var(--fg); font-weight: 500 }
 /* The question is a block the mark sits beside; the answer is the surface
    itself, so its mark moves to the right edge and the text runs full width.
