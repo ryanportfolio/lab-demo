@@ -18,7 +18,7 @@
      surfaces, 999 pills. The old four-step ramp aliases onto them so every
      existing reference lands on the collapsed scale. */
   --r-ctl: 10px; --r-surface: 14px; --r-pill: 999px;
-  --r-sm: var(--r-ctl); --r-md: var(--r-ctl); --r-lg: var(--r-ctl); --r-xl: var(--r-surface); --r-full: var(--r-pill);
+  --r-sm: var(--r-ctl); --r-md: var(--r-ctl); --r-lg: var(--r-ctl); --r-full: var(--r-pill);
   /* One label layer: 11px uppercase mono carries section labels, keys, and
      provenance. Nothing else in the app is uppercase. */
   --label: 11px; --label-track: .12em;
@@ -37,6 +37,7 @@ html.light {
   --border: var(--z200); --border-muted: var(--z100); --card: #fff; --primary: var(--z900); --primary-fg: var(--z50);
   --ring: var(--z400); --ok: var(--green); --bad: var(--red); --warn: var(--amber); --ci-text: var(--brand-600);
   --chipbg: var(--z100);
+  --seg-active: var(--card);
   --shadow: 0 1px 2px rgba(9, 9, 11, .04), 0 8px 24px rgba(9, 9, 11, .06);
   --shadow-lg: 0 2px 6px rgba(9, 9, 11, .05), 0 24px 60px rgba(9, 9, 11, .1);
   --shadow-raise: 0 1px 2px rgba(9, 9, 11, .12);
@@ -49,6 +50,9 @@ html.dark {
      z900 on z950. At z800 the dark segmented control read louder than the
      content sitting on it. */
   --chipbg: var(--z900);
+  /* The raised segment must sit above its z900 track; --card is the page
+     ground in dark, which would invert the raise. One step up instead. */
+  --seg-active: var(--z800);
   --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
   --shadow-lg: 0 2px 6px rgba(0, 0, 0, .45), 0 24px 60px rgba(0, 0, 0, .5);
   --shadow-raise: 0 1px 2px rgba(0, 0, 0, .5);
@@ -187,7 +191,7 @@ body.plain .gloss { display: block }
 .seg { display: inline-flex; background: var(--chipbg); border: 0; border-radius: var(--r-ctl); padding: 2px; gap: 2px }
 .seg button { font: inherit; font-size: 14px; padding: 5px 0; flex: 1; border: 0; background: transparent; color: var(--fg-muted); border-radius: calc(var(--r-ctl) - 2px); cursor: pointer; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease) }
 .seg button:hover:not([aria-pressed="true"]) { color: var(--fg) }
-.seg button[aria-pressed="true"] { background: var(--card); color: var(--fg); font-weight: 500; box-shadow: var(--shadow-raise) }
+.seg button[aria-pressed="true"] { background: var(--seg-active); color: var(--fg); font-weight: 500; box-shadow: var(--shadow-raise) }
 .seg button:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px }
 .rail .seg { width: 100% }
 

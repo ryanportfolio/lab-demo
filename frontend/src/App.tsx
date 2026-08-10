@@ -336,11 +336,11 @@ export default function App() {
           bar no longer carries identity, location, and properties at once. */}
       <header className="topbar">
         <nav className="crumb" aria-label="Breadcrumb">
-          <span className="brand">
+          <a className="brand" href="https://web-production-563b7.up.railway.app">
             <span className="logo" aria-hidden="true" />
             Prediction Lab
             <small>Product concept</small>
-          </span>
+          </a>
           <span className="crumb-sep" aria-hidden="true">›</span>
           <RunHistory
             label={run ? `Run ${run.id}` : 'Run pending'}
