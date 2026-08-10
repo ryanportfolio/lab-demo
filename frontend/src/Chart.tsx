@@ -17,14 +17,18 @@ import ChartValueTable from './ChartValueTable';
 import {
   buildAgentAsk,
   buildChartAsk,
+  chartFileBase,
+  chartSourceLine,
   contractFor,
   displayChart,
   isSecondarySeries,
+  isTablePlace,
   makeSavedEvidence,
   normalizeSelection,
   savedEvidenceId,
   selectionLabel,
   selectionValues,
+  updateEvidenceUrl,
   weakActionLabel,
   weakestSelection,
   weakPoint,
@@ -33,7 +37,35 @@ import {
   type ChartMode,
   type ChartSelection,
   type ChartWorkspaceContext,
+  type TablePlace,
 } from './chartWorkspace';
+
+// Where the studio seats the value table, remembered per browser. The label
+// is the placement itself: a reader who wants numbers picks the surface they
+// want to read them on, instead of toggling one hidden pane.
+const PLACE_KEY = 'plab-chart-table-place';
+const PLACE_LABELS: { place: TablePlace; label: string; title: string }[] = [
+  { place: 'side', label: 'Side', title: 'Table beside the chart, two views of one selection' },
+  { place: 'below', label: 'Below', title: 'Table under the chart, full sheet width' },
+  { place: 'only', label: 'Only', title: 'Table instead of the chart' },
+  { place: 'off', label: 'Off', title: 'Chart alone' },
+];
+
+function initialPlace(hasContext: boolean): TablePlace {
+  // an evidence link decides first: a shared reading opens on the surface its
+  // author was reading it on, whatever this browser last chose
+  if (hasContext) {
+    const fromUrl = new URLSearchParams(location.search).get('tbl');
+    if (isTablePlace(fromUrl)) return fromUrl;
+  }
+  try {
+    const stored = localStorage.getItem(PLACE_KEY);
+    if (isTablePlace(stored)) return stored;
+  } catch {
+    /* private browsing: the preference just does not stick */
+  }
+  return 'below';
+}
 
 // A narrower viewBox for the same rendered width means the labels inside it
 // come out larger on screen
@@ -871,15 +903,21 @@ export default function Chart({
   // ±2 SE bands default on: uncertainty is context a reader opts out of,
   // never context they must remember to ask for
   const [showSe, setShowSe] = useState(true);
-  // the studio's side table defaults open: exact values are evidence, not an
-  // extra. The preference persists like the seam width does.
-  const [tableOpen, setTableOpen] = useState<boolean>(() => {
+  // the studio's table defaults to the full width under the chart: exact
+  // values are evidence, not an extra. The choice persists like the seam
+  // width does, and rides the evidence link.
+  const [tablePlace, setTablePlaceState] = useState<TablePlace>(() =>
+    initialPlace(!!context),
+  );
+  const setTablePlace = (next: TablePlace) => {
+    setTablePlaceState(next);
     try {
-      return localStorage.getItem('plab-chart-table-open') !== '0';
+      localStorage.setItem(PLACE_KEY, next);
     } catch {
-      return true;
+      /* private browsing: the preference just does not stick */
     }
-  });
+    if (context) updateEvidenceUrl({ table: next });
+  };
   // the wide frame follows the viewport while the full view is open, so a
   // window dragged narrow reflows instead of keeping unreadable text
   const [wide, setWide] = useState(true);
@@ -1104,6 +1142,41 @@ export default function Chart({
     </div>
   ) : null;
 
+  // A narrow frame cannot seat chart and table side by side, so Side resolves
+  // to Below there instead of squeezing both into unreadable columns.
+  const place: TablePlace = !wide && tablePlace === 'side' ? 'below' : tablePlace;
+  const placeControl = (
+    <div className="chart-tool">
+      <span className="chart-tool-label">Values</span>
+      <div className="chart-mode chart-place" role="group" aria-label="Value table placement">
+        {PLACE_LABELS.map((option) => (
+          <button
+            key={option.place}
+            type="button"
+            aria-pressed={tablePlace === option.place}
+            title={option.title}
+            onClick={() => setTablePlace(option.place)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  const valueTable = (
+    <ChartValueTable
+      chart={shown}
+      contract={contract}
+      mode={mode}
+      selection={selection}
+      onSelectionChange={setSelection}
+      hidden={hidden}
+      variant="pane"
+      source={chartSourceLine(shown, context, askSource ?? undefined, mode)}
+      fileBase={chartFileBase(shown, context, mode)}
+    />
+  );
+
   const notes = (
     <ul className="notes">
       {chart.notes.map((n) => (
@@ -1305,7 +1378,17 @@ export default function Chart({
                   the switch instead of printing under it */}
               <div className="chart-full-head">
                 <figcaption>{chart.title}</figcaption>
-                {modeControl}
+                {/* One control cluster, in the header where the sheet's other
+                    switches live. Nothing floats over the table it governs. */}
+                <div className="chart-tools">
+                  {modeControl && (
+                    <div className="chart-tool">
+                      <span className="chart-tool-label">View</span>
+                      {modeControl}
+                    </div>
+                  )}
+                  {placeControl}
+                </div>
               </div>
               {/* The companion rides every chart surface, full view included:
                   source, version, window, population, and the CI method while
@@ -1328,55 +1411,34 @@ export default function Chart({
               {/* Interaction hint lives in the header's empty space so the
                   sheet ends at the notes and fits 1080p without scrolling. */}
               <span className="chart-hint">
-                Select a range{canAsk ? ' · right-click asks about the selection' : ''}
+                {/* the hint names the surface actually on screen: with the
+                    plot put away, rows are what a reader pins */}
+                {place === 'only' ? 'Press a row to pin it' : 'Select a range'}
+                {canAsk ? ' · right-click asks about the selection' : ''}
               </span>
               {/* a phone squeezes the wide frame into unreadable text, so the
                   full view keeps the card geometry there */}
-              <div className="chart-full-body">
-                <Plot
-                  chart={shown}
-                  contract={contract}
-                  mode={mode}
-                  selection={selection}
-                  onSelectionChange={setSelection}
-                  hidden={hidden}
-                  big={wide}
-                  autoFocus
-                  showSe={hasSe && showSe}
-                />
-                {/* the exact-value twin: same selection, second view. Wide
-                    frames only; narrow ones keep the collapsed card table */}
-                {wide && tableOpen && (
-                  <aside className="chart-table-pane" aria-label="Exact values beside the chart">
-                    <ChartValueTable
-                      chart={shown}
-                      contract={contract}
-                      mode={mode}
-                      selection={selection}
-                      onSelectionChange={setSelection}
-                      hidden={hidden}
-                      variant="pane"
-                    />
-                  </aside>
+              {/* Chart and table are two views of one selection, and the
+                  reader says which one carries the sheet: beside, under,
+                  instead of, or not at all. */}
+              <div className="chart-full-body" data-place={place}>
+                {place !== 'only' && (
+                  <Plot
+                    chart={shown}
+                    contract={contract}
+                    mode={mode}
+                    selection={selection}
+                    onSelectionChange={setSelection}
+                    hidden={hidden}
+                    big={wide}
+                    autoFocus
+                    showSe={hasSe && showSe}
+                  />
                 )}
-                {wide && (
-                  <button
-                    type="button"
-                    className="chart-table-toggle"
-                    aria-pressed={tableOpen}
-                    title={tableOpen ? 'Hide the value table' : 'Show exact values beside the chart'}
-                    onClick={() => {
-                      const next = !tableOpen;
-                      setTableOpen(next);
-                      try {
-                        localStorage.setItem('plab-chart-table-open', next ? '1' : '0');
-                      } catch {
-                        /* private browsing: the preference just does not stick */
-                      }
-                    }}
-                  >
-                    {tableOpen ? 'Hide values' : 'Values'}
-                  </button>
+                {place !== 'off' && (
+                  <aside className="chart-table-pane" aria-label="Exact values">
+                    {valueTable}
+                  </aside>
                 )}
               </div>
               {legend}

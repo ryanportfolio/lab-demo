@@ -12,6 +12,8 @@ import { chartKey, chartsFromEvidence } from './evidenceCharts';
 import { fmtDelta, fmtGini } from './format';
 import StudioNav from './StudioNav';
 import {
+  chartFileBase,
+  chartSourceLine,
   contractFor,
   displayChart,
   normalizeSelection,
@@ -186,6 +188,16 @@ export default function EvidencePanel({
   const displayedChart = activeChart
     ? displayChart(activeChart, contractFor(activeChart), mode)
     : undefined;
+  // What a number from this panel must travel with, named once: the chart's
+  // workspace context and the value table's copy and export all read it.
+  const evidenceIdentity = {
+    runId,
+    code: shownCode,
+    target: 'BI claims',
+    denominator: 'earned car year',
+    model: `v${baseVersion} candidate comparison`,
+    baseVersion,
+  };
 
   // Apply a navigator switch once its experiment's charts are on hand. The
   // nonce distinguishes a fresh click from a target already applied.
@@ -385,12 +397,7 @@ export default function EvidencePanel({
                 context={
                   onAsk && onSave
                     ? {
-                        runId,
-                        code: shownCode,
-                        target: 'BI claims',
-                        denominator: 'earned car year',
-                        model: `v${baseVersion} candidate comparison`,
-                        baseVersion,
+                        ...evidenceIdentity,
                         // the companion strip's facts ride the evidence the
                         // panel already fetched; older runs simply lack them
                         provenance: evidence.facts
@@ -472,6 +479,15 @@ export default function EvidencePanel({
                 });
               }}
               variant="details"
+              // the card's table copies and exports like the studio's: the
+              // surface changes, the evidence and its provenance do not
+              source={chartSourceLine(
+                displayedChart ?? activeChart,
+                evidenceIdentity,
+                undefined,
+                mode,
+              )}
+              fileBase={chartFileBase(displayedChart ?? activeChart, evidenceIdentity, mode)}
             />
           </>
         ) : (
