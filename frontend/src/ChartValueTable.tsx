@@ -81,15 +81,11 @@ export default function ChartValueTable({
   const isSelected = (x: number) =>
     !!selected && x >= selected.start && x <= selected.end;
 
-  // chart→table: an externally pinned selection scrolls its row into view
-  const bodyRef = useRef<HTMLTableSectionElement>(null);
-  useEffect(() => {
-    if (!selected || variant !== 'pane') return;
-    const row = bodyRef.current?.querySelector<HTMLTableRowElement>(
-      `tr[data-x="${selected.start}"]`,
-    );
-    row?.scrollIntoView({ block: 'nearest' });
-  }, [selected?.start, selected?.end, variant]);
+  // chart→table: a pin marks its row and moves nothing. The table used to
+  // chase the selection, so pinning a late point threw the table a thousand
+  // pixels down while the reader was still looking at the chart. The pinned
+  // values are already read out beside the plot; the row is here, marked,
+  // whenever the reader comes down for it.
 
   // table→chart: a row press pins the same selection the plot would;
   // Shift extends to a range where the contract allows one
@@ -310,18 +306,13 @@ export default function ChartValueTable({
   // an experiment, a run, and the model version they were fitted against.
   // A block of figures nobody can attribute is not evidence any more.
   const provenance = source ?? chart.title;
-  const selectedXs = xValues.filter(isSelected);
-  // A pin is an act of narrowing, so the clipboard follows it. The file does
-  // not: an export that silently drops rows is a trap for whoever opens it.
-  const copyXs = selectedXs.length > 0 ? selectedXs : xValues;
-  const partial = copyXs.length !== xValues.length;
 
+  // Both paths take the whole table. A selection is for reading the chart
+  // beside it, not for deciding what a spreadsheet receives; filtering rows
+  // is what the spreadsheet is for.
   // Excel's paste target is tab-separated text; its file target is CSV
   const asTsv = () =>
-    [
-      partial ? `${provenance} · ${copyXs.length} of ${xValues.length} rows, selected` : provenance,
-      ...exported(copyXs).map((row) => row.join('\t')),
-    ].join('\r\n');
+    [provenance, ...exported(xValues).map((row) => row.join('\t'))].join('\r\n');
   const asCsv = () =>
     [[provenance], ...exported(xValues)]
       .map((row) =>
@@ -391,18 +382,10 @@ export default function ChartValueTable({
         type="button"
         className="exact-tool"
         data-done={copied || undefined}
-        title={
-          partial
-            ? 'Copy the pinned rows as tab-separated text, provenance line first'
-            : 'Copy every row as tab-separated text, provenance line first'
-        }
+        title="Copy every row as tab-separated text, provenance line first"
         onClick={copy}
       >
-        {copied
-          ? '✓ Copied'
-          : partial
-            ? `Copy ${copyXs.length} row${copyXs.length === 1 ? '' : 's'}`
-            : 'Copy'}
+        {copied ? '✓ Copied' : 'Copy'}
       </button>
       <button type="button" className="exact-tool" onClick={download}>
         Download CSV
@@ -431,7 +414,7 @@ export default function ChartValueTable({
           {secondary && <th>{secondary.label}</th>}
         </tr>
       </thead>
-      <tbody ref={bodyRef}>
+      <tbody>
         {xValues.map((x, r) => (
           <tr
             key={x}
