@@ -301,7 +301,7 @@ test('comparison is semantic and guardrails appear only where valid', async ({ p
   await expect(page).not.toHaveURL(/mode=/);
 });
 
-test('selection can ask with context, copy a link, and enter human review', async ({ page }) => {
+test('selection can ask with context, copy a link, and enter final review', async ({ page }) => {
   await page.goto('/?theme=light&noanim=1');
   await ready(page);
 

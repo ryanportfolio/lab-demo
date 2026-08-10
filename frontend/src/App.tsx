@@ -242,7 +242,7 @@ export default function App() {
       evidence,
       ...current.filter((item) => item.id !== evidence.id),
     ].slice(0, 8));
-    setAnnouncement(`${evidence.title}, ${evidence.selection}, saved to human review.`);
+    setAnnouncement(`${evidence.title}, ${evidence.selection}, saved to final review.`);
   }, []);
 
   const chooseExperiment = useCallback((code: string) => {
