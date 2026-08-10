@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AskChat from './AskChat';
 import Chart, { fmtVal } from './Chart';
 import {
   fetchEvidence,
@@ -186,6 +187,8 @@ export default function EvidencePanel({
   focused = false,
   onAsk,
   onSave,
+  onCite,
+  askReady = false,
   baseVersion = 12,
   weakFocus,
 }: {
@@ -196,6 +199,10 @@ export default function EvidencePanel({
   focused?: boolean;
   onAsk?: (ask: AgentAsk) => void;
   onSave?: (evidence: SavedChartEvidence) => void;
+  /** citation navigation out of the docked rail (reveal an experiment) */
+  onCite?: (code: string) => void;
+  /** the run has finished, so the docked rail's questions are open */
+  askReady?: boolean;
   /** version of the model this run branched from, stamped on evidence context */
   baseVersion?: number;
   /**
@@ -213,6 +220,37 @@ export default function EvidencePanel({
   const [retry, setRetry] = useState(0);
   const [resolving, setResolving] = useState(false);
   const resolveTimer = useRef<number | null>(null);
+  // Below this width the full view has no room for the docked Ask rail, so
+  // chart asks fall back to the ⌘K palette (lab-tuned, 2026-08-09)
+  const RAIL_MIN_WIDTH = 1080;
+  const [railWide, setRailWide] = useState(() => window.innerWidth >= RAIL_MIN_WIDTH);
+  const [fullOpen, setFullOpen] = useState(
+    () => new URLSearchParams(location.search).get('full') === '1',
+  );
+  const [railSeed, setRailSeed] = useState<AgentAsk | null>(null);
+
+  useEffect(() => {
+    const onResize = () => setRailWide(window.innerWidth >= RAIL_MIN_WIDTH);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Switching experiments closes the studio; the initial mount honors ?full=1.
+  // Compare against the previous code rather than skipping the first effect
+  // run, because StrictMode double-invokes mount effects in dev.
+  const prevCode = useRef(code);
+  useEffect(() => {
+    if (prevCode.current === code) return;
+    prevCode.current = code;
+    setFullOpen(false);
+    setRailSeed(null);
+  }, [code]);
+
+  const setFull = useCallback((next: boolean) => {
+    setFullOpen(next);
+    if (!next) setRailSeed(null);
+    updateEvidenceUrl({ full: next });
+  }, []);
 
   const resolve = useCallback((update: () => void) => {
     const staticFrame =
@@ -471,10 +509,44 @@ export default function EvidencePanel({
                         denominator: 'earned car year',
                         model: `v${baseVersion} candidate comparison`,
                         baseVersion,
-                        onAsk,
+                        // On a wide screen an ask opens the split studio with
+                        // the question seeded beside the chart; narrow screens
+                        // keep the palette
+                        onAsk: (ask) => {
+                          if (railWide) {
+                            setRailSeed(ask);
+                            setFull(true);
+                          } else {
+                            onAsk(ask);
+                          }
+                        },
                         onSave,
                       }
                     : undefined
+                }
+                expanded={fullOpen}
+                onExpandedChange={setFull}
+                askRail={
+                  railWide && onAsk && onSave ? (
+                    <>
+                      <div className="ask-bar">
+                        <span className="ask-mark" aria-hidden="true">AI</span>
+                        <h2>Ask about this run</h2>
+                      </div>
+                      <AskChat
+                        runId={runId}
+                        ready={askReady}
+                        plain={plain}
+                        open={fullOpen}
+                        seed={railSeed}
+                        threadKey={runId}
+                        onCite={(citedCode) => {
+                          setFull(false);
+                          onCite?.(citedCode);
+                        }}
+                      />
+                    </>
+                  ) : undefined
                 }
               />
             </div>

@@ -351,6 +351,7 @@ export function updateEvidenceUrl(updates: {
   chart?: string | null;
   mode?: ChartMode | null;
   selection?: ChartSelection | null;
+  full?: boolean | null;
 }) {
   const url = new URL(location.href);
   const set = (key: string, value?: string | null) => {
@@ -364,6 +365,7 @@ export function updateEvidenceUrl(updates: {
   if ('selection' in updates) {
     set('sel', updates.selection ? serializeSelection(updates.selection) : null);
   }
+  if ('full' in updates) set('full', updates.full ? '1' : null);
   history.replaceState(null, '', `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
 }
 

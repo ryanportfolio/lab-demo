@@ -9,7 +9,7 @@
 // exact stored value back, a click opens the chart full screen, and the
 // legend turns series on and off so one curve can be read alone.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { EvidenceChart, EvidenceSeries } from './api';
 import {
@@ -720,6 +720,9 @@ export default function Chart({
   onSelectionChange,
   onModeChange,
   context,
+  expanded: controlledExpanded,
+  onExpandedChange,
+  askRail,
 }: {
   chart: EvidenceChart;
   plain: boolean;
@@ -728,12 +731,21 @@ export default function Chart({
   onSelectionChange?: (selection: ChartSelection | null) => void;
   onModeChange?: (mode: ChartMode) => void;
   context?: ChartWorkspaceContext;
+  expanded?: boolean;
+  onExpandedChange?: (next: boolean) => void;
+  /** docked Ask surface; when present the full view is an edge-to-edge split */
+  askRail?: ReactNode;
 }) {
   const contract = useMemo(() => contractFor(chart), [chart]);
   const [localSelection, setLocalSelection] = useState<ChartSelection | null>(null);
   const [localMode, setLocalMode] = useState<ChartMode>(() => contract.defaultMode);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
-  const [expanded, setExpanded] = useState(false);
+  const [localExpanded, setLocalExpanded] = useState(false);
+  const expanded = controlledExpanded ?? localExpanded;
+  const setExpanded = (next: boolean) => {
+    if (onExpandedChange) onExpandedChange(next);
+    else setLocalExpanded(next);
+  };
   const [actionStatus, setActionStatus] = useState('');
   // the wide frame follows the viewport while the full view is open, so a
   // window dragged narrow reflows instead of keeping unreadable text
@@ -1008,9 +1020,12 @@ export default function Chart({
 
       {expanded &&
         createPortal(
-          <div className="chart-scrim" onMouseDown={() => setExpanded(false)}>
+          <div
+            className={`chart-scrim${askRail ? ' studio' : ''}`}
+            onMouseDown={() => setExpanded(false)}
+          >
             <figure
-              className="chart chart-workspace chart-full"
+              className={`chart chart-workspace chart-full${askRail ? ' chart-full-split' : ''}`}
               data-kind={chart.kind}
               data-mode={mode}
               role="dialog"
@@ -1058,6 +1073,15 @@ export default function Chart({
               {notes}
               {plain && <div className="gloss">{chart.gloss}</div>}
             </figure>
+            {askRail && (
+              <aside
+                className="chart-studio-rail"
+                aria-label="Ask beside this chart"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {askRail}
+              </aside>
+            )}
           </div>,
           document.body,
         )}

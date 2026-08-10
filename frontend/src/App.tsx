@@ -248,7 +248,7 @@ export default function App() {
   const chooseExperiment = useCallback((code: string) => {
     userSelected.current = true;
     setSelectedCode(code);
-    updateEvidenceUrl({ exp: code, chart: null, mode: null, selection: null });
+    updateEvidenceUrl({ exp: code, chart: null, mode: null, selection: null, full: null });
     setAnnouncement(`${code} evidence selected.`);
   }, []);
 
@@ -256,7 +256,7 @@ export default function App() {
     setViewState('console');
     userSelected.current = true;
     setSelectedCode(code);
-    updateEvidenceUrl({ exp: code, chart: null, mode: null, selection: null });
+    updateEvidenceUrl({ exp: code, chart: null, mode: null, selection: null, full: null });
     requestAnimationFrame(() => {
       const staticFrame =
         document.documentElement.classList.contains('no-anim') ||
@@ -276,7 +276,7 @@ export default function App() {
       landedSeen.current.clear();
       requestedRun.current = null;
       setViewState('console');
-      updateEvidenceUrl({ exp: null, chart: null, mode: null, selection: null });
+      updateEvidenceUrl({ exp: null, chart: null, mode: null, selection: null, full: null });
       setRun(await startRun());
     } catch (caught) {
       setError(String(caught));
@@ -505,6 +505,8 @@ export default function App() {
                     focused
                     onAsk={askFromEvidence}
                     onSave={saveEvidence}
+                    onCite={revealExperiment}
+                    askReady={!!complete}
                     baseVersion={run.baseModelVersion}
                   />
                 ) : (
@@ -531,6 +533,7 @@ export default function App() {
             savedEvidence={savedEvidence}
             onAsk={askFromEvidence}
             onSave={saveEvidence}
+            onCite={revealExperiment}
           />
         ) : (
           <main className="review-loading" id="workspace-main">
