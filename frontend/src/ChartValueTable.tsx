@@ -118,6 +118,12 @@ export default function ChartValueTable({
     return { r: Number(cell.getAttribute('data-r')), c: Number(cell.getAttribute('data-c')) };
   };
 
+  // The chart hears about the block only when the pointer lifts. Pushing
+  // mid-drag re-rendered the selection actions above this table, which moved
+  // the rows under a pointer still sweeping them (caught by the sweep e2e
+  // when the slice button widened that panel).
+  const lastSwept = useRef<{ r: number; c: number } | null>(null);
+
   const sweep = (to: { r: number; c: number }) => {
     const from = anchor.current ?? to;
     setRange({
@@ -126,8 +132,14 @@ export default function ChartValueTable({
       c1: Math.min(from.c, to.c),
       c2: Math.max(from.c, to.c),
     });
+    lastSwept.current = to;
+  };
+  const pushSweep = () => {
     if (!onSelectionChange) return;
-    // a chart that takes no range follows the cell under the pointer instead
+    const to = lastSwept.current;
+    const from = anchor.current ?? to;
+    if (!to || !from) return;
+    // a chart that takes no range follows the cell the sweep ended on instead
     const start = contract.range ? xValues[Math.min(from.r, to.r)] : xValues[to.r];
     const end = contract.range ? xValues[Math.max(from.r, to.r)] : xValues[to.r];
     if (start == null || end == null) return;
@@ -159,9 +171,15 @@ export default function ChartValueTable({
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
+      pushSweep();
     },
     onPointerCancel: () => {
+      // an abandoned sweep leaves no half-made state: the block returns to
+      // whatever the chart's selection already was
       dragging.current = false;
+      lastSwept.current = null;
+      pushed.current = '';
+      setRange(null);
     },
   };
 
