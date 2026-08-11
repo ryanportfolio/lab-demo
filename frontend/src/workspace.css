@@ -78,34 +78,85 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex="0"]
 .app-shell > main { grid-area: workspace }
 
 /* Inspector rail: the active model context, held beside the working paper
-   instead of scrolling away above it. Mono uppercase group labels, muted
-   keys, tabular mono values. */
+   instead of scrolling away above it.
+
+   Three registers in three tenses — premises agreed before the run,
+   constraints checked while it ran, where the run stands now — so each takes
+   the row shape its content wants instead of ten identical pairs.
+
+   Alignment: one system for the whole rail. A narrow key column on the left,
+   everything else flowing left-aligned beside it, provenance hanging under
+   its own claim. The old layout right-flushed every value to the rail edge,
+   which opened a ragged void down the middle and pushed a wrapping guardrail
+   sentence up against its verdict.
+
+   Type: mono is for ids, versions, measures and provenance. A definition
+   ("Full synthetic auto book") is prose and reads in Inter — set in mono it
+   looked like terminal output and forced the value column wide enough to
+   squeeze everything else. */
 .context-strip {
   position: sticky; top: var(--topbar-h); z-index: 18; align-self: start;
-  display: flex; flex-direction: column; gap: 22px;
+  display: flex; flex-direction: column;
   min-height: calc(100vh - var(--topbar-h)); max-height: calc(100vh - var(--topbar-h)); overflow-y: auto;
-  background: var(--bg); padding: 18px;
+  background: var(--bg); padding: 0 18px 18px;
 }
-.rail-group { min-width: 0 }
+/* Nothing in the rail gets compressed to fit the viewport: a shrinkable
+   approval card silently squashed itself instead of overflowing, so the rail
+   reported no overflow, grew no scrollbar, and clipped its own Approve
+   button. Items keep their height and the rail scrolls. */
+.context-strip > * { flex: none }
+/* A ruled register, the way a working paper heads its sections: the rule
+   separates them, not a 22px hole. */
+.rail-group { min-width: 0; border-top: 1px solid var(--border-muted); padding: 15px 0 }
+.rail-group:first-of-type { border-top: 0; padding-top: 18px }
 .rail-group-label {
-  display: block; margin-bottom: 9px; color: var(--fg-subtle); font-family: var(--mono);
+  display: block; margin-bottom: 10px; color: var(--fg-subtle); font-family: var(--mono);
   font-size: var(--label); font-weight: 600; letter-spacing: var(--label-track); text-transform: uppercase;
 }
-.rail-rows { display: flex; flex-direction: column; gap: 7px }
-.rail-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
-/* The key gives up width first, so a long guardrail sentence wraps and the
-   value it is measured against never breaks mid-word. */
-.rail-key { flex: 1 1 auto; color: var(--fg-muted); font-size: 13.5px; line-height: 1.4 }
-.rail-val {
-  flex: 0 1 auto; min-width: 0; color: var(--fg); font-family: var(--mono); font-size: 12.5px;
-  line-height: 1.4; text-align: right;
+/* One grid for every register: a fixed left column, the claim beside it, and
+   anything hanging off that claim indented to it. 66px holds the longest key
+   ("Validate", "Baseline") and the longest verdict ("no breach"). */
+.rail-rows, .rail-checks { display: flex; flex-direction: column; gap: 10px }
+.rail-row, .rail-check {
+  display: grid; grid-template-columns: 66px minmax(0, 1fr); column-gap: 8px; align-items: baseline;
 }
-/* The only semantic colour in the rail, and only for declared constraints:
-   a guardrail that held, one that is actively binding, one nothing has
-   tripped while the run is still working. */
-.rail-val[data-state="passed"] { color: var(--ok) }
-.rail-val[data-state="enforced"] { color: var(--warn) }
-.rail-val[data-state="idle"] { color: var(--fg-muted) }
+.rail-key { color: var(--fg-muted); font-size: 13.5px; line-height: 1.45 }
+.rail-val, .rail-clause {
+  min-width: 0; color: var(--fg); font-size: 13.5px; line-height: 1.45; font-variant-numeric: tabular-nums;
+}
+.rail-val[data-mono] { font-family: var(--mono); font-size: 13px }
+/* Provenance, verdicts and costs share one sub-line layer: 12px mono. It is
+   on the page because a fact you have to hover to reach is a fact a touch
+   reader never gets — and the rail's whole denominator, plus every guardrail's
+   cost, used to live in a title attribute. */
+.rail-source, .rail-tick, .rail-cost {
+  font-family: var(--mono); font-size: 12px; line-height: 1.45; letter-spacing: .01em;
+}
+.rail-source, .rail-cost { grid-column: 2; margin-top: 3px; min-width: 0 }
+.rail-source { color: var(--fg-subtle) }
+
+/* A checked clause: the constraint as declared, with the verdict standing in
+   the left column like a tick in a working paper's margin, and the cost
+   hanging under the clause the way provenance hangs under a premise. Where a
+   rail bit, that cost names the experiment it scrapped and opens its
+   evidence — the run's proof that the guardrails were not decoration, which
+   the rail used to keep in a tooltip. A rail nothing tripped carries no cost
+   line at all, so the difference reads without colour. */
+.rail-checks { list-style: none }
+/* The only semantic colour in the rail, and only on the verdict itself: a
+   guardrail that held, one that is binding right now, one nothing has tripped
+   while the run is still working. The cost beside it stays neutral. */
+.rail-tick { font-weight: 600 }
+.rail-tick[data-state="passed"] { color: var(--ok) }
+.rail-tick[data-state="enforced"] { color: var(--warn) }
+.rail-tick[data-state="idle"] { color: var(--fg-muted) }
+.rail-cost { color: var(--fg-muted) }
+.rail-cost button {
+  border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; padding: 0;
+  text-decoration: underline; text-underline-offset: 3px;
+  transition: color var(--t-fast) var(--ease), text-decoration-color var(--t-fast) var(--ease);
+}
+.rail-cost button:hover { color: var(--fg); text-decoration-color: var(--brand) }
 
 /* Run framing */
 .run-view { width: min(2240px, 100%) }
@@ -705,7 +756,11 @@ html.dark .approval-actions .btn-primary:disabled { background: var(--z800); col
 /* The sheet lives in the inspector rail, in the empty space under the Run
    group, so the decision sits beside the evidence instead of below it. Same
    surface, sized to the column: populations stack, the button takes the row. */
-.context-strip .approval-sheet { max-width: none; margin: 2px 0 0 }
+/* The rail's registers are separated by rules; the approval card is a surface
+   of its own, so it gets air instead of another rule. It leads the rail in
+   review, so the air goes underneath it. */
+.context-strip .approval-sheet { max-width: none; margin: 18px 0 0 }
+.context-strip > .approval-sheet:first-child { margin: 18px 0 4px }
 .context-strip .approval-body { padding: 14px }
 .context-strip .approval-title { margin-top: 0; font-size: 15px }
 .context-strip .approval-judgment { margin-top: 6px; font-size: 13px }
@@ -860,15 +915,21 @@ html.dark .approval-actions .btn-primary:disabled { background: var(--z800); col
     min-height: 0; max-height: none; overflow: visible;
     border-bottom: 1px solid var(--border); padding: 10px 18px;
   }
-  .rail-group { border-right: 1px solid var(--border-muted); padding: 4px 14px }
-  .rail-group:first-child { padding-left: 0 }
-  .rail-group:last-child { border-right: 0; padding-right: 0 }
+  /* Laid across, the registers are divided by the rule between columns, so
+     the vertical rule that separates them in the rail comes off. */
+  .rail-group { border-top: 0; border-right: 1px solid var(--border-muted); padding: 4px 14px }
+  .rail-group:first-child { border-top: 0; padding-top: 4px; padding-left: 0 }
+  /* of-type, not child: in review the approval card is the strip's last child */
+  .rail-group:last-of-type { border-right: 0; padding-right: 0 }
   .rail-group-label { margin-bottom: 6px }
-  .rail-rows { gap: 4px }
-  .rail-key { font-size: 12.5px }
-  .rail-val { font-size: 12px }
-  /* In the collapsed strip the approval card takes a full row under the groups */
-  .context-strip > .approval-sheet { grid-column: 1 / -1; margin: 10px 0 4px }
+  .rail-rows, .rail-checks { gap: 7px }
+  .rail-row, .rail-check { grid-template-columns: 60px minmax(0, 1fr); column-gap: 8px }
+  .rail-key, .rail-val, .rail-clause { font-size: 12.5px }
+  .rail-val[data-mono] { font-size: 12px }
+  .rail-source, .rail-tick, .rail-cost { font-size: 11px }
+  /* In the collapsed strip the approval card takes a full row of its own */
+  .context-strip > .approval-sheet,
+  .context-strip > .approval-sheet:first-child { grid-column: 1 / -1; margin: 4px 0 10px }
 }
 
 @media (max-width: 820px) {
@@ -907,7 +968,8 @@ html.dark .approval-actions .btn-primary:disabled { background: var(--z800); col
 @media (max-width: 700px) {
   .context-strip { grid-template-columns: 1fr; padding-block: 4px }
   .rail-group { border-right: 0; border-bottom: 1px solid var(--border-muted); padding: 9px 0 }
-  .rail-group:last-child { border-bottom: 0 }
+  .rail-group:first-child { padding-top: 9px }
+  .rail-group:last-of-type { border-bottom: 0 }
 }
 
 @media (max-width: 520px) {
