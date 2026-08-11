@@ -181,3 +181,14 @@ twice in dev (and under vite-served Playwright). A `useRef(true)`-guarded
 silently closed the chart studio right after a `?full=1` load. Compare
 against a `usePrevious`-style ref of the actual dependency instead
 (see `EvidencePanel.tsx`, `prevCode`).
+
+### 2026-08-11: gestures must commit shared state on pointerup, not mid-drag
+
+The value grid pushed each swept block to the chart on pointermove; any
+growth of the selection-actions panel (the slice button, PR #70) then
+re-rendered above the table and moved rows under a pointer still sweeping
+them. Pattern: keep local visual feedback (block highlight) live during a
+drag, commit shared/linked state once on pointerup, clear on pointercancel
+(`ChartValueTable.tsx`, `pushSweep`). Corollary: run the FULL playwright
+suite before merging chart-surface changes — the failing spec was
+chart-companions' sweep test, not the feature's own spec.
