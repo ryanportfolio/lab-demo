@@ -103,6 +103,10 @@ const QUESTIONS: Record<string, string> = {
   segment_effects: 'Which rating factors drive this segment away from the book average?',
   lift: 'Does this model separate observed risk better than v12 across risk deciles?',
   folds: 'Does the gain survive every held-back validation fold?',
+  slice_age: 'Inside this slice, how does observed frequency move with driver age?',
+  slice_accidents: 'Inside this slice, does claim history still separate risk?',
+  slice_territory: 'Which territories carry this slice, and at what frequency?',
+  slice_region: 'Which regions carry this slice, and at what frequency?',
 };
 
 const comparisons: Record<string, Comparison> = {

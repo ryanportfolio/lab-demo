@@ -350,6 +350,30 @@ impl QueryRoot {
         fetch_evidence(pool, run_id.parse::<i64>()?, &code).await
     }
 
+    /// A reader's slice of the observed portfolio: totals, observed one-way
+    /// charts, and its share of the book. Filters are whitelisted columns
+    /// only; the fit is never touched.
+    async fn portfolio_slice(
+        &self,
+        ctx: &Context<'_>,
+        filters: Vec<crate::slice::SliceFilter>,
+    ) -> Result<crate::slice::SliceSummary> {
+        let pool = ctx.data::<PgPool>()?;
+        crate::slice::summary(pool, filters).await
+    }
+
+    /// The bottom of the drill: the policy rows inside a slice, paginated.
+    async fn slice_records(
+        &self,
+        ctx: &Context<'_>,
+        filters: Vec<crate::slice::SliceFilter>,
+        offset: i32,
+        limit: i32,
+    ) -> Result<crate::slice::SliceRecords> {
+        let pool = ctx.data::<PgPool>()?;
+        crate::slice::records(pool, filters, offset, limit).await
+    }
+
     /// The context expert. Answers are composed from this run's artifacts and
     /// carry the steps taken, so nothing here rests on trust. Reading is open
     /// to both roles; changing a model is not something this path can do.

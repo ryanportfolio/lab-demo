@@ -366,6 +366,78 @@ export async function fetchActiveModel(): Promise<ActiveModel> {
   return d.activeModel;
 }
 
+export interface SliceSummary {
+  rows: number;
+  exposure: number;
+  claims: number;
+  frequency: number;
+  bookFrequency: number;
+  exposureSharePct: number;
+  charts: EvidenceChart[];
+}
+
+export interface SlicePolicy {
+  policyId: number;
+  driverAge: number;
+  vehicleAge: number;
+  priorAccidents: number;
+  territory: string;
+  region: string;
+  earnedExposure: number;
+  period: string;
+  claimCount: number;
+  fold: number | null;
+}
+
+export interface SliceRecords {
+  total: number;
+  offset: number;
+  policies: SlicePolicy[];
+}
+
+/** Wire shape shared with focus.ts; declared there to keep one source. */
+interface SliceFilterArg {
+  field: string;
+  values?: string[];
+  lo?: number;
+  hi?: number;
+}
+
+export async function fetchPortfolioSlice(
+  filters: SliceFilterArg[],
+): Promise<SliceSummary> {
+  const d = await gql<{ portfolioSlice: SliceSummary }>(
+    `query($filters: [SliceFilter!]!) {
+      portfolioSlice(filters: $filters) {
+        rows exposure claims frequency bookFrequency exposureSharePct
+        charts { ${CHART_FIELDS} }
+      }
+    }`,
+    { filters },
+  );
+  return d.portfolioSlice;
+}
+
+export async function fetchSliceRecords(
+  filters: SliceFilterArg[],
+  offset: number,
+  limit: number,
+): Promise<SliceRecords> {
+  const d = await gql<{ sliceRecords: SliceRecords }>(
+    `query($filters: [SliceFilter!]!, $offset: Int!, $limit: Int!) {
+      sliceRecords(filters: $filters, offset: $offset, limit: $limit) {
+        total offset
+        policies {
+          policyId driverAge vehicleAge priorAccidents territory region
+          earnedExposure period claimCount fold
+        }
+      }
+    }`,
+    { filters, offset, limit },
+  );
+  return d.sliceRecords;
+}
+
 export async function fetchDatasetSummary(): Promise<DatasetSummary> {
   const d = await gql<{ datasetSummary: DatasetSummary }>(
     `query {

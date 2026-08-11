@@ -39,6 +39,7 @@ import {
   type ChartWorkspaceContext,
   type TablePlace,
 } from './chartWorkspace';
+import { constraintFromSelection, type FocusConstraint } from './focus';
 
 // Where the studio seats the value table, remembered per browser. The label
 // is the placement itself: a reader who wants numbers picks the surface they
@@ -870,6 +871,7 @@ export default function Chart({
   sideNav,
   onAskSelection,
   askSource = null,
+  onFocusSelection,
 }: {
   chart: EvidenceChart;
   plain: boolean;
@@ -888,6 +890,9 @@ export default function Chart({
   onAskSelection?: (ask: AgentAsk) => void;
   /** provenance for the context chip when there is no workspace context */
   askSource?: string | null;
+  /** promote the pinned selection to a portfolio-slice constraint; only
+   *  charts whose x axis walks a real portfolio column grow the button */
+  onFocusSelection?: (constraint: FocusConstraint) => void;
 }) {
   const contract = useMemo(() => contractFor(chart), [chart]);
   const [localSelection, setLocalSelection] = useState<ChartSelection | null>(null);
@@ -1243,6 +1248,26 @@ export default function Chart({
               Ask about selection
             </button>
           )}
+          {(() => {
+            // Focus is filtering and clicking is not: the pinned highlight
+            // becomes a portfolio slice only through this labeled button
+            const constraint = onFocusSelection
+              ? constraintFromSelection(chart, selection)
+              : null;
+            return constraint ? (
+              <button
+                type="button"
+                className="act-focus"
+                onClick={() => {
+                  onFocusSelection!(constraint);
+                  setActionStatus(`Portfolio sliced to ${constraint.label}`);
+                  if (expanded) setExpanded(false);
+                }}
+              >
+                Slice portfolio · {constraint.label}
+              </button>
+            ) : null;
+          })()}
           <button type="button" className="act-clear" onClick={() => setSelection(null)}>
             Clear
           </button>

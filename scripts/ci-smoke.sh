@@ -58,4 +58,24 @@ echo "$record" | grep -q "<svg"
 echo "$record" | grep -q "recorded at sign-off, not reconstructed at read time"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/record/999999")" = 404 ]
 
-echo "== smoke passed: run $run_id approved as v$version, record serves"
+echo "== a portfolio slice recomputes from policy rows"
+slice=$(gql human '{"query":"query { portfolioSlice(filters: [{field: \"driver_age\", lo: 18, hi: 24}]) { rows exposure claims exposureSharePct charts { kind } } }"}')
+slice_rows=$(echo "$slice" | jq -r '.data.portfolioSlice.rows')
+[ "$slice_rows" -gt 0 ]
+echo "$slice" | jq -e '.data.portfolioSlice.charts | map(.kind) | index("slice_age")' > /dev/null
+echo "   slice holds $slice_rows policies"
+
+echo "== the drill bottoms out in paginated records"
+records=$(gql human '{"query":"query { sliceRecords(filters: [{field: \"driver_age\", lo: 18, hi: 24}], offset: 0, limit: 5) { total policies { policyId driverAge } } }"}')
+rec_total=$(echo "$records" | jq -r '.data.sliceRecords.total')
+[ "$rec_total" = "$slice_rows" ]
+echo "$records" | jq -e '.data.sliceRecords.policies | length == 5' > /dev/null
+echo "$records" | jq -e '[.data.sliceRecords.policies[].driverAge] | all(. >= 18 and . <= 24)' > /dev/null
+echo "   $rec_total records, first page filtered correctly"
+
+echo "== hostile slice fields are rejected, not interpolated"
+bad=$(gql human '{"query":"query { portfolioSlice(filters: [{field: \"policy_id; DROP TABLE policies\", lo: 1}]) { rows } }"}' | jq -r '.errors[0].message // empty')
+[ -n "$bad" ]
+echo "   refused: $bad"
+
+echo "== smoke passed: run $run_id approved as v$version, record serves, slices drill"
