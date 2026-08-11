@@ -26,6 +26,7 @@ import {
   type ChartSelection,
   type SavedChartEvidence,
 } from './chartWorkspace';
+import type { FocusConstraint } from './focus';
 
 function tabLabel(chart: EvidenceChart): string {
   const labels: Record<string, string> = {
@@ -57,6 +58,7 @@ export default function EvidencePanel({
   onStudioNavigate,
   baseVersion = 12,
   weakFocus,
+  onFocus,
 }: {
   runId: string;
   code: string;
@@ -84,6 +86,8 @@ export default function EvidencePanel({
    * its thinnest slice. The text picks the chart; the nonce fires the jump.
    */
   weakFocus?: { text: string; nonce: number };
+  /** promote a pinned chart selection to a portfolio-slice constraint */
+  onFocus?: (constraint: FocusConstraint) => void;
 }) {
   const [evidence, setEvidence] = useState<Evidence | null>(null);
   const [shownExperiment, setShownExperiment] = useState<Experiment | undefined>(experiment);
@@ -429,6 +433,7 @@ export default function EvidencePanel({
                 }
                 expanded={fullOpen}
                 onExpandedChange={setFull}
+                onFocusSelection={onFocus}
                 sideNav={
                   railWide && experiments && onStudioNavigate ? (
                     <StudioNav

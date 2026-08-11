@@ -20,6 +20,7 @@ import AskPanel from './AskPanel';
 import ContextStrip from './ContextStrip';
 import EvidencePanel from './EvidencePanel';
 import ExperimentLedger from './ExperimentLedger';
+import FocusPanel from './FocusPanel';
 import Frontier from './Frontier';
 import ReviewView from './ReviewView';
 import RunHistory from './RunHistory';
@@ -29,6 +30,12 @@ import {
   type AgentAsk,
   type SavedChartEvidence,
 } from './chartWorkspace';
+import {
+  addConstraint,
+  parseFocus,
+  updateFocusUrl,
+  type FocusConstraint,
+} from './focus';
 
 type ThemePref = 'light' | 'dark' | 'night' | 'gold';
 type View = 'console' | 'review';
@@ -236,6 +243,92 @@ export default function App() {
     setAskSeed(ask);
     setAskOpen(true);
   }, []);
+
+  // The portfolio slice. Every change pushes the outgoing state onto a past
+  // stack, so undo is one honest pop — adding, removing a chip, and clearing
+  // all walk back the same way. The URL mirrors the state below.
+  const [focus, setFocus] = useState<FocusConstraint[]>(() => parseFocus(params.get('focus')));
+  // a ref mirror keeps the callbacks stable and keeps the past-stack push out
+  // of the state updater, which StrictMode double-invokes in dev
+  const focusRef = useRef(focus);
+  const focusPast = useRef<FocusConstraint[][]>([]);
+  const [focusUndoDepth, setFocusUndoDepth] = useState(0);
+  const changeFocus = useCallback(
+    (make: (current: FocusConstraint[]) => FocusConstraint[], note: string) => {
+      const current = focusRef.current;
+      focusPast.current.push(current);
+      const next = make(current);
+      focusRef.current = next;
+      setFocus(next);
+      setFocusUndoDepth(focusPast.current.length);
+      setAnnouncement(note);
+    },
+    [],
+  );
+  const focusOn = useCallback(
+    (constraint: FocusConstraint) => {
+      changeFocus(
+        (current) => addConstraint(current, constraint),
+        `Portfolio sliced to ${constraint.label}.`,
+      );
+      requestAnimationFrame(() => {
+        const staticFrame =
+          document.documentElement.classList.contains('no-anim') ||
+          matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document.getElementById('portfolio-slice')?.scrollIntoView({
+          block: 'start',
+          behavior: staticFrame ? 'auto' : 'smooth',
+        });
+      });
+    },
+    [changeFocus],
+  );
+  const removeFocus = useCallback(
+    (field: FocusConstraint['field']) => {
+      changeFocus(
+        (current) => current.filter((item) => item.field !== field),
+        'Slice constraint removed.',
+      );
+    },
+    [changeFocus],
+  );
+  const clearFocus = useCallback(() => {
+    changeFocus(() => [], 'Portfolio slice cleared.');
+  }, [changeFocus]);
+  const undoFocus = useCallback(() => {
+    const previous = focusPast.current.pop();
+    if (!previous) return;
+    focusRef.current = previous;
+    setFocus(previous);
+    setFocusUndoDepth(focusPast.current.length);
+    setAnnouncement(
+      previous.length ? 'Slice change undone.' : 'Slice undone, back to the full portfolio.',
+    );
+  }, []);
+
+  useEffect(() => {
+    updateFocusUrl(focus);
+  }, [focus]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return;
+      const target = event.target as HTMLElement | null;
+      // text fields keep their own undo; the shortcut only steers the slice
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      )
+        return;
+      if (!focusPast.current.length) return;
+      event.preventDefault();
+      undoFocus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undoFocus]);
 
   // the ids already carried into review, so a saved reading can say so
   const savedIds = useMemo(() => savedEvidence.map((item) => item.id), [savedEvidence]);
@@ -533,6 +626,7 @@ export default function App() {
                     navTarget={navTarget}
                     onStudioNavigate={studioNavigate}
                     baseVersion={run.baseModelVersion}
+                    onFocus={focusOn}
                   />
                 ) : (
                   <div className="evidence-empty" aria-busy={running}>
@@ -542,6 +636,18 @@ export default function App() {
                 )}
               </section>
             </div>
+
+            {/* The slice panel appears under the evidence the moment a chart
+                selection is promoted, and disappears with its last chip. */}
+            <FocusPanel
+              focus={focus}
+              onRemove={removeFocus}
+              onUndo={undoFocus}
+              canUndo={focusUndoDepth > 0}
+              onClear={clearFocus}
+              onFocus={focusOn}
+              plain={false}
+            />
 
             {/* The record sits at the bottom of the page, so following one of
                 its experiment links also travels to the evidence it changed —

@@ -8,6 +8,7 @@ mod record;
 mod runsvc;
 mod schema;
 mod seed;
+mod slice;
 
 use async_graphql::{EmptySubscription, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};

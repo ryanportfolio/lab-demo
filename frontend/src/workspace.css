@@ -1124,3 +1124,88 @@ html.dark .approval-actions .btn-primary:disabled { background: var(--z800); col
   .act-row { grid-template-columns: 24px 44px 1fr; gap: 7px }
   .act-status { margin-left: 0; width: 100% }
 }
+
+/* ---- Portfolio slice: the drill-down focus panel ---------------------- */
+/* Promoting a pinned selection is a labeled, tinted act — filtering is never
+   a side effect of clicking, so the button says what it will do. */
+.chart-actions .act-focus {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--border));
+  color: var(--ci-text); font-weight: 550;
+}
+.focus-panel {
+  margin-top: 16px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  background: var(--bg); padding: 16px;
+}
+.focus-banner {
+  max-width: 52ch; color: var(--fg-muted); font-family: var(--mono);
+  font-size: var(--label); line-height: 1.45; text-align: right;
+}
+/* Every constraint is a chip a reader can see and remove; the state of the
+   slice is exactly the chips on screen, nothing hidden. */
+.focus-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px }
+.focus-chips button {
+  min-height: 34px; border: 1px solid var(--border); border-radius: var(--r-pill);
+  background: var(--card); color: var(--fg-muted); cursor: pointer; padding: 5px 13px;
+  font: inherit; font-size: 13.5px;
+}
+.focus-chip {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--border)) !important;
+  background: color-mix(in srgb, var(--brand) 12%, var(--card)) !important;
+  color: var(--ci-text) !important; font-weight: 550;
+}
+/* Hovering a chip previews the removal it performs */
+.focus-chip:hover, .focus-chip:focus-visible {
+  border-color: var(--bad) !important; color: var(--bad) !important; outline: none;
+  background: color-mix(in srgb, var(--bad) 8%, var(--card)) !important;
+}
+.focus-undo:disabled { opacity: .45; cursor: default }
+.focus-undo:not(:disabled):hover, .focus-undo:not(:disabled):focus-visible,
+.focus-clear:hover, .focus-clear:focus-visible,
+.focus-records-toggle:hover, .focus-records-toggle:focus-visible {
+  border-color: var(--brand); color: var(--fg); outline: none;
+}
+.focus-panel .facts { height: auto; flex-wrap: wrap }
+.focus-charts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+  gap: 14px; margin-top: 12px;
+}
+.focus-records { margin-top: 14px }
+.focus-records-toggle {
+  min-height: 38px; border: 1px solid var(--border); border-radius: var(--r-pill);
+  background: var(--card); color: var(--fg-muted); cursor: pointer; padding: 6px 16px;
+  font: inherit; font-size: 13.5px;
+}
+.focus-records-body { margin-top: 10px }
+.focus-records-body .table-scroll { overflow-x: auto }
+.focus-records-table {
+  width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13.5px;
+}
+.focus-records-table th, .focus-records-table td {
+  border-bottom: 1px solid var(--border-muted); padding: 6px 10px; text-align: right;
+  white-space: nowrap;
+}
+.focus-records-table th[scope="col"] {
+  color: var(--fg-subtle); font-size: var(--label); font-weight: 550;
+  text-transform: uppercase; letter-spacing: var(--label-track);
+}
+.focus-records-table th[scope="row"] { color: var(--fg); font-weight: 550 }
+.focus-records-table td:nth-child(5), .focus-records-table td:nth-child(6),
+.focus-records-table td:nth-child(8) { text-align: left }
+.focus-records-pager {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 10px; color: var(--fg-muted); font-family: var(--mono); font-size: 13.5px;
+}
+.focus-records-pager button {
+  min-height: 34px; border: 1px solid var(--border); border-radius: var(--r-pill);
+  background: var(--card); color: var(--fg-muted); cursor: pointer; padding: 5px 13px;
+  font: inherit; font-size: 13.5px;
+}
+.focus-records-pager button:disabled { opacity: .45; cursor: default }
+.focus-records-pager button:not(:disabled):hover,
+.focus-records-pager button:not(:disabled):focus-visible {
+  border-color: var(--brand); color: var(--fg); outline: none;
+}
+@media (max-width: 900px) {
+  .focus-panel .workspace-heading { flex-direction: column; align-items: flex-start }
+  .focus-banner { text-align: left }
+}
