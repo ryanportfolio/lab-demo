@@ -426,7 +426,12 @@ export default function App() {
           reading order, because it frames the evidence that follows, and the
           shell grid places it in the right-hand column on a desktop. */}
       <div className="app-shell">
-        <ContextStrip dataset={dataset} run={run} view={view}>
+        <ContextStrip
+          dataset={dataset}
+          run={run}
+          view={view}
+          onSelectExperiment={revealExperiment}
+        >
           {view === 'review' && run && review && review.runId === run.id && (
             <ApprovalCard
               review={review}
