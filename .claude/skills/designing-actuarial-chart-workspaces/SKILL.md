@@ -53,6 +53,10 @@ Support `empty → loading → ready → refreshing | error | stale`. Keep the l
 
 Verify six questions, applicable interactions, desktop and narrow layouts, keyboard flow, preservation, exact values, all states, and one adversarial case. A skeptical actuary must find the pattern, weakest point, denominator, source, and next action without reconstructing context.
 
+## Evidence base
+
+Calibrated to the meta-review-r05 chart canon (L3-CAN-036..042, `final/2026-08-10T18-56-36Z--meta-review-r05--claude-fable-5/`), replicated by two independent batch-C comparisons (r05's fold + the canon-replication-delta annex): the question-shaped canon, companion/exact-value requirements, and export-context-loss mechanism are replicated cross-model; the no-invented-thresholds rule stands, but the concrete uncertainty *encoding* is contested — validate encodings with decision-quality tasks (actuaries AND board-level readers), never preference. In-chart drill-down/write-back has document-grounded reserving precedent only; treat as contested for pricing scope.
+
 ## Anti-patterns
 
 - Identical interaction menus on statistically different charts

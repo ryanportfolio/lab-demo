@@ -1,6 +1,6 @@
 # Prediction Lab product context
 
-Last verified: 2026-08-09, per the adjudicated meta-review `final/2026-08-09T21-00-37Z--meta-review-r03--claude-fable-5/`. Treat release details as time-sensitive and recheck official sources before making current-state claims.
+Last verified: 2026-08-10, per **meta-review-r05** `final/2026-08-10T18-56-36Z--meta-review-r05--claude-fable-5/` (the citable canon, independently checked by the r05-verification-audit at `19-09-14Z`). Caution: two parallel meta-review-r04 directories exist with colliding `L3-*` numbering — cite only the r04b (`02-47-50Z`) → r05 lineage; the `02-46-43Z` copy and the `canon-replication-delta-r01` are consistent corroborating annexes, not citation sources. Treat release details as time-sensitive and recheck official sources before making current-state claims.
 
 ## Product promise
 
@@ -15,7 +15,7 @@ Official sources:
 - [Terms of Service](https://www.predictionlab.ai/legal/terms)
 - [Privacy Policy](https://www.predictionlab.ai/legal/privacy)
 
-## Three AI layers from Ryan Style's ITC talk
+## Three AI layers from Ryan Steil's ITC talk
 
 The talk describes three complementary roles:
 
@@ -23,7 +23,7 @@ The talk describes three complementary roles:
 2. **Context expert:** assembles fit output, diagnostics, data context, and visualization so meaningful follow-up questions become cheap.
 3. **Modeling agent:** performs bounded modeling tasks and experiments while collaborating with users through the same versioned, permissioned platform.
 
-Source: [ITC talk](https://vimeo.com/1131288047), transcript supplied by the project owner; captions and key frames are archived in the research campaign and were verified against the recording (meta-review-r03). The recording is unindexed — no blind web search surfaced it. The talk also contains the only public statement of Prediction Lab agent governance: granular per-user and per-AI permissions ("create a model" yes, "deploy to production" optionally no) plus branch-isolated agent work — claimed on stage, not documented elsewhere, and no permission UI shown.
+Source: [ITC talk](https://vimeo.com/1131288047), transcript supplied by the project owner; captions and key frames are archived in the research campaign and were verified against the recording (meta-review-r03/r04). The recording is unindexed — no blind web search surfaced it. Provenance class per r04: the corpus's only direct observation of real Prediction Lab UI AND its only non-blind, user-supplied, single-copy source — highest information value, weakest provenance; carry both facts together. The talk also dates first product launch to ≈ Oct 6–13, 2025 ("we launched our products last Monday"), ~4 months before the public changelog begins. The talk also contains the only public statement of Prediction Lab agent governance: granular per-user and per-AI permissions ("create a model" yes, "deploy to production" optionally no) plus branch-isolated agent work — claimed on stage, not documented elsewhere, and no permission UI shown.
 
 ## Current product direction
 
