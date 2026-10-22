@@ -25,8 +25,14 @@ jobs:
         id: scope
         env:
           NAMES: ${{ steps.meta.outputs.dependency-names }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
           ok=true
+          # fetch-metadata only checks the first commit; any commit not made and signed by Dependabot needs a person.
+          others=$(gh api --paginate "repos/$REPO/pulls/$PR/commits?per_page=100" --jq '.[] | select(.author.login != "dependabot[bot]" or .commit.verification.verified != true) | .sha')
+          if [ -n "$others" ]; then ok=false; echo "commits not made by Dependabot: $others"; fi
           IFS=',' read -ra deps <<< "$NAMES"
           for d in "${deps[@]}"; do
             d="$(echo "$d" | xargs)"
