@@ -12,6 +12,17 @@ Use the caller-supplied campaign directory. Otherwise resolve the user's Desktop
 
 Inventory every report with run ID, model, date, scope, lens, blindness status, source count, and source classes. Keep contaminated or non-blind runs, but never count them as independent convergence without qualification.
 
+The manifest artifact must also declare, non-optionally:
+
+- **The synthesis pass's own model identity** (not just the input models).
+- **A synthesis-level blindness statement:** the exact files read, plus an explicit declaration that nothing under `synthesis/` or `final/` was read and whether any web access occurred. If the operating session was exposed to any prior synthesis or review, disclose it and label the pass non-blind — asserted blindness that the session context contradicts is worse than declared contamination.
+- **SHA-256 for every input file**, computed at read time.
+- **A no-modification statement** covering all input files. If new evidence must be attached to a raw run after its completion, never alter the body: append a dated, clearly demarcated, non-blind-labeled addendum, and note in the manifest that the run's file hash changed.
+
+These four fields exist because their absence forced expensive reconstruction in a later review cycle (meta-review-r04/r05, 2026-08-10): three of four audited passes lacked input hashes, their own model, or a blindness statement.
+
+**Collision guard:** before starting, list the target `synthesis/` (names only — listing preserves blindness) and reserve your output directory immediately. If a same-scope synthesis appears mid-flight, stop publishing a competitor and switch to audit/annex mode against it. Parallel sessions have produced duplicate syntheses, duplicate reviews, and thrice-reused run IDs in one day (2026-08-10).
+
 ## 2. Build master ledgers
 
 Create:
@@ -66,6 +77,7 @@ Keep minority findings when they expose severe harm, excluded users, a distinct 
 
 ## Completion gate
 
+- The manifest declares the pass's own model, a synthesis-level blindness statement, per-input SHA-256, and a no-modification statement (§1).
 - Every input report and finding is accounted for.
 - Every merge can be reversed from the dedupe map.
 - Repeated URLs and syndicated sources are not counted as independent evidence.
